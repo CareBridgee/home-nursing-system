@@ -1,0 +1,38 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: care-nest-db
+    environment:
+      MYSQL_DATABASE: carenest
+      MYSQL_USER: carenest
+      MYSQL_PASSWORD: carenest
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - care_nest_mysql_data:/var/lib/mysql
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  app:
+    build: .
+    container_name: care-nest-app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/carenest?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: carenest
+      SPRING_DATASOURCE_PASSWORD: carenest
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+    ports:
+      - "8080:8080"
+    profiles:
+      - full
+
+volumes:
+  care_nest_mysql_data:

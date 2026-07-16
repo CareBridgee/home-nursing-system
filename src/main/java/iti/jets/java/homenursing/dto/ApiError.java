@@ -1,6 +1,6 @@
-package iti.jets.java.carenest.dto;
+package iti.jets.java.homenursing.dto;
 
-import iti.jets.java.carenest.exception.BusinessException;
+import iti.jets.java.homenursing.exception.BusinessException;
 import org.springframework.http.HttpStatus;
 
 import java.time.Instant;

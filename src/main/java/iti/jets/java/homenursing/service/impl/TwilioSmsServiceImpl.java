@@ -1,10 +1,10 @@
-package iti.jets.java.carenest.service.impl;
+package iti.jets.java.homenursing.service.impl;
 
 import com.twilio.Twilio;
 import com.twilio.exception.ApiException;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
-import iti.jets.java.carenest.service.TwilioSmsService;
+import iti.jets.java.homenursing.service.TwilioSmsService;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

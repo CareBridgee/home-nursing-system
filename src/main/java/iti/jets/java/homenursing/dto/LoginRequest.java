@@ -1,4 +1,4 @@
-package iti.jets.java.carenest.dto;
+package iti.jets.java.homenursing.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;

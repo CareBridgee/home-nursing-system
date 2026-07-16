@@ -1,4 +1,4 @@
-package iti.jets.java.carenest.exception;
+package iti.jets.java.homenursing.exception;
 
 import org.springframework.http.HttpStatus;
 

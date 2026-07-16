@@ -1,11 +1,11 @@
-package iti.jets.java.carenest.service.impl;
+package iti.jets.java.homenursing.service.impl;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import iti.jets.java.carenest.exception.UnauthorizedException;
-import iti.jets.java.carenest.service.TokenService;
+import iti.jets.java.homenursing.exception.UnauthorizedException;
+import iti.jets.java.homenursing.service.TokenService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;

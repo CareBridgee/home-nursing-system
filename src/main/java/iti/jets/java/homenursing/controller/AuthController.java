@@ -1,11 +1,7 @@
-package iti.jets.java.carenest.controller;
+package iti.jets.java.homenursing.controller;
 
-import iti.jets.java.carenest.dto.LoginRequest;
-import iti.jets.java.carenest.dto.RefreshRequest;
-import iti.jets.java.carenest.dto.TokenPair;
-import iti.jets.java.carenest.dto.UserResponse;
-import iti.jets.java.carenest.dto.VerifyOtpRequest;
-import iti.jets.java.carenest.service.AuthService;
+import iti.jets.java.homenursing.dto.*;
+import iti.jets.java.homenursing.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

@@ -1,4 +1,5 @@
-package iti.jets.java.carenest.dto;
+package iti.jets.java.homenursing.dto;
+
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

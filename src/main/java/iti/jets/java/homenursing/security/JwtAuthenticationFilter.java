@@ -1,6 +1,6 @@
-package iti.jets.java.carenest.security;
+package iti.jets.java.homenursing.security;
 
-import iti.jets.java.carenest.service.TokenService;
+import iti.jets.java.homenursing.service.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

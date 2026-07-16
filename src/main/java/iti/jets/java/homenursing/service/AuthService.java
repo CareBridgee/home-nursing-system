@@ -1,7 +1,7 @@
-package iti.jets.java.carenest.service;
+package iti.jets.java.homenursing.service;
 
-import iti.jets.java.carenest.dto.TokenPair;
-import iti.jets.java.carenest.dto.UserResponse;
+import iti.jets.java.homenursing.dto.TokenPair;
+import iti.jets.java.homenursing.dto.UserResponse;
 
 public interface AuthService {
 

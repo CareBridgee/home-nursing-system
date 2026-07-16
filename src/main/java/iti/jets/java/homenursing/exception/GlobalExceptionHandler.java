@@ -1,6 +1,6 @@
 package iti.jets.java.homenursing.exception;
 
-import iti.jets.java.carenest.dto.ApiError;
+import iti.jets.java.homenursing.dto.ApiError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;

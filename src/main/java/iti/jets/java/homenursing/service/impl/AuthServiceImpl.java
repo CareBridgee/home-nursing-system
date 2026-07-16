@@ -1,17 +1,18 @@
-package iti.jets.java.carenest.service.impl;
+package iti.jets.java.homenursing.service.impl;
 
-import iti.jets.java.carenest.dto.TokenPair;
-import iti.jets.java.carenest.dto.UserResponse;
-import iti.jets.java.carenest.entity.AccountType;
-import iti.jets.java.carenest.entity.User;
-import iti.jets.java.carenest.exception.InvalidOtpException;
-import iti.jets.java.carenest.exception.RateLimitException;
-import iti.jets.java.carenest.exception.ResourceNotFoundException;
-import iti.jets.java.carenest.mapper.UserMapper;
-import iti.jets.java.carenest.repository.UserRepository;
-import iti.jets.java.carenest.service.AuthService;
-import iti.jets.java.carenest.service.TokenService;
-import iti.jets.java.carenest.service.TwilioSmsService;
+
+import iti.jets.java.homenursing.dto.TokenPair;
+import iti.jets.java.homenursing.dto.UserResponse;
+import iti.jets.java.homenursing.entity.AccountType;
+import iti.jets.java.homenursing.entity.User;
+import iti.jets.java.homenursing.exception.InvalidOtpException;
+import iti.jets.java.homenursing.exception.RateLimitException;
+import iti.jets.java.homenursing.exception.ResourceNotFoundException;
+import iti.jets.java.homenursing.mapper.UserMapper;
+import iti.jets.java.homenursing.repository.UserRepository;
+import iti.jets.java.homenursing.service.AuthService;
+import iti.jets.java.homenursing.service.TokenService;
+import iti.jets.java.homenursing.service.TwilioSmsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

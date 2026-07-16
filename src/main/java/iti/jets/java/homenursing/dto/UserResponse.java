@@ -1,7 +1,8 @@
 package iti.jets.java.homenursing.dto;
 
 
-import iti.jets.java.homenursing.entity.AccountType;
+import iti.jets.java.homenursing.entity.enums.AccountType;
+import iti.jets.java.homenursing.entity.enums.Gender;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -20,7 +21,7 @@ public class UserResponse {
     private String firstName;
     private String lastName;
     private LocalDate dateOfBirth;
-    private String gender;
+    private Gender gender;
     private AccountType accountType;
     private String profileImageUrl;
     private Boolean isDeleted;

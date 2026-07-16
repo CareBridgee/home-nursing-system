@@ -1,6 +1,8 @@
 package iti.jets.java.homenursing.entity;
 
 
+import iti.jets.java.homenursing.entity.enums.AccountType;
+import iti.jets.java.homenursing.entity.enums.Gender;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -37,8 +39,9 @@ public class User {
 
     private LocalDate dateOfBirth;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    private String gender;
+    private Gender gender;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

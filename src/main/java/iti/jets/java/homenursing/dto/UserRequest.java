@@ -1,5 +1,7 @@
 package iti.jets.java.homenursing.dto;
 
+import iti.jets.java.homenursing.entity.enums.AccountType;
+import iti.jets.java.homenursing.entity.enums.Gender;
 import lombok.*;
 
 @Getter
@@ -13,7 +15,7 @@ public class UserRequest {
     private String firstName;
     private String lastName;
     private String dateOfBirth;
-    private String gender;
-    private String accountType;
+    private Gender gender;
+    private AccountType accountType;
     private String profileImageUrl;
 }

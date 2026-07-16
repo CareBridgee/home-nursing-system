@@ -3,7 +3,7 @@ package iti.jets.java.homenursing.service.impl;
 
 import iti.jets.java.homenursing.dto.TokenPair;
 import iti.jets.java.homenursing.dto.UserResponse;
-import iti.jets.java.homenursing.entity.AccountType;
+import iti.jets.java.homenursing.entity.enums.AccountType;
 import iti.jets.java.homenursing.entity.User;
 import iti.jets.java.homenursing.exception.InvalidOtpException;
 import iti.jets.java.homenursing.exception.RateLimitException;

@@ -1,0 +1,148 @@
+package iti.jets.java.carenest.service.impl;
+
+import iti.jets.java.carenest.dto.TokenPair;
+import iti.jets.java.carenest.dto.UserResponse;
+import iti.jets.java.carenest.entity.AccountType;
+import iti.jets.java.carenest.entity.User;
+import iti.jets.java.carenest.exception.InvalidOtpException;
+import iti.jets.java.carenest.exception.RateLimitException;
+import iti.jets.java.carenest.exception.ResourceNotFoundException;
+import iti.jets.java.carenest.mapper.UserMapper;
+import iti.jets.java.carenest.repository.UserRepository;
+import iti.jets.java.carenest.service.AuthService;
+import iti.jets.java.carenest.service.TokenService;
+import iti.jets.java.carenest.service.TwilioSmsService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
+
+@Service
+@RequiredArgsConstructor
+public class AuthServiceImpl implements AuthService {
+
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
+    private final TwilioSmsService twilioSmsService;
+    private final TokenService tokenService;
+    private final PasswordEncoder passwordEncoder;
+
+    @Override
+    public void requestOtp(String rawPhone) {
+        String phone = normalizePhoneNumber(rawPhone);
+
+        String phoneKey = "rate_limit:phone:" + phone;
+        if (isRateLimited(phoneKey, 600, 3)) {
+            throw new RateLimitException("Too many OTP requests. Please try again later.");
+        }
+
+        String otp = generateOtp();
+        String hashedOtp = passwordEncoder.encode(otp);
+
+        tokenService.set(
+                "otp:" + phone, hashedOtp, Duration.ofSeconds(300));
+        tokenService.set(
+                "otp_attempts:" + phone, "0", Duration.ofSeconds(300));
+
+        twilioSmsService.sendOtp(phone, otp);
+    }
+
+    @Override
+    public TokenPair verifyOtpAndLogin(String rawPhone, String otp) {
+        String phone = normalizePhoneNumber(rawPhone);
+
+        String storedHash = tokenService.get("otp:" + phone);
+        if (storedHash == null) {
+            throw new InvalidOtpException("OTP has expired or is invalid.");
+        }
+
+        if (!passwordEncoder.matches(otp, storedHash)) {
+            String attemptsKey = "otp_attempts:" + phone;
+            Long attempts = tokenService.increment(attemptsKey);
+            if (attempts != null && attempts >= 3) {
+                tokenService.delete("otp:" + phone);
+                tokenService.delete(attemptsKey);
+                throw new InvalidOtpException("Too many failed attempts. OTP has been invalidated.");
+            }
+            throw new InvalidOtpException("Invalid OTP.");
+        }
+
+        tokenService.delete("otp:" + phone);
+        tokenService.delete("otp_attempts:" + phone);
+
+        User user = userRepository.findByPhoneNumber(phone)
+                .orElseGet(() -> createUser(phone));
+
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        String userId = user.getId().toString();
+        String accessToken = tokenService.generateAccessToken(userId);
+        String refreshToken = tokenService.generateRefreshToken(userId);
+        UserResponse userResponse = userMapper.toResponse(user);
+
+        return new TokenPair(accessToken, refreshToken, tokenService.getAccessTokenTtlSeconds(), userResponse);
+    }
+
+    @Override
+    public TokenPair refreshToken(String refreshToken) {
+        tokenService.validateRefreshToken(refreshToken);
+        String userId = tokenService.getUserIdFromRefreshToken(refreshToken);
+        tokenService.revokeRefreshToken(refreshToken);
+
+        User user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        String newAccessToken = tokenService.generateAccessToken(userId);
+        String newRefreshToken = tokenService.generateRefreshToken(userId);
+        UserResponse userResponse = userMapper.toResponse(user);
+
+        return new TokenPair(newAccessToken, newRefreshToken, tokenService.getAccessTokenTtlSeconds(), userResponse);
+    }
+
+    @Override
+    public void logout(String refreshToken) {
+        tokenService.revokeRefreshToken(refreshToken);
+    }
+
+    @Override
+    public UserResponse getUserProfile(String phoneNumber) {
+        String phone = normalizePhoneNumber(phoneNumber);
+        User user = userRepository.findByPhoneNumber(phone)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return userMapper.toResponse(user);
+    }
+
+    private boolean isRateLimited(String key, int windowSeconds, int maxRequests) {
+        Long count = tokenService.increment(key);
+        if (count != null && count == 1) {
+            tokenService.expire(key, Duration.ofSeconds(windowSeconds));
+        }
+        return count != null && count > maxRequests;
+    }
+
+    private String normalizePhoneNumber(String phoneNumber) {
+        if (phoneNumber == null) return null;
+        String digits = phoneNumber.replaceAll("\\D+", "");
+        return "+" + digits;
+    }
+
+    private String generateOtp() {
+        return String.format("%06d", ThreadLocalRandom.current().nextInt(0, 1000000));
+    }
+
+    private User createUser(String phoneNumber) {
+        User user = User.builder()
+                .phoneNumber(phoneNumber)
+                .firstName("User")
+                .lastName("")
+                .accountType(AccountType.PERSONAL)
+                .isDeleted(false)
+                .build();
+        return userRepository.save(user);
+    }
+}

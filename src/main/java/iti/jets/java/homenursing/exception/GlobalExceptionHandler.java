@@ -1,4 +1,4 @@
-package iti.jets.java.carenest.exception;
+package iti.jets.java.homenursing.exception;
 
 import iti.jets.java.carenest.dto.ApiError;
 import org.slf4j.Logger;

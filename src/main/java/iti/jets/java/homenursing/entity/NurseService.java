@@ -32,7 +32,7 @@ import java.util.UUID;
 @Table(name = "nurse_services", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"nurse_id", "service_type_id"})
 })
-public class NurseServiceLink {
+public class NurseService {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

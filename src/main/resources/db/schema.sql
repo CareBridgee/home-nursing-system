@@ -1,17 +1,21 @@
+-- Create database if it doesn't exist
+CREATE DATABASE IF NOT EXISTS home_nursing;
 
+-- Use the database
+USE home_nursing;
 
 -- ========================================
 -- 1. USERS
 -- ========================================
 CREATE TABLE users (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
     phone_number VARCHAR(20) UNIQUE,
     email VARCHAR(255) UNIQUE,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     date_of_birth DATE,
     gender VARCHAR(20),
-    --  account_type values later
+    -- account_type values later
     account_type VARCHAR(20) CHECK (account_type IN ('family', 'personal')),
     profile_image_url TEXT,
     is_deleted BOOLEAN DEFAULT FALSE,
@@ -23,24 +27,25 @@ CREATE TABLE users (
 -- ========================================
 -- USER TYPE TABLES
 -- ========================================
--- One user (family/personal) can have many patient profiles
--- (self + family members under the same account)
+-- Family via self-relation:
+-- relationship = NULL  → primary patient profile
+-- relationship = other patient id → family member linked to that patient
 CREATE TABLE patients (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    user_id CHAR(36) NOT NULL,
-    relationship VARCHAR(100),
-    is_primary BOOLEAN DEFAULT FALSE,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    relationship BIGINT NULL,
     blood_type VARCHAR(5),
     height_cm DECIMAL(5, 2),
     weight_kg DECIMAL(5, 2),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_patients_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT fk_patients_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_patients_relationship FOREIGN KEY (relationship) REFERENCES patients(id) ON DELETE SET NULL
 );
 
 CREATE TABLE nurses (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    user_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
     license_number VARCHAR(100) UNIQUE NOT NULL,
     specialization VARCHAR(255),
     years_of_experience INT,
@@ -57,10 +62,10 @@ CREATE TABLE nurses (
 );
 
 -- ========================================
---  SERVICE CATALOG + NURSE SERVICES
+-- SERVICE CATALOG
 -- ========================================
 CREATE TABLE service_types (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     estimated_duration_minutes INT,
@@ -68,10 +73,13 @@ CREATE TABLE service_types (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ========================================
+-- NURSE SERVICES
+-- ========================================
 CREATE TABLE nurse_services (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    nurse_id CHAR(36) NOT NULL,
-    service_type_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    nurse_id BIGINT NOT NULL,
+    service_type_id BIGINT NOT NULL,
     custom_price DECIMAL(10, 2),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -84,28 +92,28 @@ CREATE TABLE nurse_services (
 -- HEALTH PROFILE TABLES
 -- ========================================
 CREATE TABLE medical_conditions (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL UNIQUE,
     description TEXT
 );
 
-INSERT INTO medical_conditions (id, name) VALUES
-    (UUID(), 'Diabetes'),
-    (UUID(), 'Hypertension'),
-    (UUID(), 'Heart Disease'),
-    (UUID(), 'Asthma'),
-    (UUID(), 'COPD'),
-    (UUID(), 'Kidney Disease'),
-    (UUID(), 'Liver Disease'),
-    (UUID(), 'Cancer'),
-    (UUID(), 'Epilepsy'),
-    (UUID(), 'Thyroid Disease'),
-    (UUID(), 'None');
+INSERT INTO medical_conditions (name) VALUES
+    ('Diabetes'),
+    ('Hypertension'),
+    ('Heart Disease'),
+    ('Asthma'),
+    ('COPD'),
+    ('Kidney Disease'),
+    ('Liver Disease'),
+    ('Cancer'),
+    ('Epilepsy'),
+    ('Thyroid Disease'),
+    ('None');
 
 CREATE TABLE patient_medical_conditions (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    patient_id CHAR(36) NOT NULL,
-    medical_condition_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    patient_id BIGINT NOT NULL,
+    medical_condition_id BIGINT NOT NULL,
     diagnosed_date DATE,
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -115,16 +123,16 @@ CREATE TABLE patient_medical_conditions (
 );
 
 CREATE TABLE allergies (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL UNIQUE,
     type VARCHAR(50) CHECK (type IN ('drug', 'food', 'other')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE patient_allergies (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    patient_id CHAR(36) NOT NULL,
-    allergy_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    patient_id BIGINT NOT NULL,
+    allergy_id BIGINT NOT NULL,
     severity VARCHAR(50) CHECK (severity IN ('mild', 'moderate', 'severe')),
     reaction_description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -134,16 +142,16 @@ CREATE TABLE patient_allergies (
 );
 
 CREATE TABLE medications (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE patient_medications (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    patient_id CHAR(36) NOT NULL,
-    medication_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    patient_id BIGINT NOT NULL,
+    medication_id BIGINT NOT NULL,
     dosage VARCHAR(100),
     frequency VARCHAR(100),
     start_date DATE,
@@ -156,8 +164,8 @@ CREATE TABLE patient_medications (
 );
 
 CREATE TABLE medical_history (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    patient_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    patient_id BIGINT NOT NULL,
     type VARCHAR(50) CHECK (type IN ('surgery', 'hospitalization', 'procedure', 'other')),
     title VARCHAR(255) NOT NULL,
     description TEXT,
@@ -169,8 +177,8 @@ CREATE TABLE medical_history (
 );
 
 CREATE TABLE emergency_contacts (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    patient_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    patient_id BIGINT NOT NULL,
     contact_name VARCHAR(255) NOT NULL,
     relationship VARCHAR(100),
     phone_number VARCHAR(20) NOT NULL,
@@ -181,8 +189,8 @@ CREATE TABLE emergency_contacts (
 );
 
 CREATE TABLE addresses (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    user_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
     city VARCHAR(100) NOT NULL,
     area VARCHAR(255),
     street VARCHAR(255),
@@ -195,13 +203,13 @@ CREATE TABLE addresses (
 );
 
 -- ========================================
---  SERVICE REQUEST & BOOKING TABLES
+-- SERVICE REQUEST & BOOKING TABLES
 -- ========================================
 CREATE TABLE service_requests (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    patient_id CHAR(36) NOT NULL,
-    service_type_id CHAR(36),
-    requested_nurse_id CHAR(36),
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    patient_id BIGINT NOT NULL,
+    service_type_id BIGINT,
+    requested_nurse_id BIGINT,
     service_description TEXT,
     preferred_date DATE,
     preferred_time TIME,
@@ -229,8 +237,8 @@ CREATE TABLE service_requests (
 );
 
 CREATE TABLE nurse_availability (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    nurse_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    nurse_id BIGINT NOT NULL,
     day_of_week INT CHECK (day_of_week BETWEEN 0 AND 6), -- 0=Sunday, 6=Saturday
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
@@ -240,10 +248,10 @@ CREATE TABLE nurse_availability (
 );
 
 CREATE TABLE bookings (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    service_request_id CHAR(36) NOT NULL,
-    patient_id CHAR(36) NOT NULL,
-    nurse_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    service_request_id BIGINT NOT NULL,
+    patient_id BIGINT NOT NULL,
+    nurse_id BIGINT NOT NULL,
     scheduled_date DATE NOT NULL,
     scheduled_start_time TIME NOT NULL,
     scheduled_end_time TIME NOT NULL,
@@ -270,9 +278,9 @@ CREATE TABLE bookings (
 );
 
 CREATE TABLE booking_negotiations (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    service_request_id CHAR(36) NOT NULL,
-    booking_id CHAR(36),
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    service_request_id BIGINT NOT NULL,
+    booking_id BIGINT,
     proposed_price DECIMAL(10, 2),
     proposed_time TIME,
     proposed_date DATE,
@@ -286,8 +294,8 @@ CREATE TABLE booking_negotiations (
 
 -- TODO: revisit payment flow later
 CREATE TABLE service_receipts (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    booking_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    booking_id BIGINT NOT NULL,
     total_amount DECIMAL(10, 2) NOT NULL,
     payment_status VARCHAR(50) DEFAULT 'pending'
         CHECK (payment_status IN ('pending', 'paid', 'refunded', 'failed')),
@@ -299,13 +307,13 @@ CREATE TABLE service_receipts (
 );
 
 -- ========================================
---  REVIEWS & RATINGS
+-- REVIEWS & RATINGS
 -- ========================================
 CREATE TABLE reviews_ratings (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    booking_id CHAR(36) NOT NULL,
-    patient_id CHAR(36) NOT NULL,
-    nurse_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    booking_id BIGINT NOT NULL,
+    patient_id BIGINT NOT NULL,
+    nurse_id BIGINT NOT NULL,
     rating INT CHECK (rating BETWEEN 1 AND 5),
     review_text TEXT,
     is_anonymous BOOLEAN DEFAULT FALSE,
@@ -317,48 +325,19 @@ CREATE TABLE reviews_ratings (
 );
 
 -- ========================================
---  NOTIFICATIONS
+-- NOTIFICATIONS
 -- ========================================
 CREATE TABLE notifications (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    user_id CHAR(36) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
     type VARCHAR(50) CHECK (type IN ('booking', 'payment', 'system', 'message', 'reminder')),
     is_read BOOLEAN DEFAULT FALSE,
     related_entity_type VARCHAR(50),
-    related_entity_id CHAR(36),
+    related_entity_id BIGINT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- ========================================
--- FAMILY MANAGEMENT
--- ========================================
-CREATE TABLE family_groups (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    owner_id CHAR(36) NOT NULL,
-    group_name VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_fg_owner FOREIGN KEY (owner_id) REFERENCES users(id)
-);
-
-CREATE TABLE family_members (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    family_group_id CHAR(36) NOT NULL,
-    user_id CHAR(36),
-    patient_id CHAR(36),
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
-    relationship VARCHAR(100),
-    date_of_birth DATE,
-    gender VARCHAR(20),
-    phone_number VARCHAR(20),
-    is_primary_member BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_fm_group FOREIGN KEY (family_group_id) REFERENCES family_groups(id) ON DELETE CASCADE,
-    CONSTRAINT fk_fm_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-    CONSTRAINT fk_fm_patient FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE SET NULL
 );
 
 -- ========================================
@@ -367,6 +346,7 @@ CREATE TABLE family_members (
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_phone ON users(phone_number);
 CREATE INDEX idx_patients_user_id ON patients(user_id);
+CREATE INDEX idx_patients_relationship ON patients(relationship);
 CREATE INDEX idx_nurses_user_id ON nurses(user_id);
 CREATE INDEX idx_nurses_available ON nurses(is_available);
 CREATE INDEX idx_nurse_services_nurse ON nurse_services(nurse_id);

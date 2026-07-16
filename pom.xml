@@ -14,10 +14,10 @@
     </parent>
 
     <groupId>iti.jets.java</groupId>
-    <artifactId>care-nest</artifactId>
+    <artifactId>home-nursing</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>care-nest</name>
-    <description>care-nest monolith</description>
+    <name>home-nursing</name>
+    <description>home-nursing monolith</description>
 
     <properties>
         <java.version>21</java.version>

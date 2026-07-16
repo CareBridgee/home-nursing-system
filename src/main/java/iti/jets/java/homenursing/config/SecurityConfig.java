@@ -1,4 +1,4 @@
-package iti.jets.java.carenest.config;
+package iti.jets.java.homenursing.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

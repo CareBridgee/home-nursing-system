@@ -1,13 +1,13 @@
-package iti.jets.java.carenest;
+package iti.jets.java.homenursing;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class CareNestApplication {
+public class HomeNursingApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(CareNestApplication.class, args);
+        SpringApplication.run(HomeNursingApplication.class, args);
     }
 
 }

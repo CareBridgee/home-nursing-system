@@ -1,10 +1,10 @@
-package iti.jets.java.carenest;
+package iti.jets.java.homenursing;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class CareNestApplicationTests {
+class HomeNursingApplicationTests {
 
 //    @Test
     void contextLoads() {

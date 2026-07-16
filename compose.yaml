@@ -1,16 +1,16 @@
 services:
   mysql:
     image: mysql:8.4
-    container_name: care-nest-db
+    container_name: home-nursing-db
     environment:
-      MYSQL_DATABASE: carenest
-      MYSQL_USER: carenest
-      MYSQL_PASSWORD: carenest
+      MYSQL_DATABASE: homenursing
+      MYSQL_USER: homenursing
+      MYSQL_PASSWORD: homenursing
       MYSQL_ROOT_PASSWORD: root
     ports:
       - "3306:3306"
     volumes:
-      - care_nest_mysql_data:/var/lib/mysql
+      - home_nursing_mysql_data:/var/lib/mysql
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
@@ -20,14 +20,14 @@ services:
 
   app:
     build: .
-    container_name: care-nest-app
+    container_name: home-nursing-app
     depends_on:
       mysql:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/carenest?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: carenest
-      SPRING_DATASOURCE_PASSWORD: carenest
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/homenursing?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: homenursing
+      SPRING_DATASOURCE_PASSWORD: homenursing
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
     ports:
       - "8080:8080"
@@ -35,4 +35,4 @@ services:
       - full
 
 volumes:
-  care_nest_mysql_data:
+  home_nursing_mysql_data:

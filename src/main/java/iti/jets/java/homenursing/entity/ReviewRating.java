@@ -38,14 +38,6 @@ public class ReviewRating {
     @JoinColumn(name = "booking_id", nullable = false, unique = true)
     private Booking booking;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "patient_id", nullable = false)
-    private Patient patient;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "nurse_id", nullable = false)
-    private Nurse nurse;
-
     private Integer rating;
 
     @Column(name = "review_text", columnDefinition = "TEXT")

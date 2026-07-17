@@ -1,4 +1,4 @@
-package iti.jets.java.homenursing.security;
+package iti.jets.java.homenursing.config;
 
 import iti.jets.java.homenursing.service.TokenService;
 import jakarta.servlet.FilterChain;

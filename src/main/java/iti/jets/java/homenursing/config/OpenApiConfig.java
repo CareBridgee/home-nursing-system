@@ -22,7 +22,7 @@ public class OpenApiConfig {
                         .title("Home Nurse Care API")
                         .version("0.0.1")
                         .description("RESTful API for the Home Nurse Care platform. "
-                                + "Provides patient management, nurse scheduling, "
+                                + "Provides profile management, nurse scheduling, "
                                 + "appointment booking, and authentication services.")
                         .contact(new Contact()
                                 .name("ITI Java Team")

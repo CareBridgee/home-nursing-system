@@ -46,8 +46,8 @@ public class Booking {
     private ServiceRequest serviceRequest;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "patient_id", nullable = false)
-    private Patient patient;
+    @JoinColumn(name = "profile_id", nullable = false)
+    private Profile profile;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "nurse_id", nullable = false)

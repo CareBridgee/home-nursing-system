@@ -16,9 +16,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -29,35 +28,41 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "patients")
-public class Patient {
+@Table(name = "profile_medications")
+public class ProfileMedication {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "profile_id", nullable = false)
+    private Profile profile;
 
-    // null = primary profile; otherwise links to primary patient id
-    @Column(name = "relationship")
-    private UUID relationship;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "medication_id", nullable = false)
+    private Medication medication;
 
-    @Column(name = "blood_type", length = 5)
-    private String bloodType;
+    @Column(length = 100)
+    private String dosage;
 
-    @Column(name = "height_cm", precision = 5, scale = 2)
-    private BigDecimal heightCm;
+    @Column(length = 100)
+    private String frequency;
 
-    @Column(name = "weight_kg", precision = 5, scale = 2)
-    private BigDecimal weightKg;
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(name = "end_date")
+    private LocalDate endDate;
+
+    @Builder.Default
+    @Column(name = "is_current")
+    private Boolean isCurrent = true;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
 }

@@ -1,6 +1,5 @@
 package iti.jets.java.homenursing.config;
 
-import iti.jets.java.homenursing.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -37,8 +36,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**",
                                 "/v3/api-docs/**",
+                                "/v3/api-docs.yaml",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
+                                "/webjars/**",
                                 "/actuator/health")
                         .permitAll()
                         .anyRequest().authenticated()

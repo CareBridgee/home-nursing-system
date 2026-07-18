@@ -1,7 +1,9 @@
 package iti.jets.java.homenursing.service.impl;
 
+import iti.jets.java.homenursing.dto.AllergyRequest;
 import iti.jets.java.homenursing.dto.AllergyResponse;
 import iti.jets.java.homenursing.entity.Allergy;
+import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.AllergyMapper;
 import iti.jets.java.homenursing.repository.AllergyRepository;
 import iti.jets.java.homenursing.service.AllergyService;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -24,5 +27,33 @@ public class AllergyServiceImpl implements AllergyService {
         return allergyRepository.findAll().stream()
                 .map(allergyMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public AllergyResponse create(AllergyRequest request) {
+        Allergy saved = allergyRepository.save(allergyMapper.toEntity(request));
+        return allergyMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public AllergyResponse update(UUID id, AllergyRequest request) {
+        Allergy entity = allergyRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Allergy not found: " + id));
+        Allergy updated = allergyMapper.toEntity(request);
+        updated.setId(entity.getId());
+        updated.setCreatedAt(entity.getCreatedAt());
+        Allergy saved = allergyRepository.save(updated);
+        return allergyMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID id) {
+        if (!allergyRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Allergy not found: " + id);
+        }
+        allergyRepository.deleteById(id);
     }
 }

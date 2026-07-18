@@ -3,6 +3,7 @@ package iti.jets.java.homenursing.exception;
 import iti.jets.java.homenursing.dto.ApiError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -13,6 +14,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import java.sql.SQLException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -73,6 +76,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(
                 ApiError.from(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED",
                         ex.getMessage(), null));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException ex) {
+        boolean uniqueViolation = ex.getCause() instanceof org.hibernate.exception.ConstraintViolationException
+                || ex.getRootCause() instanceof SQLException s && "23505".equals(s.getSQLState());
+        if (uniqueViolation) {
+            ApiError body = ApiError.from(
+                    HttpStatus.CONFLICT, "DUPLICATE_RESOURCE",
+                    "A resource with that name already exists", null);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+        }
+        ApiError body = ApiError.from(
+                HttpStatus.INTERNAL_SERVER_ERROR, "DATA_INTEGRITY_ERROR",
+                "Data integrity violation", null);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
     @ExceptionHandler(Exception.class)

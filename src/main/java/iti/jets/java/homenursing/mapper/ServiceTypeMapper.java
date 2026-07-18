@@ -1,12 +1,18 @@
 package iti.jets.java.homenursing.mapper;
 
+import iti.jets.java.homenursing.dto.ServiceTypeRequest;
 import iti.jets.java.homenursing.dto.ServiceTypeResponse;
 import iti.jets.java.homenursing.entity.ServiceType;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.springframework.context.i18n.LocaleContextHolder;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = org.mapstruct.ReportingPolicy.IGNORE)
 public abstract class ServiceTypeMapper {
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    public abstract ServiceType toEntity(ServiceTypeRequest request);
 
     public ServiceTypeResponse toResponse(ServiceType entity) {
         if (entity == null) {

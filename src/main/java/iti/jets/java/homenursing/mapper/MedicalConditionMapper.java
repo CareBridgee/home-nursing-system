@@ -1,12 +1,17 @@
 package iti.jets.java.homenursing.mapper;
 
+import iti.jets.java.homenursing.dto.MedicalConditionRequest;
 import iti.jets.java.homenursing.dto.MedicalConditionResponse;
 import iti.jets.java.homenursing.entity.MedicalCondition;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.springframework.context.i18n.LocaleContextHolder;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = org.mapstruct.ReportingPolicy.IGNORE)
 public abstract class MedicalConditionMapper {
+
+    @Mapping(target = "id", ignore = true)
+    public abstract MedicalCondition toEntity(MedicalConditionRequest request);
 
     public MedicalConditionResponse toResponse(MedicalCondition entity) {
         if (entity == null) {

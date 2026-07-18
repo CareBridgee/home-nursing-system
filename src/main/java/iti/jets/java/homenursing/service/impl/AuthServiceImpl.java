@@ -76,7 +76,7 @@ public class AuthServiceImpl implements AuthService {
         tokenService.delete("otp:" + phone);
         tokenService.delete("otp_attempts:" + phone);
 
-        User user = userRepository.findByPhoneNumber(phone)
+        User user = userRepository.findByPhoneNumberWithProfiles(phone)
                 .orElseGet(() -> createUser(phone));
 
         user.setLastLoginAt(LocalDateTime.now());
@@ -96,7 +96,7 @@ public class AuthServiceImpl implements AuthService {
         String userId = tokenService.getUserIdFromRefreshToken(refreshToken);
         tokenService.revokeRefreshToken(refreshToken);
 
-        User user = userRepository.findById(UUID.fromString(userId))
+        User user = userRepository.findByIdWithProfiles(UUID.fromString(userId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         String newAccessToken = tokenService.generateAccessToken(userId);
@@ -114,7 +114,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserResponse getUserProfile(String phoneNumber) {
         String phone = normalizePhoneNumber(phoneNumber);
-        User user = userRepository.findByPhoneNumber(phone)
+        User user = userRepository.findByPhoneNumberWithProfiles(phone)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return userMapper.toResponse(user);
     }

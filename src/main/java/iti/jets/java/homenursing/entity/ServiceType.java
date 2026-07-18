@@ -35,8 +35,14 @@ public class ServiceType {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "name_ar")
+    private String nameAr;
+
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "description_ar", columnDefinition = "TEXT")
+    private String descriptionAr;
 
     @Column(name = "estimated_duration_minutes")
     private Integer estimatedDurationMinutes;

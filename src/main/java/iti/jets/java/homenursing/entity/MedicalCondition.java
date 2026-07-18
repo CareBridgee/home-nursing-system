@@ -32,6 +32,12 @@ public class MedicalCondition {
     @Column(nullable = false, unique = true)
     private String name;
 
+    @Column(name = "name_ar", unique = true)
+    private String nameAr;
+
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "description_ar", columnDefinition = "TEXT")
+    private String descriptionAr;
 }

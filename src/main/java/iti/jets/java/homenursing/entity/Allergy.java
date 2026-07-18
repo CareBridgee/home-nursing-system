@@ -37,6 +37,9 @@ public class Allergy {
     @Column(nullable = false, unique = true)
     private String name;
 
+    @Column(name = "name_ar", unique = true)
+    private String nameAr;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 50)
     private AllergyType type;

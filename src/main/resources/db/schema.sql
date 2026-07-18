@@ -124,7 +124,11 @@ CREATE TABLE service_types (
 
    name VARCHAR(255) NOT NULL,
 
+   name_ar VARCHAR(255),
+
    description TEXT,
+
+   description_ar TEXT,
 
    estimated_duration_minutes INT,
 
@@ -174,22 +178,26 @@ CREATE TABLE medical_conditions (
 
         name VARCHAR(255) UNIQUE NOT NULL,
 
-        description TEXT
+        name_ar VARCHAR(255) UNIQUE,
+
+        description TEXT,
+
+        description_ar TEXT
 );
 
-    INSERT INTO medical_conditions (id,name)
+    INSERT INTO medical_conditions (id,name,name_ar)
     VALUES
-    (gen_random_uuid(),'Diabetes'),
-    (gen_random_uuid(),'Hypertension'),
-    (gen_random_uuid(),'Heart Disease'),
-    (gen_random_uuid(),'Asthma'),
-    (gen_random_uuid(),'COPD'),
-    (gen_random_uuid(),'Kidney Disease'),
-    (gen_random_uuid(),'Liver Disease'),
-    (gen_random_uuid(),'Cancer'),
-    (gen_random_uuid(),'Epilepsy'),
-    (gen_random_uuid(),'Thyroid Disease'),
-    (gen_random_uuid(),'None');
+    (gen_random_uuid(),'Diabetes','السكري'),
+    (gen_random_uuid(),'Hypertension','ارتفاع ضغط الدم'),
+    (gen_random_uuid(),'Heart Disease','أمراض القلب'),
+    (gen_random_uuid(),'Asthma','الربو'),
+    (gen_random_uuid(),'COPD','الانسداد الرئوي المزمن'),
+    (gen_random_uuid(),'Kidney Disease','أمراض الكلى'),
+    (gen_random_uuid(),'Liver Disease','أمراض الكبد'),
+    (gen_random_uuid(),'Cancer','السرطان'),
+    (gen_random_uuid(),'Epilepsy','الصرع'),
+    (gen_random_uuid(),'Thyroid Disease','أمراض الغدة الدرقية'),
+    (gen_random_uuid(),'None','لا يوجد');
 
 -- ========================================
 -- PROFILE MEDICAL CONDITIONS
@@ -230,6 +238,8 @@ CREATE TABLE allergies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     name VARCHAR(255) UNIQUE NOT NULL,
+
+    name_ar VARCHAR(255) UNIQUE,
 
     type VARCHAR(50)
        CHECK(type IN ('DRUG', 'FOOD', 'OTHER')),
@@ -278,7 +288,11 @@ CREATE TABLE medications (
 
  name VARCHAR(255) UNIQUE NOT NULL,
 
+ name_ar VARCHAR(255) UNIQUE,
+
  description TEXT,
+
+ description_ar TEXT,
 
  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );

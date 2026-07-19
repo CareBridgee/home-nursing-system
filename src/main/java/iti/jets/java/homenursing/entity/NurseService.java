@@ -12,7 +12,6 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -24,7 +23,6 @@ import java.util.UUID;
 
 @Getter
 @Setter
-@EqualsAndHashCode
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -32,7 +30,7 @@ import java.util.UUID;
 @Table(name = "nurse_services", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"nurse_id", "service_type_id"})
 })
-public class NurseServiceLink {
+public class NurseService {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

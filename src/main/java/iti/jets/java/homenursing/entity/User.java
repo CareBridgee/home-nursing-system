@@ -1,7 +1,6 @@
 package iti.jets.java.homenursing.entity;
 
 
-import iti.jets.java.homenursing.entity.enums.AccountType;
 import iti.jets.java.homenursing.entity.enums.Gender;
 import jakarta.persistence.*;
 import lombok.*;
@@ -10,6 +9,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -42,10 +42,6 @@ public class User {
     @Column(length = 20)
     private Gender gender;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private AccountType accountType;
-
     private String profileImageUrl;
 
     @Builder.Default
@@ -61,4 +57,9 @@ public class User {
     private LocalDateTime updatedAt;
 
     private LocalDateTime lastLoginAt;
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private List<Profile> profiles = new java.util.ArrayList<>();
 }

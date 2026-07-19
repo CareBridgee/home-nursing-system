@@ -3,7 +3,6 @@ package iti.jets.java.homenursing.service.impl;
 
 import iti.jets.java.homenursing.dto.TokenPair;
 import iti.jets.java.homenursing.dto.UserResponse;
-import iti.jets.java.homenursing.entity.enums.AccountType;
 import iti.jets.java.homenursing.entity.User;
 import iti.jets.java.homenursing.exception.InvalidOtpException;
 import iti.jets.java.homenursing.exception.RateLimitException;
@@ -11,6 +10,7 @@ import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.UserMapper;
 import iti.jets.java.homenursing.repository.UserRepository;
 import iti.jets.java.homenursing.service.AuthService;
+import iti.jets.java.homenursing.service.ProfileService;
 import iti.jets.java.homenursing.service.TokenService;
 import iti.jets.java.homenursing.service.TwilioSmsService;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +31,7 @@ public class AuthServiceImpl implements AuthService {
     private final TwilioSmsService twilioSmsService;
     private final TokenService tokenService;
     private final PasswordEncoder passwordEncoder;
+    private final ProfileService profileService;
 
     @Override
     public void requestOtp(String rawPhone) {
@@ -75,7 +76,7 @@ public class AuthServiceImpl implements AuthService {
         tokenService.delete("otp:" + phone);
         tokenService.delete("otp_attempts:" + phone);
 
-        User user = userRepository.findByPhoneNumber(phone)
+        User user = userRepository.findByPhoneNumberWithProfiles(phone)
                 .orElseGet(() -> createUser(phone));
 
         user.setLastLoginAt(LocalDateTime.now());
@@ -95,7 +96,7 @@ public class AuthServiceImpl implements AuthService {
         String userId = tokenService.getUserIdFromRefreshToken(refreshToken);
         tokenService.revokeRefreshToken(refreshToken);
 
-        User user = userRepository.findById(UUID.fromString(userId))
+        User user = userRepository.findByIdWithProfiles(UUID.fromString(userId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         String newAccessToken = tokenService.generateAccessToken(userId);
@@ -113,7 +114,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserResponse getUserProfile(String phoneNumber) {
         String phone = normalizePhoneNumber(phoneNumber);
-        User user = userRepository.findByPhoneNumber(phone)
+        User user = userRepository.findByPhoneNumberWithProfiles(phone)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return userMapper.toResponse(user);
     }
@@ -141,9 +142,10 @@ public class AuthServiceImpl implements AuthService {
                 .phoneNumber(phoneNumber)
                 .firstName("User")
                 .lastName("")
-                .accountType(AccountType.PERSONAL)
                 .isDeleted(false)
                 .build();
-        return userRepository.save(user);
+        user = userRepository.save(user);
+        profileService.createDefaultProfile(user);
+        return user;
     }
 }

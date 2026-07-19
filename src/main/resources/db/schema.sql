@@ -17,9 +17,6 @@ CREATE TABLE users (
     gender VARCHAR(20)
         CHECK (gender IN ('MALE', 'FEMALE', 'OTHER')),
 
-    account_type VARCHAR(20)
-    CHECK (account_type IN ('FAMILY', 'PERSONAL')),
-
     profile_image_url TEXT,
 
     is_deleted BOOLEAN DEFAULT FALSE,
@@ -30,16 +27,25 @@ CREATE TABLE users (
 );
 
 -- ========================================
--- PATIENTS
+-- PROFILES
 -- ========================================
 
-CREATE TABLE patients (
+CREATE TABLE profiles (
 
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     user_id UUID NOT NULL,
 
     relationship UUID,
+
+    first_name VARCHAR(100),
+
+    last_name VARCHAR(100),
+
+    date_of_birth DATE,
+
+    gender VARCHAR(20)
+        CHECK (gender IN ('MALE', 'FEMALE', 'OTHER')),
 
     blood_type VARCHAR(5),
 
@@ -51,14 +57,14 @@ CREATE TABLE patients (
 
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_patients_user
+    CONSTRAINT fk_profiles_user
       FOREIGN KEY (user_id)
           REFERENCES users(id)
           ON DELETE CASCADE,
 
-    CONSTRAINT fk_patients_relationship
+    CONSTRAINT fk_profiles_relationship
       FOREIGN KEY (relationship)
-          REFERENCES patients(id)
+          REFERENCES profiles(id)
           ON DELETE SET NULL
 );
 
@@ -186,14 +192,14 @@ CREATE TABLE medical_conditions (
     (gen_random_uuid(),'None');
 
 -- ========================================
--- PATIENT MEDICAL CONDITIONS
+-- PROFILE MEDICAL CONDITIONS
 -- ========================================
 
-CREATE TABLE patient_medical_conditions (
+CREATE TABLE profile_medical_conditions (
 
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    patient_id UUID NOT NULL,
+    profile_id UUID NOT NULL,
 
     medical_condition_id UUID NOT NULL,
 
@@ -203,11 +209,11 @@ CREATE TABLE patient_medical_conditions (
 
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
-    UNIQUE(patient_id,medical_condition_id),
+    UNIQUE(profile_id,medical_condition_id),
 
-    CONSTRAINT fk_pmc_patient
-        FOREIGN KEY(patient_id)
-            REFERENCES patients(id)
+    CONSTRAINT fk_pmc_profile
+        FOREIGN KEY(profile_id)
+            REFERENCES profiles(id)
             ON DELETE CASCADE,
 
     CONSTRAINT fk_pmc_condition
@@ -232,14 +238,14 @@ CREATE TABLE allergies (
 );
 
 -- ========================================
--- PATIENT ALLERGIES
+-- PROFILE ALLERGIES
 -- ========================================
 
-CREATE TABLE patient_allergies (
+CREATE TABLE profile_allergies (
 
        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-       patient_id UUID NOT NULL,
+       profile_id UUID NOT NULL,
 
        allergy_id UUID NOT NULL,
 
@@ -250,11 +256,11 @@ CREATE TABLE patient_allergies (
 
        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
-       UNIQUE(patient_id,allergy_id),
+       UNIQUE(profile_id,allergy_id),
 
-       CONSTRAINT fk_pa_patient
-           FOREIGN KEY(patient_id)
-               REFERENCES patients(id)
+       CONSTRAINT fk_pa_profile
+           FOREIGN KEY(profile_id)
+               REFERENCES profiles(id)
                ON DELETE CASCADE,
 
        CONSTRAINT fk_pa_allergy
@@ -278,39 +284,39 @@ CREATE TABLE medications (
 );
 
 -- ========================================
--- PATIENT MEDICATIONS
+-- PROFILE MEDICATIONS
 -- ========================================
 
-CREATE TABLE patient_medications (
+CREATE TABLE profile_medications (
 
-         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-         patient_id UUID NOT NULL,
+          profile_id UUID NOT NULL,
 
-         medication_id UUID NOT NULL,
+          medication_id UUID NOT NULL,
 
-         dosage VARCHAR(100),
+          dosage VARCHAR(100),
 
-         frequency VARCHAR(100),
+          frequency VARCHAR(100),
 
-         start_date DATE,
+          start_date DATE,
 
-         end_date DATE,
+          end_date DATE,
 
-         is_current BOOLEAN DEFAULT TRUE,
+          is_current BOOLEAN DEFAULT TRUE,
 
-         notes TEXT,
+          notes TEXT,
 
-         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
-         CONSTRAINT fk_pm_patient
-             FOREIGN KEY(patient_id)
-                 REFERENCES patients(id)
-                 ON DELETE CASCADE,
+          CONSTRAINT fk_pm_profile
+              FOREIGN KEY(profile_id)
+                  REFERENCES profiles(id)
+                  ON DELETE CASCADE,
 
-         CONSTRAINT fk_pm_medication
-             FOREIGN KEY(medication_id)
-                 REFERENCES medications(id)
+          CONSTRAINT fk_pm_medication
+              FOREIGN KEY(medication_id)
+                  REFERENCES medications(id)
 );
 -- ========================================
 -- MEDICAL HISTORY
@@ -320,7 +326,7 @@ CREATE TABLE medical_history (
 
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-     patient_id UUID NOT NULL,
+     profile_id UUID NOT NULL,
 
      type VARCHAR(50)
          CHECK (
@@ -344,9 +350,9 @@ CREATE TABLE medical_history (
 
      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
-     CONSTRAINT fk_mh_patient
-         FOREIGN KEY (patient_id)
-             REFERENCES patients(id)
+     CONSTRAINT fk_mh_profile
+         FOREIGN KEY (profile_id)
+             REFERENCES profiles(id)
              ON DELETE CASCADE
 );
 
@@ -358,7 +364,7 @@ CREATE TABLE emergency_contacts (
 
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-        patient_id UUID NOT NULL,
+        profile_id UUID NOT NULL,
 
         contact_name VARCHAR(255) NOT NULL,
 
@@ -372,9 +378,9 @@ CREATE TABLE emergency_contacts (
 
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
-        CONSTRAINT fk_ec_patient
-            FOREIGN KEY(patient_id)
-                REFERENCES patients(id)
+        CONSTRAINT fk_ec_profile
+            FOREIGN KEY(profile_id)
+                REFERENCES profiles(id)
                 ON DELETE CASCADE
 );
 
@@ -418,7 +424,7 @@ CREATE TABLE service_requests (
 
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-      patient_id UUID NOT NULL,
+      profile_id UUID NOT NULL,
 
       service_type_id UUID,
 
@@ -457,9 +463,9 @@ CREATE TABLE service_requests (
 
       updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
-      CONSTRAINT fk_sr_patient
-          FOREIGN KEY(patient_id)
-              REFERENCES patients(id)
+      CONSTRAINT fk_sr_profile
+          FOREIGN KEY(profile_id)
+              REFERENCES profiles(id)
               ON DELETE CASCADE,
 
       CONSTRAINT fk_sr_service_type
@@ -508,7 +514,7 @@ id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
 service_request_id UUID NOT NULL,
 
-patient_id UUID NOT NULL,
+profile_id UUID NOT NULL,
 
 nurse_id UUID NOT NULL,
 
@@ -548,9 +554,9 @@ CONSTRAINT fk_bookings_sr
       REFERENCES service_requests(id)
       ON DELETE CASCADE,
 
-CONSTRAINT fk_bookings_patient
-  FOREIGN KEY(patient_id)
-      REFERENCES patients(id)
+CONSTRAINT fk_bookings_profile
+  FOREIGN KEY(profile_id)
+      REFERENCES profiles(id)
       ON DELETE CASCADE,
 
 CONSTRAINT fk_bookings_nurse
@@ -633,7 +639,7 @@ CREATE TABLE reviews_ratings (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
      booking_id UUID NOT NULL UNIQUE,
-     patient_id UUID NOT NULL,
+     profile_id UUID NOT NULL,
      nurse_id UUID NOT NULL,
 
      rating INT CHECK (rating BETWEEN 1 AND 5),
@@ -648,9 +654,9 @@ CREATE TABLE reviews_ratings (
              REFERENCES bookings(id)
              ON DELETE CASCADE,
 
-     CONSTRAINT fk_rr_patient
-         FOREIGN KEY (patient_id)
-             REFERENCES patients(id),
+     CONSTRAINT fk_rr_profile
+         FOREIGN KEY (profile_id)
+             REFERENCES profiles(id),
 
      CONSTRAINT fk_rr_nurse
          FOREIGN KEY (nurse_id)
@@ -692,8 +698,8 @@ CREATE TABLE notifications (
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_phone ON users(phone_number);
 
-CREATE INDEX idx_patients_user_id ON patients(user_id);
-CREATE INDEX idx_patients_relationship ON patients(relationship);
+CREATE INDEX idx_profiles_user_id ON profiles(user_id);
+CREATE INDEX idx_profiles_relationship ON profiles(relationship);
 
 CREATE INDEX idx_nurses_user_id ON nurses(user_id);
 CREATE INDEX idx_nurses_available ON nurses(is_available);
@@ -704,8 +710,8 @@ CREATE INDEX idx_nurse_services_nurse
 CREATE INDEX idx_nurse_services_service_type
     ON nurse_services(service_type_id);
 
-CREATE INDEX idx_service_requests_patient
-    ON service_requests(patient_id);
+CREATE INDEX idx_service_requests_profile
+    ON service_requests(profile_id);
 
 CREATE INDEX idx_service_requests_status
     ON service_requests(status);
@@ -716,8 +722,8 @@ CREATE INDEX idx_booking_negotiations_service_request
 CREATE INDEX idx_bookings_nurse
     ON bookings(nurse_id);
 
-CREATE INDEX idx_bookings_patient
-    ON bookings(patient_id);
+CREATE INDEX idx_bookings_profile
+    ON bookings(profile_id);
 
 CREATE INDEX idx_bookings_status
     ON bookings(status);
@@ -728,11 +734,11 @@ CREATE INDEX idx_bookings_date
 CREATE INDEX idx_notifications_user
     ON notifications(user_id, is_read);
 
-CREATE INDEX idx_patient_medical_conditions
-    ON patient_medical_conditions(patient_id);
+CREATE INDEX idx_profile_medical_conditions
+    ON profile_medical_conditions(profile_id);
 
-CREATE INDEX idx_patient_allergies
-    ON patient_allergies(patient_id);
+CREATE INDEX idx_profile_allergies
+    ON profile_allergies(profile_id);
 
 -- ========================================
 -- VIEW : AVAILABLE NURSES
@@ -771,11 +777,11 @@ CREATE VIEW v_active_bookings AS
 SELECT
     b.id,
     b.service_request_id,
-    b.patient_id,
+    b.profile_id,
     b.nurse_id,
 
-    p.first_name AS patient_first_name,
-    p.last_name  AS patient_last_name,
+    p.first_name AS profile_first_name,
+    p.last_name  AS profile_last_name,
 
     nu.first_name AS nurse_first_name,
     nu.last_name  AS nurse_last_name,
@@ -789,8 +795,8 @@ SELECT
     b.created_at
 
 FROM bookings b
-         JOIN patients pat
-              ON pat.id = b.patient_id
+         JOIN profiles prof
+              ON prof.id = b.profile_id
          JOIN users p
               ON p.id = pat.user_id
          JOIN nurses n
@@ -819,8 +825,8 @@ CREATE TRIGGER trg_users_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER trg_patients_updated_at
-    BEFORE UPDATE ON patients
+CREATE TRIGGER trg_profiles_updated_at
+    BEFORE UPDATE ON profiles
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 

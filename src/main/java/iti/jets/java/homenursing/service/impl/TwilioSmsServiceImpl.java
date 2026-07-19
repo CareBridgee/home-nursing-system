@@ -49,7 +49,7 @@ public class TwilioSmsServiceImpl implements TwilioSmsService {
 
         try {
             Message.creator(new PhoneNumber(toNumber), new PhoneNumber(fromNumber), messageBody).create();
-            log.info("OTP sent to {}", toNumber);
+            log.info("OTP {} sent to {}", otp, toNumber);
         } catch (ApiException e) {
             log.error("Twilio error sending OTP to {}: {}", toNumber, e.getMessage());
             throw new RuntimeException("Failed to send SMS: " + e.getMessage());

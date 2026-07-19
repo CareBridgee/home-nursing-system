@@ -9,7 +9,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,25 +26,36 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "patient_medical_conditions", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"patient_id", "medical_condition_id"})
-})
-public class PatientMedicalCondition {
+@Table(name = "profile_medications")
+public class ProfileMedication {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "patient_id", nullable = false)
-    private Patient patient;
+    @JoinColumn(name = "profile_id", nullable = false)
+    private Profile profile;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "medical_condition_id", nullable = false)
-    private MedicalCondition medicalCondition;
+    @JoinColumn(name = "medication_id", nullable = false)
+    private Medication medication;
 
-    @Column(name = "diagnosed_date")
-    private LocalDate diagnosedDate;
+    @Column(length = 100)
+    private String dosage;
+
+    @Column(length = 100)
+    private String frequency;
+
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(name = "end_date")
+    private LocalDate endDate;
+
+    @Builder.Default
+    @Column(name = "is_current")
+    private Boolean isCurrent = true;
 
     @Column(columnDefinition = "TEXT")
     private String notes;

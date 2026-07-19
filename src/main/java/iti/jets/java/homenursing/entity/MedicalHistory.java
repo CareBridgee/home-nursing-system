@@ -37,8 +37,8 @@ public class MedicalHistory {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "patient_id", nullable = false)
-    private Patient patient;
+    @JoinColumn(name = "profile_id", nullable = false)
+    private Profile profile;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 50)

@@ -1,7 +1,10 @@
 package iti.jets.java.homenursing.entity;
 
+import iti.jets.java.homenursing.entity.enums.Gender;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,6 +21,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -27,8 +31,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "patients")
-public class Patient {
+@Table(name = "profiles")
+public class Profile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -38,9 +42,22 @@ public class Patient {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // null = primary profile; otherwise links to primary patient id
+    // null = default/own profile; otherwise links to the user's default profile id
     @Column(name = "relationship")
     private UUID relationship;
+
+    @Column(name = "first_name", length = 100)
+    private String firstName;
+
+    @Column(name = "last_name", length = 100)
+    private String lastName;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Gender gender;
 
     @Column(name = "blood_type", length = 5)
     private String bloodType;

@@ -13,5 +13,11 @@ public interface UserMapper {
     @Mapping(target = "id", ignore = true)
     User toEntity(UserRequest request);
 
-    UserResponse toResponse(User entity);
+    @Mapping(target = "defaultProfileId",
+             expression = "java(user.getProfiles() == null ? null : "
+                     + "user.getProfiles().stream()"
+                     + ".filter(p -> p.getRelationship() == null)"
+                     + ".map(iti.jets.java.homenursing.entity.Profile::getId)"
+                     + ".findFirst().orElse(null))")
+    UserResponse toResponse(User user);
 }

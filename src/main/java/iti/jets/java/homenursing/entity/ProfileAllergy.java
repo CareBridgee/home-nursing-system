@@ -29,18 +29,18 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "patient_allergies", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"patient_id", "allergy_id"})
+@Table(name = "profile_allergies", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"profile_id", "allergy_id"})
 })
-public class PatientAllergy {
+public class ProfileAllergy {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "patient_id", nullable = false)
-    private Patient patient;
+    @JoinColumn(name = "profile_id", nullable = false)
+    private Profile profile;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "allergy_id", nullable = false)

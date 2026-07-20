@@ -153,6 +153,29 @@ CONSTRAINT fk_nurses_user
 
 
 -- ==========================================================
+-- NURSE REJECTION DETAILS
+-- ==========================================================
+
+CREATE TABLE nurse_rejection_details (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    nurse_id UUID NOT NULL UNIQUE,
+
+    overall_reason TEXT,
+
+    failed_steps JSONB,
+
+    created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_rejection_nurse
+        FOREIGN KEY (nurse_id)
+            REFERENCES nurses(id)
+            ON DELETE CASCADE
+);
+
+
+-- ==========================================================
 -- SERVICE TYPES
 -- ==========================================================
 

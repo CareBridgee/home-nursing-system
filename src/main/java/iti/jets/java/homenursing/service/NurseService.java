@@ -12,17 +12,17 @@ import java.util.UUID;
 
 public interface NurseService {
 
-    NurseResponse register(NurseRegistrationRequest request);
+    NurseResponse register(UUID userId, NurseRegistrationRequest request);
 
-    NurseResponse updateProfile(UUID nurseId, NurseUpdateRequest request);
+    NurseResponse updateProfile(UUID nurseId, UUID userId, NurseUpdateRequest request);
 
     NurseResponse getProfile(UUID nurseId);
 
     List<NurseResponse> listNurses();
 
-    NurseServiceResponse addService(UUID nurseId, NurseServiceRequest request);
+    NurseServiceResponse addService(UUID nurseId, UUID userId, NurseServiceRequest request);
 
-    NurseServiceResponse updateServicePrice(UUID nurseId, UUID serviceTypeId, UpdateServicePriceRequest request);
+    NurseServiceResponse updateServicePrice(UUID nurseId, UUID userId, UUID serviceTypeId, UpdateServicePriceRequest request);
 
-    void removeService(UUID nurseId, UUID serviceTypeId);
+    void removeService(UUID nurseId, UUID userId, UUID serviceTypeId);
 }

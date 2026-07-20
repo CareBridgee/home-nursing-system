@@ -1,10 +1,12 @@
 package iti.jets.java.homenursing.mapper;
 
+import iti.jets.java.homenursing.dto.nurse.NurseRejectionDetailsResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseRegistrationRequest;
 import iti.jets.java.homenursing.dto.nurse.NurseResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseUpdateRequest;
 import iti.jets.java.homenursing.entity.Nurse;
+import iti.jets.java.homenursing.entity.NurseRejectionDetail;
 import iti.jets.java.homenursing.entity.NurseService;
 import iti.jets.java.homenursing.entity.User;
 import org.mapstruct.BeanMapping;
@@ -28,6 +30,7 @@ public interface NurseMapper {
     @Mapping(target = "firstName", source = "nurse.user.firstName")
     @Mapping(target = "lastName", source = "nurse.user.lastName")
     @Mapping(target = "phoneNumber", source = "nurse.user.phoneNumber")
+    @Mapping(target = "rejectionDetails", source = "nurse.rejectionDetail")
     NurseResponse toResponse(Nurse nurse, List<NurseServiceResponse> services);
 
     @Mapping(target = "userId", source = "user.id")
@@ -35,7 +38,10 @@ public interface NurseMapper {
     @Mapping(target = "lastName", source = "user.lastName")
     @Mapping(target = "phoneNumber", source = "user.phoneNumber")
     @Mapping(target = "services", ignore = true)
+    @Mapping(target = "rejectionDetails", ignore = true)
     NurseResponse toSimpleResponse(Nurse nurse);
+
+    NurseRejectionDetailsResponse toRejectionDetailsResponse(NurseRejectionDetail detail);
 
     @Mapping(target = "serviceTypeId", source = "serviceType.id")
     @Mapping(target = "serviceName", source = "serviceType.name")

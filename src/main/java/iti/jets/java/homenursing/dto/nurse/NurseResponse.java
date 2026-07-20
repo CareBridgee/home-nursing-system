@@ -35,5 +35,6 @@ public class NurseResponse {
     private Boolean isAvailable;
     private VerificationStatus verificationStatus;
     private String rejectionReason;
+    private NurseRejectionDetailsResponse rejectionDetails;
     private List<NurseServiceResponse> services;
 }

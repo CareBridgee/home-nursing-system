@@ -6,6 +6,7 @@ import iti.jets.java.homenursing.dto.nurse.NurseServiceRequest;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseUpdateRequest;
 import iti.jets.java.homenursing.dto.nurse.UpdateServicePriceRequest;
+import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.NurseService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -35,7 +36,8 @@ public class NurseController {
 
     @PostMapping("/register")
     public ResponseEntity<NurseResponse> register(@Valid @RequestBody NurseRegistrationRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(nurseService.register(request));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(nurseService.register(SecurityUtils.currentUserId(), request));
     }
 
     @GetMapping
@@ -44,8 +46,9 @@ public class NurseController {
     }
 
     @PutMapping("/{nurseId}")
-    public ResponseEntity<NurseResponse> updateProfile(@PathVariable UUID nurseId, @RequestBody NurseUpdateRequest request) {
-        return ResponseEntity.ok(nurseService.updateProfile(nurseId, request));
+    public ResponseEntity<NurseResponse> updateProfile(@PathVariable UUID nurseId,
+                                                       @RequestBody NurseUpdateRequest request) {
+        return ResponseEntity.ok(nurseService.updateProfile(nurseId, SecurityUtils.currentUserId(), request));
     }
 
     @GetMapping("/{nurseId}")
@@ -54,20 +57,22 @@ public class NurseController {
     }
 
     @PostMapping("/{nurseId}/services")
-    public ResponseEntity<NurseServiceResponse> addService(@PathVariable UUID nurseId, @Valid @RequestBody NurseServiceRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(nurseService.addService(nurseId, request));
+    public ResponseEntity<NurseServiceResponse> addService(@PathVariable UUID nurseId,
+                                                           @Valid @RequestBody NurseServiceRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(nurseService.addService(nurseId, SecurityUtils.currentUserId(), request));
     }
 
     @PatchMapping("/{nurseId}/services/{serviceTypeId}/price")
     public ResponseEntity<NurseServiceResponse> updateServicePrice(@PathVariable UUID nurseId,
                                                                    @PathVariable UUID serviceTypeId,
                                                                    @Valid @RequestBody UpdateServicePriceRequest request) {
-        return ResponseEntity.ok(nurseService.updateServicePrice(nurseId, serviceTypeId, request));
+        return ResponseEntity.ok(nurseService.updateServicePrice(nurseId, SecurityUtils.currentUserId(), serviceTypeId, request));
     }
 
     @DeleteMapping("/{nurseId}/services/{serviceTypeId}")
     public ResponseEntity<Void> removeService(@PathVariable UUID nurseId, @PathVariable UUID serviceTypeId) {
-        nurseService.removeService(nurseId, serviceTypeId);
+        nurseService.removeService(nurseId, SecurityUtils.currentUserId(), serviceTypeId);
         return ResponseEntity.noContent().build();
     }
 }

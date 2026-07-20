@@ -9,6 +9,8 @@ public interface AuthService {
 
     TokenPair verifyOtpAndLogin(String phoneNumber, String otp);
 
+    TokenPair verifyNurseOtpAndLogin(String phoneNumber, String otp);
+
     TokenPair refreshToken(String refreshToken);
 
     void logout(String refreshToken);

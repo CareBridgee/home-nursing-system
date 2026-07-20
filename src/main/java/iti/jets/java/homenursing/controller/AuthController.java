@@ -30,6 +30,20 @@ public class AuthController {
         return ResponseEntity.ok(tokens);
     }
 
+    @PostMapping("/nurse/login")
+    public ResponseEntity<Void> sendNurseOtp(@Valid @RequestBody LoginRequest request) {
+        authService.requestOtp(request.getPhoneNumber());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/nurse/verify-otp")
+    public ResponseEntity<TokenPair> verifyNurseOtp(
+            @Valid @RequestBody VerifyOtpRequest request) {
+        TokenPair tokens = authService.verifyNurseOtpAndLogin(
+                request.getPhoneNumber(), request.getOtp());
+        return ResponseEntity.ok(tokens);
+    }
+
     @PostMapping("/refresh")
     public ResponseEntity<TokenPair> refreshToken(
             @Valid @RequestBody RefreshRequest request) {

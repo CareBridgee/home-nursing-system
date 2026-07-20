@@ -55,39 +55,19 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public TokenPair verifyOtpAndLogin(String rawPhone, String otp) {
-        String phone = normalizePhoneNumber(rawPhone);
+        return verifyAndLogin(normalizePhoneNumber(rawPhone), otp, false);
+    }
 
-        String storedHash = tokenService.get("otp:" + phone);
-        if (storedHash == null) {
-            throw new InvalidOtpException("OTP has expired or is invalid.");
-        }
+    @Override
+    public TokenPair verifyNurseOtpAndLogin(String rawPhone, String otp) {
+        return verifyAndLogin(normalizePhoneNumber(rawPhone), otp, true);
+    }
 
-        if (!passwordEncoder.matches(otp, storedHash)) {
-            String attemptsKey = "otp_attempts:" + phone;
-            Long attempts = tokenService.increment(attemptsKey);
-            if (attempts != null && attempts >= 3) {
-                tokenService.delete("otp:" + phone);
-                tokenService.delete(attemptsKey);
-                throw new InvalidOtpException("Too many failed attempts. OTP has been invalidated.");
-            }
-            throw new InvalidOtpException("Invalid OTP.");
-        }
-
-        tokenService.delete("otp:" + phone);
-        tokenService.delete("otp_attempts:" + phone);
-
+    private TokenPair verifyAndLogin(String phone, String otp, boolean isNurse) {
+        verifyOtp(phone, otp);
         User user = userRepository.findByPhoneNumberWithProfiles(phone)
-                .orElseGet(() -> createUser(phone));
-
-        user.setLastLoginAt(LocalDateTime.now());
-        userRepository.save(user);
-
-        String userId = user.getId().toString();
-        String accessToken = tokenService.generateAccessToken(userId);
-        String refreshToken = tokenService.generateRefreshToken(userId);
-        UserResponse userResponse = userMapper.toResponse(user);
-
-        return new TokenPair(accessToken, refreshToken, tokenService.getAccessTokenTtlSeconds(), userResponse);
+                .orElseGet(() -> isNurse ? createNurseUser(phone) : createUser(phone));
+        return loginUser(user);
     }
 
     @Override
@@ -147,5 +127,48 @@ public class AuthServiceImpl implements AuthService {
         user = userRepository.save(user);
         profileService.createDefaultProfile(user);
         return user;
+    }
+
+    private User createNurseUser(String phoneNumber) {
+        User user = User.builder()
+                .phoneNumber(phoneNumber)
+                .firstName("Nurse")
+                .lastName("")
+                .isDeleted(false)
+                .build();
+        return userRepository.save(user);
+    }
+
+    private void verifyOtp(String phone, String otp) {
+        String storedHash = tokenService.get("otp:" + phone);
+        if (storedHash == null) {
+            throw new InvalidOtpException("OTP has expired or is invalid.");
+        }
+
+        if (!passwordEncoder.matches(otp, storedHash)) {
+            String attemptsKey = "otp_attempts:" + phone;
+            Long attempts = tokenService.increment(attemptsKey);
+            if (attempts != null && attempts >= 3) {
+                tokenService.delete("otp:" + phone);
+                tokenService.delete(attemptsKey);
+                throw new InvalidOtpException("Too many failed attempts. OTP has been invalidated.");
+            }
+            throw new InvalidOtpException("Invalid OTP.");
+        }
+
+        tokenService.delete("otp:" + phone);
+        tokenService.delete("otp_attempts:" + phone);
+    }
+
+    private TokenPair loginUser(User user) {
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        String userId = user.getId().toString();
+        String accessToken = tokenService.generateAccessToken(userId);
+        String refreshToken = tokenService.generateRefreshToken(userId);
+        UserResponse userResponse = userMapper.toResponse(user);
+
+        return new TokenPair(accessToken, refreshToken, tokenService.getAccessTokenTtlSeconds(), userResponse);
     }
 }

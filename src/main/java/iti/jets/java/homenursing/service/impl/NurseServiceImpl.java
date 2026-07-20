@@ -10,6 +10,7 @@ import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.NurseService;
 import iti.jets.java.homenursing.entity.ServiceType;
 import iti.jets.java.homenursing.entity.User;
+import iti.jets.java.homenursing.entity.enums.VerificationStatus;
 import iti.jets.java.homenursing.exception.BadRequestException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.NurseMapper;
@@ -38,8 +39,8 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
 
     @Override
     @Transactional
-    public NurseResponse register(NurseRegistrationRequest request) {
-        User user = userRepository.findById(request.getUserId())
+    public NurseResponse register(UUID userId, NurseRegistrationRequest request) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (nurseRepository.existsByUser_Id(user.getId())) {
@@ -56,8 +57,15 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
 
     @Override
     @Transactional
-    public NurseResponse updateProfile(UUID nurseId, NurseUpdateRequest request) {
-        Nurse nurse = getNurseOrThrow(nurseId);
+    public NurseResponse updateProfile(UUID nurseId, UUID userId, NurseUpdateRequest request) {
+        Nurse nurse = getOwnedNurseOrThrow(nurseId, userId);
+
+        if (nurse.getVerificationStatus() == VerificationStatus.REJECTED) {
+            nurse.setVerificationStatus(VerificationStatus.UNDER_REVIEW);
+            nurse.setRejectionReason(null);
+            nurse.setRejectionDetail(null);
+        }
+
         nurseMapper.updateEntity(request, nurse);
         return toProfileResponse(nurseRepository.save(nurse));
     }
@@ -76,8 +84,8 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
 
     @Override
     @Transactional
-    public NurseServiceResponse addService(UUID nurseId, NurseServiceRequest request) {
-        Nurse nurse = getNurseOrThrow(nurseId);
+    public NurseServiceResponse addService(UUID nurseId, UUID userId, NurseServiceRequest request) {
+        Nurse nurse = getOwnedNurseOrThrow(nurseId, userId);
         ServiceType serviceType = getServiceTypeOrThrow(request.getServiceTypeId());
 
         NurseService link = nurseServiceRepository
@@ -95,7 +103,8 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
 
     @Override
     @Transactional
-    public NurseServiceResponse updateServicePrice(UUID nurseId, UUID serviceTypeId, UpdateServicePriceRequest request) {
+    public NurseServiceResponse updateServicePrice(UUID nurseId, UUID userId, UUID serviceTypeId, UpdateServicePriceRequest request) {
+        getOwnedNurseOrThrow(nurseId, userId);
         NurseService nurseService = nurseServiceRepository
                 .findByNurse_IdAndServiceType_Id(nurseId, serviceTypeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Nurse service not found"));
@@ -106,7 +115,8 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
 
     @Override
     @Transactional
-    public void removeService(UUID nurseId, UUID serviceTypeId) {
+    public void removeService(UUID nurseId, UUID userId, UUID serviceTypeId) {
+        getOwnedNurseOrThrow(nurseId, userId);
         NurseService nurseService = nurseServiceRepository
                 .findByNurse_IdAndServiceType_Id(nurseId, serviceTypeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Nurse service not found"));
@@ -117,6 +127,14 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
     private Nurse getNurseOrThrow(UUID nurseId) {
         return nurseRepository.findById(nurseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Nurse not found"));
+    }
+
+    private Nurse getOwnedNurseOrThrow(UUID nurseId, UUID userId) {
+        Nurse nurse = getNurseOrThrow(nurseId);
+        if (!nurse.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Nurse not found");
+        }
+        return nurse;
     }
 
     private ServiceType getServiceTypeOrThrow(UUID serviceTypeId) {

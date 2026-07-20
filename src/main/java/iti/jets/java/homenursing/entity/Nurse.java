@@ -1,6 +1,7 @@
 package iti.jets.java.homenursing.entity;
 
 import iti.jets.java.homenursing.entity.enums.VerificationStatus;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -86,6 +88,9 @@ public class Nurse {
 
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
+
+    @OneToOne(mappedBy = "nurse", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private NurseRejectionDetail rejectionDetail;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

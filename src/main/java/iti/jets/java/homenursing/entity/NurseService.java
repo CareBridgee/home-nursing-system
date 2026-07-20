@@ -16,6 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,7 +29,7 @@ import java.util.UUID;
 @Builder
 @Entity
 @Table(name = "nurse_services", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"nurse_id", "service_type_id"})
+        @UniqueConstraint(name = "uq_nurse_service", columnNames = {"nurse_id", "service_type_id"})
 })
 public class NurseService {
 
@@ -52,6 +53,10 @@ public class NurseService {
     private Boolean isActive = true;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }

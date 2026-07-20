@@ -1,12 +1,10 @@
 package iti.jets.java.homenursing.controller;
 
-import iti.jets.java.homenursing.dto.nurse.NurseAvailabilityResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseRegistrationRequest;
 import iti.jets.java.homenursing.dto.nurse.NurseResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceRequest;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseUpdateRequest;
-import iti.jets.java.homenursing.dto.nurse.SetAvailabilityRequest;
 import iti.jets.java.homenursing.dto.nurse.UpdateServicePriceRequest;
 import iti.jets.java.homenursing.service.NurseService;
 import jakarta.validation.Valid;
@@ -21,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -55,12 +52,9 @@ public class NurseController {
     }
 
     @PatchMapping("/{nurseId}/services/{serviceTypeId}/price")
-    public ResponseEntity<NurseServiceResponse> updateServicePrice(@PathVariable UUID nurseId, @PathVariable UUID serviceTypeId, @Valid @RequestBody UpdateServicePriceRequest request) {
+    public ResponseEntity<NurseServiceResponse> updateServicePrice(@PathVariable UUID nurseId,
+                                                                   @PathVariable UUID serviceTypeId,
+                                                                   @Valid @RequestBody UpdateServicePriceRequest request) {
         return ResponseEntity.ok(nurseService.updateServicePrice(nurseId, serviceTypeId, request));
-    }
-
-    @PutMapping("/{nurseId}/availability")
-    public ResponseEntity<List<NurseAvailabilityResponse>> setAvailability(@PathVariable UUID nurseId, @Valid @RequestBody SetAvailabilityRequest request) {
-        return ResponseEntity.ok(nurseService.setAvailability(nurseId, request));
     }
 }

@@ -1,4 +1,4 @@
 package iti.jets.java.homenursing.service;
 
-public interface NurseServiceLinkService {
+public interface NurseOfferService {
 }

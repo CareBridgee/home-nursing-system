@@ -30,6 +30,13 @@ public interface NurseMapper {
     @Mapping(target = "phoneNumber", source = "nurse.user.phoneNumber")
     NurseResponse toResponse(Nurse nurse, List<NurseServiceResponse> services);
 
+    @Mapping(target = "userId", source = "user.id")
+    @Mapping(target = "firstName", source = "user.firstName")
+    @Mapping(target = "lastName", source = "user.lastName")
+    @Mapping(target = "phoneNumber", source = "user.phoneNumber")
+    @Mapping(target = "services", ignore = true)
+    NurseResponse toSimpleResponse(Nurse nurse);
+
     @Mapping(target = "serviceTypeId", source = "serviceType.id")
     @Mapping(target = "serviceName", source = "serviceType.name")
     @Mapping(target = "serviceDescription", source = "serviceType.description")

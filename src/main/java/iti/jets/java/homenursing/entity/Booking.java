@@ -74,6 +74,10 @@ public class Booking {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Builder.Default
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

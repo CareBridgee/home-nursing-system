@@ -46,13 +46,13 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(readOnly = true)
     public NotificationResponse getNotification(UUID id, UUID userId) {
-        return notificationMapper.toResponse(getOwnedNotification(id, userId));
+        return notificationMapper.toResponse(getAuthorizedNotification(id, userId));
     }
 
     @Override
     @Transactional
     public NotificationResponse markRead(UUID id, UUID userId) {
-        Notification notification = getOwnedNotification(id, userId);
+        Notification notification = getAuthorizedNotification(id, userId);
         notification.setIsRead(true);
         return notificationMapper.toResponse(notificationRepository.save(notification));
     }
@@ -60,11 +60,11 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void delete(UUID id, UUID userId) {
-        Notification notification = getOwnedNotification(id, userId);
+        Notification notification = getAuthorizedNotification(id, userId);
         notificationRepository.delete(notification);
     }
 
-    private Notification getOwnedNotification(UUID id, UUID userId) {
+    private Notification getAuthorizedNotification(UUID id, UUID userId) {
         return notificationRepository.findByUser_IdAndId(userId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found: " + id));
     }

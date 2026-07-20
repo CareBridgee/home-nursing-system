@@ -404,16 +404,16 @@ CREATE TABLE addresses (
    building_number VARCHAR(50),
    apartment_number VARCHAR(50),
 
-   latitude NUMERIC(10,8),
-   longitude NUMERIC(11,8),
+  latitude NUMERIC(10,8),
+  longitude NUMERIC(11,8),
 
-   created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
-   updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
 
-   CONSTRAINT fk_addresses_profile
-       FOREIGN KEY (profile_id)
-           REFERENCES profiles(id)
-           ON DELETE CASCADE
+  CONSTRAINT fk_addresses_profile
+      FOREIGN KEY (profile_id)
+          REFERENCES profiles(id)
+          ON DELETE CASCADE
 );
 
 
@@ -453,6 +453,8 @@ CREATE TABLE service_requests (
 
   latitude NUMERIC(10,8),
   longitude NUMERIC(11,8),
+
+  is_deleted BOOLEAN DEFAULT FALSE,
 
   created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
@@ -508,6 +510,8 @@ price NUMERIC(10,2),
 negotiated_price NUMERIC(10,2),
 
 notes TEXT,
+
+is_deleted BOOLEAN DEFAULT FALSE,
 
 created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
 updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
@@ -603,6 +607,8 @@ CREATE TABLE service_receipts (
       payment_date TIMESTAMPTZ,
 
       service_details TEXT,
+
+      is_deleted BOOLEAN DEFAULT FALSE,
 
       created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
@@ -766,7 +772,8 @@ FROM bookings b
               ON nurse_user.id = n.user_id
 
 WHERE
-    b.status NOT IN (
+    b.is_deleted = FALSE
+  AND b.status NOT IN (
                        'COMPLETED',
                        'CANCELLED',
                        'NO_SHOW'

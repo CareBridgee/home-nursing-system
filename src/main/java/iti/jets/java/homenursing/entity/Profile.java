@@ -42,9 +42,8 @@ public class Profile {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // null = default/own profile; otherwise links to the user's default profile id
-    @Column(name = "relationship")
-    private UUID relationship;
+    @Column(length = 100)
+    private String relationship;
 
     @Column(name = "first_name", length = 100)
     private String firstName;
@@ -62,17 +61,37 @@ public class Profile {
     @Column(name = "blood_type", length = 5)
     private String bloodType;
 
-    @Column(name = "height_cm", precision = 5, scale = 2)
-    private BigDecimal heightCm;
+    @Column(precision = 5, scale = 2)
+    private BigDecimal height;
 
-    @Column(name = "weight_kg", precision = 5, scale = 2)
-    private BigDecimal weightKg;
+    @Column(precision = 5, scale = 2)
+    private BigDecimal weight;
+
+    @Column(name = "mobility_status", length = 100)
+    private String mobilityStatus;
+
+    @Column(name = "mobility_notes", columnDefinition = "TEXT")
+    private String mobilityNotes;
+
+    @Column(name = "previous_surgeries", columnDefinition = "TEXT")
+    private String previousSurgeries;
+
+    @Column(name = "previous_hospitalizations", columnDefinition = "TEXT")
+    private String previousHospitalizations;
+
+    @Builder.Default
+    @Column(name = "is_primary")
+    private Boolean isPrimary = false;
+
+    @Builder.Default
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(nullable = false)
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }

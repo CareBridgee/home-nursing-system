@@ -13,10 +13,9 @@ public interface ProfileMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "user", ignore = true)
-    @Mapping(target = "relationship", ignore = true)
+    @Mapping(target = "isPrimary", ignore = true)
     Profile toEntity(ProfileRequest request);
 
     @Mapping(target = "userId", source = "user.id")
-    @Mapping(target = "isDefault", expression = "java(profile.getRelationship() == null)")
     ProfileResponse toResponse(Profile profile);
 }

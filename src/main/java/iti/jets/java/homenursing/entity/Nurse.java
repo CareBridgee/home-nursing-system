@@ -2,9 +2,9 @@ package iti.jets.java.homenursing.entity;
 
 import iti.jets.java.homenursing.entity.enums.VerificationStatus;
 import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -41,8 +41,20 @@ public class Nurse {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "license_number", nullable = false, unique = true, length = 100)
-    private String licenseNumber;
+    @Column(name = "national_id", unique = true, length = 100)
+    private String nationalId;
+
+    @Column(name = "national_id_front_url", columnDefinition = "TEXT")
+    private String nationalIdFrontUrl;
+
+    @Column(name = "national_id_back_url", columnDefinition = "TEXT")
+    private String nationalIdBackUrl;
+
+    @Column(name = "license_image_url", columnDefinition = "TEXT")
+    private String licenseImageUrl;
+
+    @Column(name = "professional_certificate_url", columnDefinition = "TEXT")
+    private String professionalCertificateUrl;
 
     private String specialization;
 
@@ -70,13 +82,16 @@ public class Nurse {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "verification_status", length = 50)
-    private VerificationStatus verificationStatus = VerificationStatus.PENDING;
+    private VerificationStatus verificationStatus = VerificationStatus.UNDER_REVIEW;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(nullable = false)
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }

@@ -42,7 +42,6 @@ public class MedicationServiceImpl implements MedicationService {
         Medication entity = medicationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Medication not found: " + id));
         entity.setName(request.name());
-        entity.setDescription(request.description());
         return medicationMapper.toResponse(medicationRepository.save(entity));
     }
 

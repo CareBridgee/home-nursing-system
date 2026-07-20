@@ -1,6 +1,5 @@
 package iti.jets.java.homenursing.mapper;
 
-
 import iti.jets.java.homenursing.dto.UserRequest;
 import iti.jets.java.homenursing.dto.UserResponse;
 import iti.jets.java.homenursing.entity.User;
@@ -16,7 +15,7 @@ public interface UserMapper {
     @Mapping(target = "defaultProfileId",
              expression = "java(user.getProfiles() == null ? null : "
                      + "user.getProfiles().stream()"
-                     + ".filter(p -> p.getRelationship() == null)"
+                     + ".filter(p -> Boolean.TRUE.equals(p.getIsPrimary()))"
                      + ".map(iti.jets.java.homenursing.entity.Profile::getId)"
                      + ".findFirst().orElse(null))")
     UserResponse toResponse(User user);

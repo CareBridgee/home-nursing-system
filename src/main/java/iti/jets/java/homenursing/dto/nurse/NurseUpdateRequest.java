@@ -13,6 +13,11 @@ import java.math.BigDecimal;
 @Builder
 public class NurseUpdateRequest {
 
+    private String nationalId;
+    private String nationalIdFrontUrl;
+    private String nationalIdBackUrl;
+    private String licenseImageUrl;
+    private String professionalCertificateUrl;
     private String specialization;
     private Integer yearsOfExperience;
     private BigDecimal hourlyRate;

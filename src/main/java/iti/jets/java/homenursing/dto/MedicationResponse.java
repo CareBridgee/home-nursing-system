@@ -6,7 +6,6 @@ import java.util.UUID;
 public record MedicationResponse(
         UUID id,
         String name,
-        String description,
         LocalDateTime createdAt
 ) {
 }

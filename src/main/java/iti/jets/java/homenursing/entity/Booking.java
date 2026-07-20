@@ -2,9 +2,9 @@ package iti.jets.java.homenursing.entity;
 
 import iti.jets.java.homenursing.entity.enums.BookingStatus;
 import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -51,13 +51,13 @@ public class Booking {
     @JoinColumn(name = "nurse_id", nullable = false)
     private Nurse nurse;
 
-    @Column(name = "scheduled_date", nullable = false)
+    @Column(name = "scheduled_date")
     private LocalDate scheduledDate;
 
-    @Column(name = "scheduled_start_time", nullable = false)
+    @Column(name = "scheduled_start_time")
     private LocalTime scheduledStartTime;
 
-    @Column(name = "scheduled_end_time", nullable = false)
+    @Column(name = "scheduled_end_time")
     private LocalTime scheduledEndTime;
 
     @Builder.Default
@@ -75,10 +75,10 @@ public class Booking {
     private String notes;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(nullable = false)
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }

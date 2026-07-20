@@ -2,9 +2,9 @@ package iti.jets.java.homenursing.entity;
 
 import iti.jets.java.homenursing.entity.enums.ServiceRequestStatus;
 import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -48,8 +48,8 @@ public class ServiceRequest {
     private ServiceType serviceType;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "requested_nurse_id")
-    private Nurse requestedNurse;
+    @JoinColumn(name = "nurse_id")
+    private Nurse nurse;
 
     @Column(name = "service_description", columnDefinition = "TEXT")
     private String serviceDescription;
@@ -75,10 +75,10 @@ public class ServiceRequest {
     private BigDecimal longitude;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(nullable = false)
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }

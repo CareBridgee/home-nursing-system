@@ -11,7 +11,7 @@ import java.util.UUID;
 @Repository
 public interface ProfileRepository extends JpaRepository<Profile, UUID> {
 
-    List<Profile> findByUserId(UUID userId);
+    List<Profile> findByUserIdAndIsDeletedFalse(UUID userId);
 
-    Optional<Profile> findByUserIdAndRelationshipIsNull(UUID userId);
+    Optional<Profile> findByUserIdAndIsPrimaryTrueAndIsDeletedFalse(UUID userId);
 }

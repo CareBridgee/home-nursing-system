@@ -21,7 +21,11 @@ public class NurseResponse {
     private String firstName;
     private String lastName;
     private String phoneNumber;
-    private String licenseNumber;
+    private String nationalId;
+    private String nationalIdFrontUrl;
+    private String nationalIdBackUrl;
+    private String licenseImageUrl;
+    private String professionalCertificateUrl;
     private String specialization;
     private Integer yearsOfExperience;
     private BigDecimal hourlyRate;
@@ -30,6 +34,6 @@ public class NurseResponse {
     private Integer totalReviews;
     private Boolean isAvailable;
     private VerificationStatus verificationStatus;
+    private String rejectionReason;
     private List<NurseServiceResponse> services;
-    private List<NurseAvailabilityResponse> availability;
 }

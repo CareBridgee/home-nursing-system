@@ -16,8 +16,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -28,7 +28,7 @@ import java.util.UUID;
 @Builder
 @Entity
 @Table(name = "profile_medical_conditions", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"profile_id", "medical_condition_id"})
+        @UniqueConstraint(name = "uq_profile_medical_condition", columnNames = {"profile_id", "medical_condition_id"})
 })
 public class ProfileMedicalCondition {
 
@@ -44,13 +44,11 @@ public class ProfileMedicalCondition {
     @JoinColumn(name = "medical_condition_id", nullable = false)
     private MedicalCondition medicalCondition;
 
-    @Column(name = "diagnosed_date")
-    private LocalDate diagnosedDate;
-
-    @Column(columnDefinition = "TEXT")
-    private String notes;
-
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }

@@ -1,19 +1,18 @@
 package iti.jets.java.homenursing.service.impl;
 
-import iti.jets.java.homenursing.dto.nurse.NurseAvailabilityResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseRegistrationRequest;
 import iti.jets.java.homenursing.dto.nurse.NurseResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceRequest;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseUpdateRequest;
-import iti.jets.java.homenursing.dto.nurse.SetAvailabilityRequest;
 import iti.jets.java.homenursing.dto.nurse.UpdateServicePriceRequest;
-import iti.jets.java.homenursing.entity.*;
+import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.NurseService;
+import iti.jets.java.homenursing.entity.ServiceType;
+import iti.jets.java.homenursing.entity.User;
 import iti.jets.java.homenursing.exception.BadRequestException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.NurseMapper;
-import iti.jets.java.homenursing.repository.NurseAvailabilityRepository;
 import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.NurseServiceRepository;
 import iti.jets.java.homenursing.repository.ServiceTypeRepository;
@@ -22,7 +21,6 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -36,9 +34,7 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
     private final UserRepository userRepository;
     private final ServiceTypeRepository serviceTypeRepository;
     private final NurseServiceRepository nurseServiceRepository;
-    private final NurseAvailabilityRepository nurseAvailabilityRepository;
     private final NurseMapper nurseMapper;
-
 
     @Override
     @Transactional
@@ -50,8 +46,8 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
             throw new BadRequestException("This user already has a nurse profile");
         }
 
-        if (nurseRepository.existsByLicenseNumber(request.getLicenseNumber())) {
-            throw new BadRequestException("License number already exists");
+        if (request.getNationalId() != null && nurseRepository.existsByNationalId(request.getNationalId())) {
+            throw new BadRequestException("National ID already exists");
         }
 
         Nurse nurse = nurseMapper.toEntity(request, user);
@@ -101,27 +97,6 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
         return nurseMapper.toServiceResponse(nurseServiceRepository.save(nurseService));
     }
 
-    @Override
-    @Transactional
-    public List<NurseAvailabilityResponse> setAvailability(UUID nurseId, SetAvailabilityRequest request) {
-        Nurse nurse = getNurseOrThrow(nurseId);
-
-        List<NurseAvailability> oldSlots = nurseAvailabilityRepository.findAllByNurse_Id(nurseId);
-        nurseAvailabilityRepository.deleteAll(oldSlots);
-
-        List<NurseAvailability> newSlots = request.getSlots().stream()
-                .peek(slot -> validateTimeRange(slot.getStartTime(), slot.getEndTime()))
-                .map(slot -> nurseMapper.toAvailabilityEntity(slot, nurse))
-                .toList();
-
-        return nurseAvailabilityRepository.saveAll(newSlots).stream()
-                .map(nurseMapper::toAvailabilityResponse)
-                .sorted(Comparator
-                        .comparing(NurseAvailabilityResponse::getDayOfWeek)
-                        .thenComparing(NurseAvailabilityResponse::getStartTime))
-                .toList();
-    }
-
     private Nurse getNurseOrThrow(UUID nurseId) {
         return nurseRepository.findById(nurseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Nurse not found"));
@@ -132,25 +107,12 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
                 .orElseThrow(() -> new ResourceNotFoundException("Service type not found"));
     }
 
-    private void validateTimeRange(LocalTime startTime, LocalTime endTime) {
-        if (!startTime.isBefore(endTime)) {
-            throw new BadRequestException("startTime must be before endTime");
-        }
-    }
-
     private NurseResponse toProfileResponse(Nurse nurse) {
         List<NurseServiceResponse> services = nurseServiceRepository.findAllByNurse_Id(nurse.getId()).stream()
                 .map(nurseMapper::toServiceResponse)
                 .sorted(Comparator.comparing(NurseServiceResponse::getServiceName))
                 .toList();
 
-        List<NurseAvailabilityResponse> availability = nurseAvailabilityRepository.findAllByNurse_Id(nurse.getId()).stream()
-                .map(nurseMapper::toAvailabilityResponse)
-                .sorted(Comparator
-                        .comparing(NurseAvailabilityResponse::getDayOfWeek)
-                        .thenComparing(NurseAvailabilityResponse::getStartTime))
-                .toList();
-
-        return nurseMapper.toResponse(nurse, services, availability);
+        return nurseMapper.toResponse(nurse, services);
     }
 }

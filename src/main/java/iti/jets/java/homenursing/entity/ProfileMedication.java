@@ -15,8 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -41,26 +41,11 @@ public class ProfileMedication {
     @JoinColumn(name = "medication_id", nullable = false)
     private Medication medication;
 
-    @Column(length = 100)
-    private String dosage;
-
-    @Column(length = 100)
-    private String frequency;
-
-    @Column(name = "start_date")
-    private LocalDate startDate;
-
-    @Column(name = "end_date")
-    private LocalDate endDate;
-
-    @Builder.Default
-    @Column(name = "is_current")
-    private Boolean isCurrent = true;
-
-    @Column(columnDefinition = "TEXT")
-    private String notes;
-
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }

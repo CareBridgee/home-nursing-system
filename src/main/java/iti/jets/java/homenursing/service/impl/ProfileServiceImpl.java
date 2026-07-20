@@ -4,6 +4,7 @@ import iti.jets.java.homenursing.dto.ProfileRequest;
 import iti.jets.java.homenursing.dto.ProfileResponse;
 import iti.jets.java.homenursing.entity.Profile;
 import iti.jets.java.homenursing.entity.User;
+import iti.jets.java.homenursing.exception.BadRequestException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.ProfileMapper;
 import iti.jets.java.homenursing.repository.ProfileRepository;
@@ -27,7 +28,8 @@ public class ProfileServiceImpl implements ProfileService {
     public Profile createDefaultProfile(User user) {
         Profile profile = Profile.builder()
                 .user(user)
-                .relationship(null)
+                .isPrimary(true)
+                .isDeleted(false)
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .dateOfBirth(user.getDateOfBirth())
@@ -39,7 +41,7 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional(readOnly = true)
     public ProfileResponse getDefaultProfile(UUID userId) {
-        Profile profile = profileRepository.findByUserIdAndRelationshipIsNull(userId)
+        Profile profile = profileRepository.findByUserIdAndIsPrimaryTrueAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Default profile not found for user " + userId));
         return profileMapper.toResponse(profile);
     }
@@ -47,7 +49,7 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional(readOnly = true)
     public List<ProfileResponse> listProfiles(UUID userId) {
-        return profileRepository.findByUserId(userId)
+        return profileRepository.findByUserIdAndIsDeletedFalse(userId)
                 .stream()
                 .map(profileMapper::toResponse)
                 .toList();
@@ -56,23 +58,20 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional(readOnly = true)
     public ProfileResponse getOwnedProfile(UUID profileId, UUID userId) {
-        Profile profile = profileRepository.findById(profileId)
-                .orElseThrow(() -> new ResourceNotFoundException("Profile not found: " + profileId));
-        if (!profile.getUser().getId().equals(userId)) {
-            throw new ResourceNotFoundException("Profile not found: " + profileId);
-        }
+        Profile profile = getOwnedProfileEntity(profileId, userId);
         return profileMapper.toResponse(profile);
     }
 
     @Override
     @Transactional
     public ProfileResponse createFamilyProfile(UUID userId, ProfileRequest request) {
-        Profile defaultProfile = profileRepository.findByUserIdAndRelationshipIsNull(userId)
+        Profile primary = profileRepository.findByUserIdAndIsPrimaryTrueAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Default profile not found for user " + userId));
 
         Profile profile = profileMapper.toEntity(request);
-        profile.setUser(defaultProfile.getUser());
-        profile.setRelationship(defaultProfile.getId());
+        profile.setUser(primary.getUser());
+        profile.setIsPrimary(false);
+        profile.setIsDeleted(false);
 
         Profile saved = profileRepository.save(profile);
         return profileMapper.toResponse(saved);
@@ -81,19 +80,22 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional
     public ProfileResponse updateProfile(UUID profileId, UUID userId, ProfileRequest request) {
-        Profile profile = profileRepository.findById(profileId)
-                .orElseThrow(() -> new ResourceNotFoundException("Profile not found: " + profileId));
-        if (!profile.getUser().getId().equals(userId)) {
-            throw new ResourceNotFoundException("Profile not found: " + profileId);
-        }
+        Profile profile = getOwnedProfileEntity(profileId, userId);
 
+        if (request.getRelationship() != null) profile.setRelationship(request.getRelationship());
         if (request.getFirstName() != null) profile.setFirstName(request.getFirstName());
         if (request.getLastName() != null) profile.setLastName(request.getLastName());
         if (request.getDateOfBirth() != null) profile.setDateOfBirth(request.getDateOfBirth());
         if (request.getGender() != null) profile.setGender(request.getGender());
         if (request.getBloodType() != null) profile.setBloodType(request.getBloodType());
-        if (request.getHeightCm() != null) profile.setHeightCm(request.getHeightCm());
-        if (request.getWeightKg() != null) profile.setWeightKg(request.getWeightKg());
+        if (request.getHeight() != null) profile.setHeight(request.getHeight());
+        if (request.getWeight() != null) profile.setWeight(request.getWeight());
+        if (request.getMobilityStatus() != null) profile.setMobilityStatus(request.getMobilityStatus());
+        if (request.getMobilityNotes() != null) profile.setMobilityNotes(request.getMobilityNotes());
+        if (request.getPreviousSurgeries() != null) profile.setPreviousSurgeries(request.getPreviousSurgeries());
+        if (request.getPreviousHospitalizations() != null) {
+            profile.setPreviousHospitalizations(request.getPreviousHospitalizations());
+        }
 
         Profile saved = profileRepository.save(profile);
         return profileMapper.toResponse(saved);
@@ -102,14 +104,20 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional
     public void deleteFamilyProfile(UUID profileId, UUID userId) {
+        Profile profile = getOwnedProfileEntity(profileId, userId);
+        if (Boolean.TRUE.equals(profile.getIsPrimary())) {
+            throw new BadRequestException("Cannot delete the primary profile");
+        }
+        profile.setIsDeleted(true);
+        profileRepository.save(profile);
+    }
+
+    private Profile getOwnedProfileEntity(UUID profileId, UUID userId) {
         Profile profile = profileRepository.findById(profileId)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found: " + profileId));
-        if (!profile.getUser().getId().equals(userId)) {
+        if (!profile.getUser().getId().equals(userId) || Boolean.TRUE.equals(profile.getIsDeleted())) {
             throw new ResourceNotFoundException("Profile not found: " + profileId);
         }
-        if (profile.getRelationship() == null) {
-            throw new IllegalArgumentException("Cannot delete the default profile");
-        }
-        profileRepository.delete(profile);
+        return profile;
     }
 }

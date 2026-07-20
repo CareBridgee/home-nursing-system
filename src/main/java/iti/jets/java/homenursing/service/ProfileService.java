@@ -18,6 +18,8 @@ public interface ProfileService {
 
     ProfileResponse getOwnedProfile(UUID profileId, UUID userId);
 
+    Profile getOwnedProfileEntity(UUID profileId, UUID userId);
+
     ProfileResponse createFamilyProfile(UUID userId, ProfileRequest request);
 
     ProfileResponse updateProfile(UUID profileId, UUID userId, ProfileRequest request);

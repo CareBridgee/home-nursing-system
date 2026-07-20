@@ -58,8 +58,14 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional(readOnly = true)
     public ProfileResponse getOwnedProfile(UUID profileId, UUID userId) {
-        Profile profile = getOwnedProfileEntity(profileId, userId);
+        Profile profile = loadOwnedProfile(profileId, userId);
         return profileMapper.toResponse(profile);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Profile getOwnedProfileEntity(UUID profileId, UUID userId) {
+        return loadOwnedProfile(profileId, userId);
     }
 
     @Override
@@ -80,7 +86,7 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional
     public ProfileResponse updateProfile(UUID profileId, UUID userId, ProfileRequest request) {
-        Profile profile = getOwnedProfileEntity(profileId, userId);
+        Profile profile = loadOwnedProfile(profileId, userId);
 
         if (request.getRelationship() != null) profile.setRelationship(request.getRelationship());
         if (request.getFirstName() != null) profile.setFirstName(request.getFirstName());
@@ -104,7 +110,7 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional
     public void deleteFamilyProfile(UUID profileId, UUID userId) {
-        Profile profile = getOwnedProfileEntity(profileId, userId);
+        Profile profile = loadOwnedProfile(profileId, userId);
         if (Boolean.TRUE.equals(profile.getIsPrimary())) {
             throw new BadRequestException("Cannot delete the primary profile");
         }
@@ -112,7 +118,7 @@ public class ProfileServiceImpl implements ProfileService {
         profileRepository.save(profile);
     }
 
-    private Profile getOwnedProfileEntity(UUID profileId, UUID userId) {
+    private Profile loadOwnedProfile(UUID profileId, UUID userId) {
         Profile profile = profileRepository.findById(profileId)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found: " + profileId));
         if (!profile.getUser().getId().equals(userId) || Boolean.TRUE.equals(profile.getIsDeleted())) {

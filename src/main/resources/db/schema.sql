@@ -544,6 +544,8 @@ proposed_time TIME,
 
 message TEXT,
 
+is_deleted BOOLEAN DEFAULT FALSE,
+
 status VARCHAR(50)
                   DEFAULT 'PENDING'
   CHECK (

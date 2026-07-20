@@ -30,6 +30,14 @@ public class MedicationServiceImpl implements MedicationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public MedicationResponse getById(UUID id) {
+        Medication entity = medicationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Medication not found: " + id));
+        return medicationMapper.toResponse(entity);
+    }
+
+    @Override
     @Transactional
     public MedicationResponse create(MedicationRequest request) {
         Medication entity = medicationMapper.toEntity(request);

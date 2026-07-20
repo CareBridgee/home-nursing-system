@@ -30,6 +30,14 @@ public class ServiceTypeServiceImpl implements ServiceTypeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ServiceTypeResponse getById(UUID id) {
+        ServiceType entity = serviceTypeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Service type not found: " + id));
+        return serviceTypeMapper.toResponse(entity);
+    }
+
+    @Override
     @Transactional
     public ServiceTypeResponse create(ServiceTypeRequest request) {
         ServiceType entity = serviceTypeMapper.toEntity(request);

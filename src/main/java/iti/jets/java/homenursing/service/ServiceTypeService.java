@@ -10,6 +10,8 @@ public interface ServiceTypeService {
 
     List<ServiceTypeResponse> findAll();
 
+    ServiceTypeResponse getById(UUID id);
+
     ServiceTypeResponse create(ServiceTypeRequest request);
 
     ServiceTypeResponse update(UUID id, ServiceTypeRequest request);

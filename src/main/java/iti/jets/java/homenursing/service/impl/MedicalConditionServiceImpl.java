@@ -30,6 +30,14 @@ public class MedicalConditionServiceImpl implements MedicalConditionService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public MedicalConditionResponse getById(UUID id) {
+        MedicalCondition entity = medicalConditionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Medical condition not found: " + id));
+        return medicalConditionMapper.toResponse(entity);
+    }
+
+    @Override
     @Transactional
     public MedicalConditionResponse create(MedicalConditionRequest request) {
         MedicalCondition entity = medicalConditionMapper.toEntity(request);

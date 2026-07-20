@@ -10,6 +10,8 @@ public interface MedicationService {
 
     List<MedicationResponse> findAll();
 
+    MedicationResponse getById(UUID id);
+
     MedicationResponse create(MedicationRequest request);
 
     MedicationResponse update(UUID id, MedicationRequest request);

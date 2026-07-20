@@ -10,6 +10,8 @@ public interface MedicalConditionService {
 
     List<MedicalConditionResponse> findAll();
 
+    MedicalConditionResponse getById(UUID id);
+
     MedicalConditionResponse create(MedicalConditionRequest request);
 
     MedicalConditionResponse update(UUID id, MedicalConditionRequest request);

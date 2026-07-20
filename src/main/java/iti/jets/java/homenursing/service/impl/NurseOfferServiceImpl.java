@@ -89,13 +89,12 @@ public class NurseOfferServiceImpl implements NurseOfferService {
     }
 
     private ServiceRequest getAuthorizedServiceRequest(UUID serviceRequestId, UUID userId) {
-        ServiceRequest serviceRequest = serviceRequestRepository.findByIdAndIsDeletedFalse(serviceRequestId)
+        ServiceRequest serviceRequest = serviceRequestRepository.findById(serviceRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Service request not found: " + serviceRequestId));
         boolean isOwner = serviceRequest.getProfile().getUser().getId().equals(userId);
-        boolean isNurse = nurseRepository.findByUser_Id(userId)
-                .map(n -> n.getId().equals(serviceRequest.getNurse() != null
-                        ? serviceRequest.getNurse().getId() : null))
-                .orElse(false);
+        boolean isNurse = nurseRepository.existsByUser_Id(userId)
+                && serviceRequest.getNurse() != null
+                && serviceRequest.getNurse().getUser().getId().equals(userId);
         if (!isOwner && !isNurse) {
             throw new ResourceNotFoundException("Service request not found: " + serviceRequestId);
         }

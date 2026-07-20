@@ -30,6 +30,14 @@ public class AllergyServiceImpl implements AllergyService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public AllergyResponse getById(UUID id) {
+        Allergy entity = allergyRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Allergy not found: " + id));
+        return allergyMapper.toResponse(entity);
+    }
+
+    @Override
     @Transactional
     public AllergyResponse create(AllergyRequest request) {
         Allergy entity = allergyMapper.toEntity(request);

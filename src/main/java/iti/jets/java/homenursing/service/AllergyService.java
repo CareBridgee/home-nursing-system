@@ -10,6 +10,8 @@ public interface AllergyService {
 
     List<AllergyResponse> findAll();
 
+    AllergyResponse getById(UUID id);
+
     AllergyResponse create(AllergyRequest request);
 
     AllergyResponse update(UUID id, AllergyRequest request);

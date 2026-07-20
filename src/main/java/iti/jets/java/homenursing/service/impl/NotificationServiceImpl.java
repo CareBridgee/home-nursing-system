@@ -32,14 +32,13 @@ public class NotificationServiceImpl implements NotificationService {
         Notification notification = notificationMapper.toEntity(request);
         notification.setUser(user);
         notification.setIsRead(false);
-        notification.setIsDeleted(false);
         return notificationMapper.toResponse(notificationRepository.save(notification));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<NotificationResponse> getMyNotifications(UUID userId) {
-        return notificationRepository.findByUser_IdAndIsDeletedFalseOrderByCreatedAtDesc(userId).stream()
+        return notificationRepository.findByUser_IdOrderByCreatedAtDesc(userId).stream()
                 .map(notificationMapper::toResponse)
                 .toList();
     }
@@ -62,12 +61,11 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void delete(UUID id, UUID userId) {
         Notification notification = getOwnedNotification(id, userId);
-        notification.setIsDeleted(true);
-        notificationRepository.save(notification);
+        notificationRepository.delete(notification);
     }
 
     private Notification getOwnedNotification(UUID id, UUID userId) {
-        return notificationRepository.findByUser_IdAndIdAndIsDeletedFalse(userId, id)
+        return notificationRepository.findByUser_IdAndId(userId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found: " + id));
     }
 }

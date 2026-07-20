@@ -44,6 +44,10 @@ public class ProfileAllergy {
     @JoinColumn(name = "allergy_id", nullable = false)
     private Allergy allergy;
 
+    @Builder.Default
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

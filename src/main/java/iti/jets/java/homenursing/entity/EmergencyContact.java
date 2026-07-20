@@ -46,6 +46,10 @@ public class EmergencyContact {
     @Column(name = "phone_number", nullable = false, length = 20)
     private String phoneNumber;
 
+    @Builder.Default
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

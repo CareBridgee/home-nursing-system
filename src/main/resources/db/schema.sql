@@ -238,6 +238,8 @@ CREATE TABLE profile_medical_conditions (
     profile_id UUID NOT NULL,
     medical_condition_id UUID NOT NULL,
 
+    is_deleted BOOLEAN DEFAULT FALSE,
+
     created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -280,6 +282,8 @@ CREATE TABLE profile_allergies (
        profile_id UUID NOT NULL,
        allergy_id UUID NOT NULL,
 
+       is_deleted BOOLEAN DEFAULT FALSE,
+
        created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
        updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -319,6 +323,8 @@ CREATE TABLE profile_medications (
      profile_id UUID NOT NULL,
      medication_id UUID NOT NULL,
 
+     is_deleted BOOLEAN DEFAULT FALSE,
+
      created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
      updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -353,6 +359,8 @@ CREATE TABLE medical_history (
 
      description TEXT,
 
+     is_deleted BOOLEAN DEFAULT FALSE,
+
      created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
      updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -376,6 +384,8 @@ CREATE TABLE emergency_contacts (
     relationship VARCHAR(100),
 
     phone_number VARCHAR(20) NOT NULL,
+
+    is_deleted BOOLEAN DEFAULT FALSE,
 
     created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
@@ -404,16 +414,18 @@ CREATE TABLE addresses (
    building_number VARCHAR(50),
    apartment_number VARCHAR(50),
 
-   latitude NUMERIC(10,8),
-   longitude NUMERIC(11,8),
+  latitude NUMERIC(10,8),
+  longitude NUMERIC(11,8),
 
-   created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
-   updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
+  is_deleted BOOLEAN DEFAULT FALSE,
 
-   CONSTRAINT fk_addresses_profile
-       FOREIGN KEY (profile_id)
-           REFERENCES profiles(id)
-           ON DELETE CASCADE
+  created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_addresses_profile
+      FOREIGN KEY (profile_id)
+          REFERENCES profiles(id)
+          ON DELETE CASCADE
 );
 
 
@@ -453,6 +465,8 @@ CREATE TABLE service_requests (
 
   latitude NUMERIC(10,8),
   longitude NUMERIC(11,8),
+
+  is_deleted BOOLEAN DEFAULT FALSE,
 
   created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
@@ -509,6 +523,8 @@ negotiated_price NUMERIC(10,2),
 
 notes TEXT,
 
+is_deleted BOOLEAN DEFAULT FALSE,
+
 created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
 updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -553,6 +569,8 @@ status VARCHAR(50)
                  'REJECTED'
           )
       ),
+
+is_deleted BOOLEAN DEFAULT FALSE,
 
 created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
 updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
@@ -602,6 +620,8 @@ CREATE TABLE service_receipts (
 
       service_details TEXT,
 
+      is_deleted BOOLEAN DEFAULT FALSE,
+
       created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -628,6 +648,8 @@ CREATE TABLE reviews_ratings (
      review_text TEXT,
 
      is_anonymous BOOLEAN DEFAULT FALSE,
+
+     is_deleted BOOLEAN DEFAULT FALSE,
 
      created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
      updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
@@ -673,6 +695,8 @@ CREATE TABLE notifications (
 
    related_entity_type VARCHAR(50),
    related_entity_id UUID,
+
+   is_deleted BOOLEAN DEFAULT FALSE,
 
    created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
    updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
@@ -764,7 +788,8 @@ FROM bookings b
               ON nurse_user.id = n.user_id
 
 WHERE
-    b.status NOT IN (
+    b.is_deleted = FALSE
+  AND b.status NOT IN (
                        'COMPLETED',
                        'CANCELLED',
                        'NO_SHOW'
@@ -909,12 +934,14 @@ SET
         SELECT COALESCE(AVG(rating), 0)
         FROM reviews_ratings
         WHERE nurse_id = target_nurse_id
+          AND is_deleted = FALSE
     ),
 
     total_reviews = (
         SELECT COUNT(*)
         FROM reviews_ratings
         WHERE nurse_id = target_nurse_id
+          AND is_deleted = FALSE
     )
 
 WHERE id = target_nurse_id;

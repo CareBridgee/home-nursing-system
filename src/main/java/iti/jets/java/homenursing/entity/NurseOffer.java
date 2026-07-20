@@ -1,6 +1,6 @@
 package iti.jets.java.homenursing.entity;
 
-import iti.jets.java.homenursing.entity.enums.NegotiationStatus;
+import iti.jets.java.homenursing.entity.enums.NurseOfferStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -62,7 +62,11 @@ public class NurseOffer {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(length = 50)
-    private NegotiationStatus status = NegotiationStatus.PENDING;
+    private NurseOfferStatus status = NurseOfferStatus.PENDING;
+
+    @Builder.Default
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

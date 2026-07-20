@@ -1,10 +1,7 @@
 package iti.jets.java.homenursing.entity;
 
-import iti.jets.java.homenursing.entity.enums.AllergySeverity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -19,6 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -30,7 +28,7 @@ import java.util.UUID;
 @Builder
 @Entity
 @Table(name = "profile_allergies", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"profile_id", "allergy_id"})
+        @UniqueConstraint(name = "uq_profile_allergy", columnNames = {"profile_id", "allergy_id"})
 })
 public class ProfileAllergy {
 
@@ -46,14 +44,11 @@ public class ProfileAllergy {
     @JoinColumn(name = "allergy_id", nullable = false)
     private Allergy allergy;
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 50)
-    private AllergySeverity severity;
-
-    @Column(name = "reaction_description", columnDefinition = "TEXT")
-    private String reactionDescription;
-
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }

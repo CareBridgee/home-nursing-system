@@ -18,8 +18,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -44,21 +44,14 @@ public class MedicalHistory {
     @Column(length = 50)
     private MedicalHistoryType type;
 
-    @Column(nullable = false)
-    private String title;
-
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    private LocalDate date;
-
-    @Column(name = "hospital_clinic_name")
-    private String hospitalClinicName;
-
-    @Column(name = "doctor_name")
-    private String doctorName;
-
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }

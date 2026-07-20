@@ -2,9 +2,9 @@ package iti.jets.java.homenursing.entity;
 
 import iti.jets.java.homenursing.entity.enums.NegotiationStatus;
 import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,6 +18,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -31,8 +32,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "booking_negotiations")
-public class BookingNegotiation {
+@Table(name = "nurse_offers")
+public class NurseOffer {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -42,18 +43,18 @@ public class BookingNegotiation {
     @JoinColumn(name = "service_request_id", nullable = false)
     private ServiceRequest serviceRequest;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "booking_id")
-    private Booking booking;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "nurse_id", nullable = false)
+    private Nurse nurse;
 
     @Column(name = "proposed_price", precision = 10, scale = 2)
     private BigDecimal proposedPrice;
 
-    @Column(name = "proposed_time")
-    private LocalTime proposedTime;
-
     @Column(name = "proposed_date")
     private LocalDate proposedDate;
+
+    @Column(name = "proposed_time")
+    private LocalTime proposedTime;
 
     @Column(columnDefinition = "TEXT")
     private String message;
@@ -64,6 +65,10 @@ public class BookingNegotiation {
     private NegotiationStatus status = NegotiationStatus.PENDING;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }

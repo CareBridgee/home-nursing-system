@@ -15,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -36,6 +37,14 @@ public class ReviewRating {
     @JoinColumn(name = "booking_id", nullable = false, unique = true)
     private Booking booking;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "profile_id", nullable = false)
+    private Profile profile;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "nurse_id", nullable = false)
+    private Nurse nurse;
+
     private Integer rating;
 
     @Column(name = "review_text", columnDefinition = "TEXT")
@@ -46,6 +55,10 @@ public class ReviewRating {
     private Boolean isAnonymous = false;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }

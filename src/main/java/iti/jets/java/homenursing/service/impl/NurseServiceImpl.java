@@ -68,6 +68,13 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
     }
 
     @Override
+    public List<NurseResponse> listNurses() {
+        return nurseRepository.findAll().stream()
+                .map(nurseMapper::toSimpleResponse)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public NurseServiceResponse addService(UUID nurseId, NurseServiceRequest request) {
         Nurse nurse = getNurseOrThrow(nurseId);
@@ -95,6 +102,16 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
 
         nurseService.setCustomPrice(request.getCustomPrice());
         return nurseMapper.toServiceResponse(nurseServiceRepository.save(nurseService));
+    }
+
+    @Override
+    @Transactional
+    public void removeService(UUID nurseId, UUID serviceTypeId) {
+        NurseService nurseService = nurseServiceRepository
+                .findByNurse_IdAndServiceType_Id(nurseId, serviceTypeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Nurse service not found"));
+        nurseService.setIsActive(false);
+        nurseServiceRepository.save(nurseService);
     }
 
     private Nurse getNurseOrThrow(UUID nurseId) {

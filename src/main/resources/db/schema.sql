@@ -23,6 +23,8 @@ profile_image_url TEXT,
 
 last_login_at TIMESTAMPTZ,
 
+is_deleted BOOLEAN DEFAULT FALSE,
+
 created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
 updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -70,6 +72,8 @@ CREATE TABLE profiles (
   previous_hospitalizations TEXT,
 
   is_primary BOOLEAN DEFAULT FALSE,
+
+  is_deleted BOOLEAN DEFAULT FALSE,
 
   created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
@@ -714,7 +718,8 @@ FROM nurses n
 
 WHERE
     n.is_available = TRUE
-  AND n.verification_status = 'APPROVED';
+  AND n.verification_status = 'APPROVED'
+  AND u.is_deleted = FALSE;
 
 -- ==========================================================
 -- ACTIVE BOOKINGS

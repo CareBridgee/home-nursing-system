@@ -11,6 +11,7 @@ public interface ServiceTypeMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     ServiceType toEntity(ServiceTypeRequest request);
 
     ServiceTypeResponse toResponse(ServiceType serviceType);

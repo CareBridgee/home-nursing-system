@@ -8,7 +8,7 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/chat")
+@RequestMapping("/api/v1/chat")
 public class ChatController {
 
     private final ChatClient chatClient;

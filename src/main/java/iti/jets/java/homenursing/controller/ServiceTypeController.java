@@ -1,12 +1,10 @@
 package iti.jets.java.homenursing.controller;
 
+import iti.jets.java.homenursing.dto.ServiceTypeRequest;
 import iti.jets.java.homenursing.dto.ServiceTypeResponse;
 import iti.jets.java.homenursing.service.ServiceTypeService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
@@ -29,5 +27,10 @@ public class ServiceTypeController {
     @GetMapping("/{id}")
     public ResponseEntity<ServiceTypeResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(serviceTypeService.getById(id));
+    }
+    @PostMapping
+    public ResponseEntity<ServiceTypeResponse> createServiceType(@RequestBody ServiceTypeRequest request) {
+        ServiceTypeResponse response = serviceTypeService.create(request);
+        return ResponseEntity.ok().body(response);
     }
 }

@@ -39,6 +39,10 @@ services:
       redis:
         condition: service_healthy
     environment:
+      # ---------- Groq ----------
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_BASE_URL: ${GROQ_BASE_URL}
+      GROQ_MODEL: ${GROQ_MODEL}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:?}
       SPRING_DATASOURCE_USERNAME: ${DB_USER:?}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?}

@@ -1,6 +1,7 @@
 package iti.jets.java.homenursing.service.impl;
 
 
+import iti.jets.java.homenursing.dto.DevOtpResponse;
 import iti.jets.java.homenursing.dto.TokenPair;
 import iti.jets.java.homenursing.dto.UserResponse;
 import iti.jets.java.homenursing.entity.User;
@@ -53,6 +54,18 @@ public class AuthServiceImpl implements AuthService {
                 "otp_attempts:" + phone, "0", Duration.ofSeconds(300));
 
         twilioSmsService.sendOtp(phone, otp);
+    }
+
+    @Override
+    public DevOtpResponse requestOtpDev(String rawPhone) {
+        String phone = normalizePhoneNumber(rawPhone);
+        String otp = generateOtp();
+        String hashedOtp = passwordEncoder.encode(otp);
+
+        tokenService.set("otp:" + phone, hashedOtp, Duration.ofSeconds(300));
+        tokenService.set("otp_attempts:" + phone, "0", Duration.ofSeconds(300));
+
+        return new DevOtpResponse(phone, otp);
     }
 
     @Override

@@ -126,4 +126,10 @@ public class ProfileServiceImpl implements ProfileService {
         }
         return profile;
     }
+
+    @Override
+    public Profile getProfile(UUID profileId) {
+        return profileRepository.findById(profileId)
+                .orElseThrow(() -> new ResourceNotFoundException("Profile not found: " + profileId));
+    }
 }

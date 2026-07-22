@@ -4,6 +4,7 @@ import iti.jets.java.homenursing.entity.Notification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -12,6 +13,8 @@ import java.util.UUID;
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
     List<Notification> findByUser_IdOrderByCreatedAtDesc(UUID userId);
+
+    List<Notification> findByUser_IdAndCreatedAtAfterOrderByCreatedAtAsc(UUID userId, LocalDateTime after);
 
     Optional<Notification> findByUser_IdAndId(UUID userId, UUID id);
 }

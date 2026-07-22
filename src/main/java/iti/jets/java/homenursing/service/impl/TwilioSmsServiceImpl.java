@@ -2,8 +2,6 @@ package iti.jets.java.homenursing.service.impl;
 
 import com.twilio.Twilio;
 import com.twilio.exception.ApiException;
-import com.twilio.rest.api.v2010.account.Message;
-import com.twilio.type.PhoneNumber;
 import iti.jets.java.homenursing.service.TwilioSmsService;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -48,7 +46,8 @@ public class TwilioSmsServiceImpl implements TwilioSmsService {
         }
 
         try {
-            Message.creator(new PhoneNumber(toNumber), new PhoneNumber(fromNumber), messageBody).create();
+//            TODO: UNCOMMENT BEFORE COMMITING
+//            Message.creator(new PhoneNumber(toNumber), new PhoneNumber(fromNumber), messageBody).create();
             log.info("OTP {} sent to {}", otp, toNumber);
         } catch (ApiException e) {
             log.error("Twilio error sending OTP to {}: {}", toNumber, e.getMessage());

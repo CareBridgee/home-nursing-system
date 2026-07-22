@@ -14,4 +14,6 @@ public interface NurseServiceRepository extends JpaRepository<NurseService, UUID
     List<NurseService> findAllByNurse_Id(UUID nurseId);
 
     Optional<NurseService> findByNurse_IdAndServiceType_Id(UUID nurseId, UUID serviceTypeId);
+
+    List<NurseService> findByServiceType_IdAndIsActiveTrue(UUID serviceTypeId);
 }

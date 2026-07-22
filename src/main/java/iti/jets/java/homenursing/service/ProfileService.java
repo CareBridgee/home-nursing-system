@@ -25,4 +25,6 @@ public interface ProfileService {
     ProfileResponse updateProfile(UUID profileId, UUID userId, ProfileRequest request);
 
     void deleteFamilyProfile(UUID profileId, UUID userId);
+
+    Profile getProfile(UUID profileId);
 }

@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,6 +24,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final NotificationMapper notificationMapper;
+    private final NotificationDispatcher notificationDispatcher;
 
     @Override
     @Transactional
@@ -32,13 +34,23 @@ public class NotificationServiceImpl implements NotificationService {
         Notification notification = notificationMapper.toEntity(request);
         notification.setUser(user);
         notification.setIsRead(false);
-        return notificationMapper.toResponse(notificationRepository.save(notification));
+        Notification saved = notificationRepository.save(notification);
+        notificationDispatcher.dispatch(saved);
+        return notificationMapper.toResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<NotificationResponse> getMyNotifications(UUID userId) {
         return notificationRepository.findByUser_IdOrderByCreatedAtDesc(userId).stream()
+                .map(notificationMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NotificationResponse> getMyNotificationsAfter(UUID userId, LocalDateTime after) {
+        return notificationRepository.findByUser_IdAndCreatedAtAfterOrderByCreatedAtAsc(userId, after).stream()
                 .map(notificationMapper::toResponse)
                 .toList();
     }

@@ -1,6 +1,11 @@
 package iti.jets.java.homenursing.controller;
 
-import iti.jets.java.homenursing.dto.*;
+import iti.jets.java.homenursing.dto.DevOtpResponse;
+import iti.jets.java.homenursing.dto.LoginRequest;
+import iti.jets.java.homenursing.dto.RefreshRequest;
+import iti.jets.java.homenursing.dto.TokenPair;
+import iti.jets.java.homenursing.dto.UserResponse;
+import iti.jets.java.homenursing.dto.VerifyOtpRequest;
 import iti.jets.java.homenursing.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +19,11 @@ public class AuthController {
 
     public AuthController(AuthService authService) {
         this.authService = authService;
+    }
+
+    @PostMapping("/dev/request-otp")
+    public ResponseEntity<DevOtpResponse> requestOtpDev(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.requestOtpDev(request.getPhoneNumber()));
     }
 
     @PostMapping("/login")

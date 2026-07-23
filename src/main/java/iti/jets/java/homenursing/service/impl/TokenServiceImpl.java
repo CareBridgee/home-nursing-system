@@ -44,17 +44,28 @@ public class TokenServiceImpl implements TokenService {
     }
 
     @Override
-    public String generateAccessToken(String userId) {
+    public String generateAccessToken(String userId, String role) {
         long now = System.currentTimeMillis();
         long expiration = now + (accessTokenTtlMinutes * 60 * 1000);
 
         return Jwts.builder()
                 .setSubject(userId)
                 .claim("type", "access")
+                .claim("role", role)
                 .setIssuedAt(new Date(now))
                 .setExpiration(new Date(expiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    @Override
+    public String getRoleFromToken(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        return claims.get("role", String.class);
     }
 
     @Override

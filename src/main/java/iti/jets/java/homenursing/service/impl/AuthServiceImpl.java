@@ -1,6 +1,7 @@
 package iti.jets.java.homenursing.service.impl;
 
 
+import iti.jets.java.homenursing.dto.DevOtpResponse;
 import iti.jets.java.homenursing.dto.TokenPair;
 import iti.jets.java.homenursing.dto.UserResponse;
 import iti.jets.java.homenursing.entity.User;
@@ -8,6 +9,7 @@ import iti.jets.java.homenursing.exception.InvalidOtpException;
 import iti.jets.java.homenursing.exception.RateLimitException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.UserMapper;
+import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
 import iti.jets.java.homenursing.service.AuthService;
 import iti.jets.java.homenursing.service.ProfileService;
@@ -27,6 +29,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
+    private final NurseRepository nurseRepository;
     private final UserMapper userMapper;
     private final TwilioSmsService twilioSmsService;
     private final TokenService tokenService;
@@ -51,6 +54,18 @@ public class AuthServiceImpl implements AuthService {
                 "otp_attempts:" + phone, "0", Duration.ofSeconds(300));
 
         twilioSmsService.sendOtp(phone, otp);
+    }
+
+    @Override
+    public DevOtpResponse requestOtpDev(String rawPhone) {
+        String phone = normalizePhoneNumber(rawPhone);
+        String otp = generateOtp();
+        String hashedOtp = passwordEncoder.encode(otp);
+
+        tokenService.set("otp:" + phone, hashedOtp, Duration.ofSeconds(300));
+        tokenService.set("otp_attempts:" + phone, "0", Duration.ofSeconds(300));
+
+        return new DevOtpResponse(phone, otp);
     }
 
     @Override
@@ -79,7 +94,8 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByIdWithProfiles(UUID.fromString(userId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        String newAccessToken = tokenService.generateAccessToken(userId);
+        String role = nurseRepository.existsByUser_Id(user.getId()) ? "NURSE" : "USER";
+        String newAccessToken = tokenService.generateAccessToken(userId, role);
         String newRefreshToken = tokenService.generateRefreshToken(userId);
         UserResponse userResponse = userMapper.toResponse(user);
 
@@ -165,7 +181,8 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         String userId = user.getId().toString();
-        String accessToken = tokenService.generateAccessToken(userId);
+        String role = nurseRepository.existsByUser_Id(user.getId()) ? "NURSE" : "USER";
+        String accessToken = tokenService.generateAccessToken(userId, role);
         String refreshToken = tokenService.generateRefreshToken(userId);
         UserResponse userResponse = userMapper.toResponse(user);
 

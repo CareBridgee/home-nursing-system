@@ -43,9 +43,14 @@ public class NurseOfferController {
         return ResponseEntity.ok(nurseOfferService.get(id, SecurityUtils.currentUserId()));
     }
 
+    @PatchMapping("/{id}/accept")
+    public ResponseEntity<NurseOfferResponse> accept(@PathVariable UUID id) {
+        return ResponseEntity.ok(nurseOfferService.accept(id, SecurityUtils.currentUserId()));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<NurseOfferResponse> update(@PathVariable UUID id,
-                                                     @RequestBody NurseOfferUpdateRequest request) {
+                                                     @Valid @RequestBody NurseOfferUpdateRequest request) {
         return ResponseEntity.ok(nurseOfferService.update(id, SecurityUtils.currentUserId(), request));
     }
 

@@ -15,6 +15,8 @@ public interface NurseOfferService {
 
     NurseOfferResponse get(UUID id, UUID userId);
 
+    NurseOfferResponse accept(UUID id, UUID userId);
+
     NurseOfferResponse update(UUID id, UUID userId, NurseOfferUpdateRequest request);
 
     void delete(UUID id, UUID userId);

@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
 
 import java.util.List;
 import java.util.UUID;
@@ -34,8 +36,8 @@ public class NurseController {
         this.nurseService = nurseService;
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<NurseResponse> register(@Valid @RequestBody NurseRegistrationRequest request) {
+    @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<NurseResponse> register(@Valid @ModelAttribute NurseRegistrationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(nurseService.register(SecurityUtils.currentUserId(), request));
     }
@@ -45,9 +47,9 @@ public class NurseController {
         return ResponseEntity.ok(nurseService.listNurses());
     }
 
-    @PutMapping("/{nurseId}")
+    @PutMapping(value = "/{nurseId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<NurseResponse> updateProfile(@PathVariable UUID nurseId,
-                                                       @RequestBody NurseUpdateRequest request) {
+                                                       @Valid @ModelAttribute NurseUpdateRequest request) {
         return ResponseEntity.ok(nurseService.updateProfile(nurseId, SecurityUtils.currentUserId(), request));
     }
 

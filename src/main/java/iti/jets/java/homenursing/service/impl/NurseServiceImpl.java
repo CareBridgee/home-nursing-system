@@ -18,9 +18,11 @@ import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.NurseServiceRepository;
 import iti.jets.java.homenursing.repository.ServiceTypeRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
+import iti.jets.java.homenursing.service.CloudinaryService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Comparator;
 import java.util.List;
@@ -36,6 +38,7 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
     private final ServiceTypeRepository serviceTypeRepository;
     private final NurseServiceRepository nurseServiceRepository;
     private final NurseMapper nurseMapper;
+    private final CloudinaryService cloudinaryService;
 
     @Override
     @Transactional
@@ -52,6 +55,8 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
         }
 
         Nurse nurse = nurseMapper.toEntity(request, user);
+        uploadDocuments(nurse, request.getNationalIdFront(), request.getNationalIdBack(),
+                request.getLicenseImage(), request.getProfessionalCertificate());
         return toProfileResponse(nurseRepository.save(nurse));
     }
 
@@ -67,6 +72,8 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
         }
 
         nurseMapper.updateEntity(request, nurse);
+        uploadDocuments(nurse, request.getNationalIdFront(), request.getNationalIdBack(),
+                request.getLicenseImage(), request.getProfessionalCertificate());
         return toProfileResponse(nurseRepository.save(nurse));
     }
 
@@ -140,6 +147,26 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
     private ServiceType getServiceTypeOrThrow(UUID serviceTypeId) {
         return serviceTypeRepository.findById(serviceTypeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Service type not found"));
+    }
+
+    private void uploadDocuments(Nurse nurse, MultipartFile nationalIdFront, MultipartFile nationalIdBack,
+                                 MultipartFile licenseImage, MultipartFile professionalCertificate) {
+        if (hasContent(nationalIdFront)) {
+            nurse.setNationalIdFrontUrl(cloudinaryService.upload(nationalIdFront));
+        }
+        if (hasContent(nationalIdBack)) {
+            nurse.setNationalIdBackUrl(cloudinaryService.upload(nationalIdBack));
+        }
+        if (hasContent(licenseImage)) {
+            nurse.setLicenseImageUrl(cloudinaryService.upload(licenseImage));
+        }
+        if (hasContent(professionalCertificate)) {
+            nurse.setProfessionalCertificateUrl(cloudinaryService.upload(professionalCertificate));
+        }
+    }
+
+    private boolean hasContent(MultipartFile file) {
+        return file != null && !file.isEmpty();
     }
 
     private NurseResponse toProfileResponse(Nurse nurse) {

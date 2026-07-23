@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 
@@ -14,13 +15,13 @@ import java.math.BigDecimal;
 public class NurseUpdateRequest {
 
     private String nationalId;
-    private String nationalIdFrontUrl;
-    private String nationalIdBackUrl;
-    private String licenseImageUrl;
-    private String professionalCertificateUrl;
+    private String licenseNumber;
+    private MultipartFile nationalIdFront;
+    private MultipartFile nationalIdBack;
+    private MultipartFile licenseImage;
+    private MultipartFile professionalCertificate;
     private String specialization;
     private Integer yearsOfExperience;
     private BigDecimal hourlyRate;
     private String bio;
-    private Boolean isAvailable;
 }

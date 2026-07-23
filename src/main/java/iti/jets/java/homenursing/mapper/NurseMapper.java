@@ -24,9 +24,17 @@ public interface NurseMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "nationalIdFrontUrl", ignore = true)
+    @Mapping(target = "nationalIdBackUrl", ignore = true)
+    @Mapping(target = "licenseImageUrl", ignore = true)
+    @Mapping(target = "professionalCertificateUrl", ignore = true)
     Nurse toEntity(NurseRegistrationRequest request, User user);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "nationalIdFrontUrl", ignore = true)
+    @Mapping(target = "nationalIdBackUrl", ignore = true)
+    @Mapping(target = "licenseImageUrl", ignore = true)
+    @Mapping(target = "professionalCertificateUrl", ignore = true)
     void updateEntity(NurseUpdateRequest request, @MappingTarget Nurse nurse);
 
     @Mapping(target = "userId", source = "nurse.user.id")

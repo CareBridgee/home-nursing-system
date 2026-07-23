@@ -6,10 +6,12 @@ import iti.jets.java.homenursing.dto.servicerequest.NearbyNurseServiceRequestRes
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestRequest;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestResponse;
 import iti.jets.java.homenursing.entity.*;
+import iti.jets.java.homenursing.entity.enums.NurseOfferStatus;
 import iti.jets.java.homenursing.entity.enums.ServiceRequestStatus;
 import iti.jets.java.homenursing.entity.enums.VerificationStatus;
 import iti.jets.java.homenursing.exception.BadRequestException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
+import iti.jets.java.homenursing.repository.NurseOfferRepository;
 import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.NurseServiceRepository;
 import iti.jets.java.homenursing.repository.ServiceRequestRepository;
@@ -38,6 +40,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     private final ServiceRequestRepository serviceRequestRepository;
     private final ServiceTypeRepository serviceTypeRepository;
+    private final NurseOfferRepository nurseOfferRepository;
     private final NurseRepository nurseRepository;
     private final NurseServiceRepository nurseServiceRepository;
     private final ProfileService profileService;
@@ -142,6 +145,33 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 .filter(request -> request.distanceKm() <= nearbyNursesRadiusKm)
                 .sorted(Comparator.comparingDouble(NearbyNurseServiceRequestResponse::distanceKm))
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void cancelRequest(UUID serviceRequestId, UUID userId) {
+        ServiceRequest serviceRequest = serviceRequestRepository.findByIdAndIsDeletedFalse(serviceRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Service request not found: " + serviceRequestId));
+
+        if (!serviceRequest.getProfile().getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Service request not found: " + serviceRequestId);
+        }
+
+        Set<ServiceRequestStatus> cancellableStatuses = Set.of(
+                ServiceRequestStatus.PENDING,
+                ServiceRequestStatus.SEARCHING,
+                ServiceRequestStatus.NEGOTIATING,
+                ServiceRequestStatus.BOOKING,
+                ServiceRequestStatus.ACCEPTED);
+        if (!cancellableStatuses.contains(serviceRequest.getStatus())) {
+            throw new BadRequestException("This service request cannot be cancelled");
+        }
+
+        serviceRequest.setStatus(ServiceRequestStatus.CANCELLED);
+        nurseOfferRepository.findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(serviceRequestId)
+                .stream()
+                .filter(offer -> offer.getStatus() == NurseOfferStatus.PENDING)
+                .forEach(offer -> offer.setStatus(NurseOfferStatus.REJECTED));
     }
 
     private NearbyNurseServiceRequestResponse toNearbyNurseResponse(ServiceRequest request, BigDecimal nurseLatitude, BigDecimal nurseLongitude) {

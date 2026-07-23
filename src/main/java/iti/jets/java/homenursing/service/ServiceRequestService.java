@@ -12,4 +12,6 @@ public interface ServiceRequestService {
     NearbyServiceRequestResponse createRequest( NearbyServiceRequestRequest request);
 
     List<NearbyNurseServiceRequestResponse> listNearbyForNurse(UUID userId);
+
+    void cancelRequest(UUID serviceRequestId, UUID userId);
 }

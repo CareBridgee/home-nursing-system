@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NurseResponse, VerificationStatus } from '../../models/nurse.model';
 import { NurseAdminService } from '../../services/nurse-admin.service';
 import { StatusBadgeComponent, BadgeTone } from '../../shared/status-badge/status-badge.component';
@@ -19,7 +19,17 @@ interface StatusTab {
   styleUrl: './nurse-approvals-page.component.scss',
 })
 export class NurseApprovalsPageComponent implements OnInit {
+  private nurseAdminService = inject(NurseAdminService);
+  private fb = inject(FormBuilder);
+
   readonly VerificationStatus = VerificationStatus;
+  readonly availableSteps = [
+    'National ID Front',
+    'National ID Back',
+    'License',
+    'Professional Certificate',
+    'Other'
+  ];
 
   tabs: StatusTab[] = [
     { label: 'Pending review', value: VerificationStatus.UNDER_REVIEW },
@@ -34,14 +44,18 @@ export class NurseApprovalsPageComponent implements OnInit {
   error = signal<string | null>(null);
   actioningId = signal<string | null>(null);
 
-  rejectDialogOpen = signal(false);
-  rejectTargetId = signal<string | null>(null);
+  detailOpen = signal(false);
+  selectedNurse = signal<NurseResponse | null>(null);
+  rejectFormOpen = signal(false);
 
-  private nurseAdminService = inject(NurseAdminService);
-  private fb = inject(FormBuilder);
   rejectForm = this.fb.group({
-    reason: ['', [Validators.required, Validators.minLength(5)]],
+    overallReason: ['', [Validators.required, Validators.minLength(10)]],
+    failedSteps: this.fb.array<FormGroup>([]),
   });
+
+  get failedStepsArray(): FormArray {
+    return this.rejectForm.get('failedSteps') as FormArray;
+  }
 
   ngOnInit(): void {
     this.refresh();
@@ -55,7 +69,9 @@ export class NurseApprovalsPageComponent implements OnInit {
   refresh(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.nurseAdminService.listByStatus(this.activeTab().value).subscribe({
+    const status = this.activeTab().value;
+    const request$ = status ? this.nurseAdminService.listByStatus(status) : this.nurseAdminService.listAll();
+    request$.subscribe({
       next: (data) => {
         this.nurses.set(data);
         this.loading.set(false);
@@ -67,49 +83,87 @@ export class NurseApprovalsPageComponent implements OnInit {
     });
   }
 
+  openDetails(nurse: NurseResponse): void {
+    this.selectedNurse.set(nurse);
+    this.detailOpen.set(true);
+  }
+
+  closeDetails(): void {
+    this.detailOpen.set(false);
+    this.selectedNurse.set(null);
+    this.rejectFormOpen.set(false);
+    this.failedStepsArray.clear();
+    this.rejectForm.reset();
+  }
+
+  openRejectForm(): void {
+    this.rejectFormOpen.set(true);
+    this.failedStepsArray.clear();
+    this.addFailedStep(); // Add one empty step by default so @NotEmpty passes
+  }
+
+  closeRejectForm(): void {
+    this.rejectFormOpen.set(false);
+    this.failedStepsArray.clear();
+    this.rejectForm.reset();
+  }
+
+  addFailedStep(): void {
+    const stepGroup = this.fb.group({
+      step: ['', Validators.required],
+      reason: ['', Validators.required]
+    });
+    this.failedStepsArray.push(stepGroup);
+  }
+
+  removeFailedStep(index: number): void {
+    this.failedStepsArray.removeAt(index);
+  }
+
   approve(nurse: NurseResponse): void {
     this.actioningId.set(nurse.id);
     this.nurseAdminService.approve(nurse.id).subscribe({
       next: () => {
         this.actioningId.set(null);
+        this.closeDetails();
         this.refresh();
       },
-      error: () => {
+      error: (err) => {
+        console.error('Approve error:', err);
         this.actioningId.set(null);
-        this.error.set(`Couldn't approve ${nurse.fullName}. Try again.`);
+        this.error.set(`Couldn't approve ${nurse.firstName}. Check console for details.`);
       },
     });
   }
 
-  openReject(nurse: NurseResponse): void {
-    this.rejectTargetId.set(nurse.id);
-    this.rejectForm.reset();
-    this.rejectDialogOpen.set(true);
-  }
-
-  closeReject(): void {
-    this.rejectDialogOpen.set(false);
-    this.rejectTargetId.set(null);
-  }
-
   submitReject(): void {
-    if (this.rejectForm.invalid) {
+    // Ensure form is valid AND at least one failed step is added (satisfies @NotEmpty)
+    if (this.rejectForm.invalid || this.failedStepsArray.length === 0) {
       this.rejectForm.markAllAsTouched();
       return;
     }
-    const id = this.rejectTargetId();
-    if (!id) return;
 
-    this.actioningId.set(id);
-    this.nurseAdminService.reject(id, { reason: this.rejectForm.value.reason! }).subscribe({
+    const nurse = this.selectedNurse();
+    if (!nurse) return;
+
+    this.actioningId.set(nurse.id);
+
+    // ✅ This payload now perfectly matches your Java NurseRejectionRequest DTO
+    const payload = {
+      overallReason: this.rejectForm.value.overallReason!,
+      failedSteps: this.failedStepsArray.getRawValue(),
+    };
+
+    this.nurseAdminService.reject(nurse.id, payload).subscribe({
       next: () => {
         this.actioningId.set(null);
-        this.closeReject();
+        this.closeDetails();
         this.refresh();
       },
-      error: () => {
+      error: (err) => {
+        console.error('Reject error:', err);
         this.actioningId.set(null);
-        this.error.set("Couldn't reject this application. Try again.");
+        this.error.set("Couldn't reject this application. Check console for details.");
       },
     });
   }

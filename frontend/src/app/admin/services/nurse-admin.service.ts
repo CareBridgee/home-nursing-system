@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { forkJoin, map, Observable } from 'rxjs';
 import { NurseRejectionRequest, NurseResponse, VerificationStatus } from '../models/nurse.model';
 
 const BASE_PATH = 'http://localhost:8080/api/v1/admin/nurses';
@@ -9,12 +9,17 @@ const BASE_PATH = 'http://localhost:8080/api/v1/admin/nurses';
 export class NurseAdminService {
   constructor(private http: HttpClient) {}
 
-  listByStatus(status: VerificationStatus | null): Observable<NurseResponse[]> {
-    let params = new HttpParams();
-    if (status) {
-      params = params.set('status', status);
-    }
+  listByStatus(status: VerificationStatus): Observable<NurseResponse[]> {
+    const params = new HttpParams().set('status', status);
     return this.http.get<NurseResponse[]>(BASE_PATH, { params });
+  }
+
+  listAll(): Observable<NurseResponse[]> {
+    return forkJoin([
+      this.listByStatus(VerificationStatus.UNDER_REVIEW),
+      this.listByStatus(VerificationStatus.APPROVED),
+      this.listByStatus(VerificationStatus.REJECTED),
+    ]).pipe(map(([pending, approved, rejected]) => [...pending, ...approved, ...rejected]));
   }
 
   approve(nurseId: string): Observable<NurseResponse> {

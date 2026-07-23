@@ -4,24 +4,36 @@ export enum VerificationStatus {
   REJECTED = 'REJECTED',
 }
 
-/**
- * ASSUMPTION: NurseResponse's exact fields weren't shown. Adjust to match
- * your real DTO — every field below is optional-safe in the template via
- * `?.` so removing/renaming one won't break the page, only the column
- * that reads it.
- */
 export interface NurseResponse {
   id: string;
-  fullName: string;
-  email: string;
-  phone?: string;
-  licenseNumber?: string;
-  yearsOfExperience?: number;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  nationalId: string;
+  nationalIdFrontUrl: string;
+  nationalIdBackUrl: string;
+  licenseImageUrl: string;
+  professionalCertificateUrl: string;
+  specialization: string;
+  yearsOfExperience: number;
+  hourlyRate: number;
+  bio: string;
+  ratingAvg: number;
+  totalReviews: number;
+  isAvailable: boolean;
   verificationStatus: VerificationStatus;
-  appliedAt?: string;
-  rejectionReason?: string;
+  rejectionReason: string;
 }
 
-export interface NurseRejectionRequest {
+// ✅ Matches your Java record: public record FailedStep(String step, String reason) {}
+export interface FailedStep {
+  step: string;
   reason: string;
+}
+
+// ✅ Matches your Java DTO: requires overallReason AND a non-empty failedSteps list
+export interface NurseRejectionRequest {
+  overallReason: string;
+  failedSteps: FailedStep[];
 }

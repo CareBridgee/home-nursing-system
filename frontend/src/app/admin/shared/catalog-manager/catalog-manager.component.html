@@ -1,0 +1,111 @@
+<section class="catalog">
+  <header class="catalog__header">
+    <div>
+      <h1>{{ title }}</h1>
+      @if (subtitle) { <p class="catalog__subtitle">{{ subtitle }}</p> }
+    </div>
+    <button type="button" class="btn btn--primary" (click)="openCreate()">
+      + Add {{ itemNoun }}
+    </button>
+  </header>
+
+  @if (error()) {
+    <div class="banner banner--danger">
+      {{ error() }}
+      <button type="button" (click)="refresh()">Retry</button>
+    </div>
+  }
+
+  <div class="catalog__table-wrap">
+    @if (loading()) {
+      <div class="state state--loading">Loading {{ itemNoun }}s…</div>
+    } @else if (items().length === 0) {
+      <div class="state state--empty">
+        <p>No {{ itemNoun }}s yet.</p>
+        <button type="button" class="btn btn--ghost" (click)="openCreate()">Add the first one</button>
+      </div>
+    } @else {
+      <table class="catalog__table">
+        <thead>
+          <tr>
+            @for (field of fields; track field.key) {
+              <th>{{ field.label }}</th>
+            }
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of items(); track item.id) {
+            <tr>
+              @for (field of fields; track field.key) {
+                <td [class.cell-name]="field.key === fields[0].key">
+                  {{ displayValue(item, field) }}
+                </td>
+              }
+              <td class="col-actions">
+                <button type="button" class="link-btn" (click)="openEdit(item)">Edit</button>
+                <button type="button" class="link-btn link-btn--danger" (click)="confirmDelete(item)">Delete</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+
+  @if (formOpen()) {
+    <div class="scrim" (click)="closeForm()">
+      <aside class="drawer" (click)="$event.stopPropagation()">
+        <header class="drawer__header">
+          <h2>{{ editingId() ? 'Edit' : 'Add' }} {{ itemNoun }}</h2>
+          <button type="button" class="icon-btn" (click)="closeForm()" aria-label="Close">✕</button>
+        </header>
+
+        <form [formGroup]="form" (ngSubmit)="save()" class="drawer__form">
+          @for (field of fields; track field.key) {
+            <label class="field" [class.field--checkbox]="field.type === 'checkbox'">
+              <span class="field__label">{{ field.label }}</span>
+
+              @if (field.type === 'text') {
+                <input type="text" [formControlName]="field.key" [placeholder]="field.placeholder || ''" />
+              } @else if (field.type === 'number') {
+                <input type="number" [step]="field.step || '1'" [formControlName]="field.key" [placeholder]="field.placeholder || ''" />
+              } @else if (field.type === 'textarea') {
+                <textarea rows="3" [formControlName]="field.key" [placeholder]="field.placeholder || ''"></textarea>
+              } @else if (field.type === 'select') {
+                <select [formControlName]="field.key">
+                  <option value="" disabled>Select {{ field.label | lowercase }}</option>
+                  @for (option of field.options; track option.value) {
+                    <option [value]="option.value">{{ option.label }}</option>
+                  }
+                </select>
+              } @else {
+                <input type="checkbox" [formControlName]="field.key" />
+              }
+
+              @if (field.required && form.get(field.key)?.invalid && form.get(field.key)?.touched) {
+                <span class="field__error">{{ field.label }} is required.</span>
+              }
+            </label>
+          }
+
+          <div class="drawer__actions">
+            <button type="button" class="btn btn--ghost" (click)="closeForm()">Cancel</button>
+            <button type="submit" class="btn btn--primary" [disabled]="saving()">
+              {{ saving() ? 'Saving…' : 'Save' }}
+            </button>
+          </div>
+        </form>
+      </aside>
+    </div>
+  }
+
+  <app-confirm-dialog
+    [open]="!!pendingDeleteId()"
+    [title]="'Delete this ' + itemNoun + '?'"
+    message="This removes it from the catalog. Existing records that reference it are unaffected."
+    confirmLabel="Delete"
+    (confirmed)="performDelete()"
+    (cancelled)="cancelDelete()"
+  />
+</section>

@@ -11,8 +11,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 @Service
 public class WebSocketPresenceService {
@@ -56,6 +56,14 @@ public class WebSocketPresenceService {
 
     public void refreshAvailabilityTimestamp(String userId) {
         redisTemplate.opsForHash().put(AVAILABLE_TS_KEY, userId, String.valueOf(System.currentTimeMillis()));
+    }
+
+    public Optional<Point> getAvailableLocation(String userId) {
+        List<Point> positions = redisTemplate.opsForGeo().position(AVAILABLE_GEO_KEY, userId);
+        if (positions == null || positions.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(positions.get(0));
     }
 
     public List<String> findAvailableNearby(double lat, double lng, double radiusKm) {

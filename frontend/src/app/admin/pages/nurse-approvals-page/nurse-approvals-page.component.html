@@ -1,0 +1,115 @@
+<section class="nurses">
+  <header class="nurses__header">
+    <div>
+      <h1>Nurse Applications</h1>
+      <p class="nurses__subtitle">Review credentials and approve or reject nurses requesting to join the platform.</p>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    @for (tab of tabs; track tab.label) {
+      <button
+        type="button"
+        class="tabs__item"
+        [class.tabs__item--active]="activeTab().label === tab.label"
+        (click)="selectTab(tab)"
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </nav>
+
+  @if (error()) {
+    <div class="banner banner--danger">
+      {{ error() }}
+      <button type="button" (click)="refresh()">Retry</button>
+    </div>
+  }
+
+  <div class="nurses__table-wrap">
+    @if (loading()) {
+      <div class="state">Loading applications…</div>
+    } @else if (nurses().length === 0) {
+      <div class="state">No applications in this view.</div>
+    } @else {
+      <table class="nurses__table">
+        <thead>
+          <tr>
+            <th>Nurse</th>
+            <th>License #</th>
+            <th>Experience</th>
+            <th>Status</th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (nurse of nurses(); track nurse.id) {
+            <tr>
+              <td>
+                <div class="cell-name">{{ nurse.fullName }}</div>
+                <div class="cell-sub">{{ nurse.email }}</div>
+              </td>
+              <td>{{ nurse.licenseNumber || '—' }}</td>
+              <td>{{ nurse.yearsOfExperience != null ? nurse.yearsOfExperience + ' yrs' : '—' }}</td>
+              <td>
+                <app-status-badge [tone]="statusTone(nurse.verificationStatus)">
+                  {{ nurse.verificationStatus }}
+                </app-status-badge>
+                @if (nurse.verificationStatus === VerificationStatus.REJECTED && nurse.rejectionReason) {
+                  <div class="cell-sub cell-sub--reason">{{ nurse.rejectionReason }}</div>
+                }
+              </td>
+              <td class="col-actions">
+                @if (nurse.verificationStatus === VerificationStatus.UNDER_REVIEW) {
+                  <button
+                    type="button"
+                    class="link-btn"
+                    [disabled]="actioningId() === nurse.id"
+                    (click)="approve(nurse)"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    class="link-btn link-btn--danger"
+                    [disabled]="actioningId() === nurse.id"
+                    (click)="openReject(nurse)"
+                  >
+                    Reject
+                  </button>
+                } @else {
+                  <span class="cell-sub">No actions</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+
+  @if (rejectDialogOpen()) {
+    <div class="scrim" (click)="closeReject()">
+      <div class="panel" (click)="$event.stopPropagation()">
+        <h3>Reject application</h3>
+        <p>Let the nurse know why. This is shown on their application status.</p>
+        <form [formGroup]="rejectForm" (ngSubmit)="submitReject()">
+          <textarea
+            rows="4"
+            formControlName="reason"
+            placeholder="e.g. License number could not be verified with the state registry."
+          ></textarea>
+          @if (rejectForm.get('reason')?.invalid && rejectForm.get('reason')?.touched) {
+            <span class="field__error">Give a reason (at least 5 characters).</span>
+          }
+          <div class="panel__actions">
+            <button type="button" class="btn btn--ghost" (click)="closeReject()">Cancel</button>
+            <button type="submit" class="btn btn--danger" [disabled]="actioningId() !== null">
+              {{ actioningId() ? 'Rejecting…' : 'Reject application' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</section>

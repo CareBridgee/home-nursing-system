@@ -1,0 +1,33 @@
+<div class="shell">
+  <aside class="shell__sidebar">
+    <div class="shell__brand">
+      <span class="shell__brand-mark">HN</span>
+      <div>
+        <div class="shell__brand-name">Home Nursing</div>
+        <div class="shell__brand-sub">Admin</div>
+      </div>
+    </div>
+
+    <nav class="shell__nav">
+      @for (link of navLinks; track link.path) {
+        <a
+          [routerLink]="link.path"
+          routerLinkActive="shell__nav-link--active"
+          class="shell__nav-link"
+        >
+          <span class="shell__nav-icon" aria-hidden="true">{{ link.icon }}</span>
+          {{ link.label }}
+        </a>
+      }
+    </nav>
+  </aside>
+
+  <div class="shell__body">
+    <header class="shell__topbar">
+      <span class="shell__topbar-title">Admin dashboard</span>
+    </header>
+    <main class="shell__content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

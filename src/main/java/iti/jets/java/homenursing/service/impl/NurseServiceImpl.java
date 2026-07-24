@@ -163,4 +163,15 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
 
         return nurseMapper.toResponse(nurse, services);
     }
+
+    @Override
+    public List<NurseResponse> findVerifiedNursesByServiceTypeName(String serviceTypeName) {
+        return nurseServiceRepository.findByServiceType_NameContainingIgnoreCaseAndIsActiveTrue(serviceTypeName)
+                .stream()
+                .map(NurseService::getNurse)
+                .filter(nurse -> nurse.getVerificationStatus() == VerificationStatus.APPROVED)
+                .distinct()
+                .map(nurseMapper::toSimpleResponse)
+                .toList();
+    }
 }

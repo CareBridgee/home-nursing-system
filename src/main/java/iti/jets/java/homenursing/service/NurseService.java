@@ -22,4 +22,6 @@ public interface NurseService {
     NurseServiceResponse addService(UUID nurseId, UUID userId, NurseServiceRequest request);
 
     void removeService(UUID nurseId, UUID userId, UUID serviceTypeId);
+
+    List<NurseResponse> findVerifiedNursesByServiceTypeName(String serviceTypeName);
 }

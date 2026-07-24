@@ -6,3 +6,4 @@ target/
 !**/src/test/**/build/
 
 .env
+/frontend/.vscode/

@@ -1,5 +1,6 @@
 package iti.jets.java.homenursing.service.impl;
 
+import iti.jets.java.homenursing.dto.nurseoffer.NearbyNurseOfferResponse;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferRequest;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferResponse;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferUpdateRequest;
@@ -17,11 +18,17 @@ import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.NurseServiceRepository;
 import iti.jets.java.homenursing.repository.ServiceRequestRepository;
 import iti.jets.java.homenursing.service.NurseOfferService;
+import iti.jets.java.homenursing.util.HaversineUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.geo.Point;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -33,6 +40,10 @@ public class NurseOfferServiceImpl implements NurseOfferService {
     private final NurseRepository nurseRepository;
     private final NurseServiceRepository nurseServiceRepository;
     private final NurseOfferMapper nurseOfferMapper;
+    private final WebSocketPresenceService webSocketPresenceService;
+
+    @Value("${nearby.nurses.radius-km:10}")
+    private double nearbyNursesRadiusKm;
 
     @Override
     @Transactional
@@ -75,6 +86,23 @@ public class NurseOfferServiceImpl implements NurseOfferService {
         getAuthorizedServiceRequest(serviceRequestId, userId);
         return nurseOfferRepository.findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(serviceRequestId).stream()
                 .map(nurseOfferMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NearbyNurseOfferResponse> listNearbyByServiceRequest(UUID serviceRequestId, UUID userId) {
+        ServiceRequest serviceRequest = getAuthorizedServiceRequest(serviceRequestId, userId);
+        if (serviceRequest.getLatitude() == null || serviceRequest.getLongitude() == null) {
+            throw new BadRequestException("Service request location is unavailable");
+        }
+
+        return nurseOfferRepository.findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(serviceRequestId)
+                .stream()
+                .map(offer -> toNearbyResponse(offer, serviceRequest))
+                .flatMap(Optional::stream)
+                .filter(offer -> offer.distanceKm() <= nearbyNursesRadiusKm)
+                .sorted(Comparator.comparingDouble(NearbyNurseOfferResponse::distanceKm))
                 .toList();
     }
 
@@ -177,5 +205,38 @@ public class NurseOfferServiceImpl implements NurseOfferService {
             throw new ResourceNotFoundException("Nurse offer not found: " + id);
         }
         return offer;
+    }
+
+    private Optional<NearbyNurseOfferResponse> toNearbyResponse(
+            NurseOffer offer, ServiceRequest serviceRequest) {
+        return webSocketPresenceService
+                .getAvailableLocation(offer.getNurse().getUser().getId().toString())
+                .map(location -> buildNearbyResponse(offer, serviceRequest, location));
+    }
+
+    private NearbyNurseOfferResponse buildNearbyResponse(
+            NurseOffer offer, ServiceRequest serviceRequest, Point nurseLocation) {
+        BigDecimal nurseLatitude = BigDecimal.valueOf(nurseLocation.getY());
+        BigDecimal nurseLongitude = BigDecimal.valueOf(nurseLocation.getX());
+        double distanceKm = HaversineUtil.distanceKm(
+                serviceRequest.getLatitude(),
+                serviceRequest.getLongitude(),
+                nurseLatitude,
+                nurseLongitude);
+
+        return new NearbyNurseOfferResponse(
+                offer.getId(),
+                serviceRequest.getId(),
+                offer.getNurse().getId(),
+                offer.getProposedPrice(),
+                offer.getProposedDate(),
+                offer.getProposedTime(),
+                offer.getMessage(),
+                offer.getStatus(),
+                nurseLatitude,
+                nurseLongitude,
+                distanceKm,
+                offer.getCreatedAt(),
+                offer.getUpdatedAt());
     }
 }

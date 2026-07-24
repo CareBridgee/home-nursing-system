@@ -1,5 +1,6 @@
 package iti.jets.java.homenursing.controller;
 
+import iti.jets.java.homenursing.dto.nurseoffer.NearbyNurseOfferResponse;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferRequest;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferResponse;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferUpdateRequest;
@@ -36,6 +37,13 @@ public class NurseOfferController {
     public ResponseEntity<List<NurseOfferResponse>> listByServiceRequest(
             @RequestParam UUID serviceRequestId) {
         return ResponseEntity.ok(nurseOfferService.listByServiceRequest(serviceRequestId, SecurityUtils.currentUserId()));
+    }
+
+    @GetMapping("/nearby")
+    public ResponseEntity<List<NearbyNurseOfferResponse>> listNearbyByServiceRequest(
+            @RequestParam UUID serviceRequestId) {
+        return ResponseEntity.ok(
+                nurseOfferService.listNearbyByServiceRequest(serviceRequestId, SecurityUtils.currentUserId()));
     }
 
     @GetMapping("/{id}")

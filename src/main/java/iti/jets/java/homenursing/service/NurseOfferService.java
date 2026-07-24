@@ -1,5 +1,6 @@
 package iti.jets.java.homenursing.service;
 
+import iti.jets.java.homenursing.dto.nurseoffer.NearbyNurseOfferResponse;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferRequest;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferResponse;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferUpdateRequest;
@@ -12,6 +13,8 @@ public interface NurseOfferService {
     NurseOfferResponse create(UUID userId, NurseOfferRequest request);
 
     List<NurseOfferResponse> listByServiceRequest(UUID serviceRequestId, UUID userId);
+
+    List<NearbyNurseOfferResponse> listNearbyByServiceRequest(UUID serviceRequestId, UUID userId);
 
     NurseOfferResponse get(UUID id, UUID userId);
 

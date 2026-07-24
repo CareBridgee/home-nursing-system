@@ -18,7 +18,6 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -44,9 +43,6 @@ public class NurseService {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "service_type_id", nullable = false)
     private ServiceType serviceType;
-
-    @Column(name = "custom_price", precision = 10, scale = 2)
-    private BigDecimal customPrice;
 
     @Builder.Default
     @Column(name = "is_active")

@@ -1,6 +1,7 @@
 package iti.jets.java.homenursing.repository;
 
 import iti.jets.java.homenursing.entity.ServiceRequest;
+import iti.jets.java.homenursing.entity.enums.ServiceRequestStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,6 +19,18 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
     List<ServiceRequest> findByProfile_IdAndIsDeletedFalseOrderByCreatedAtDesc(UUID profileId);
 
     Optional<ServiceRequest> findByIdAndIsDeletedFalse(UUID id);
+
+    @Query("""
+            SELECT s FROM ServiceRequest s
+            WHERE s.isDeleted = false
+              AND s.nurse IS NULL
+              AND s.serviceType.id IN :serviceTypeIds
+              AND s.status IN :statuses
+            ORDER BY s.createdAt DESC
+            """)
+    List<ServiceRequest> findOpenRequestsForServiceTypes(
+            @Param("serviceTypeIds") List<UUID> serviceTypeIds,
+            @Param("statuses") List<ServiceRequestStatus> statuses);
 
     @Query("""
             SELECT COUNT(s) > 0 FROM ServiceRequest s

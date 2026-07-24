@@ -46,6 +46,9 @@ public class Nurse {
     @Column(name = "national_id", unique = true, length = 100)
     private String nationalId;
 
+    @Column(name = "license_number", unique = true, length = 100)
+    private String licenseNumber;
+
     @Column(name = "national_id_front_url", columnDefinition = "TEXT")
     private String nationalIdFrontUrl;
 

@@ -4,6 +4,7 @@ import iti.jets.java.homenursing.dto.ServiceTypeRequest;
 import iti.jets.java.homenursing.dto.ServiceTypeResponse;
 import iti.jets.java.homenursing.service.ServiceTypeService;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -21,8 +22,8 @@ public class ServiceTypeAdminController {
         this.serviceTypeService = serviceTypeService;
     }
 
-    @PostMapping
-    public ResponseEntity<ServiceTypeResponse> create(@Valid @RequestBody ServiceTypeRequest request,
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ServiceTypeResponse> create(@Valid @ModelAttribute ServiceTypeRequest request,
                                                       UriComponentsBuilder uriBuilder) {
         ServiceTypeResponse response = serviceTypeService.create(request);
         URI location = uriBuilder.path("/api/v1/admin/catalog/service-types/{id}")
@@ -30,9 +31,9 @@ public class ServiceTypeAdminController {
         return ResponseEntity.created(location).body(response);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ServiceTypeResponse> update(@PathVariable UUID id,
-                                                      @Valid @RequestBody ServiceTypeRequest request) {
+                                                      @Valid @ModelAttribute ServiceTypeRequest request) {
         return ResponseEntity.ok(serviceTypeService.update(id, request));
     }
 

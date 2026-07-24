@@ -5,7 +5,6 @@ import iti.jets.java.homenursing.dto.nurse.NurseResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceRequest;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseUpdateRequest;
-import iti.jets.java.homenursing.dto.nurse.UpdateServicePriceRequest;
 import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.NurseService;
 import iti.jets.java.homenursing.entity.ServiceType;
@@ -18,9 +17,11 @@ import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.NurseServiceRepository;
 import iti.jets.java.homenursing.repository.ServiceTypeRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
+import iti.jets.java.homenursing.service.CloudinaryService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Comparator;
 import java.util.List;
@@ -36,6 +37,7 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
     private final ServiceTypeRepository serviceTypeRepository;
     private final NurseServiceRepository nurseServiceRepository;
     private final NurseMapper nurseMapper;
+    private final CloudinaryService cloudinaryService;
 
     @Override
     @Transactional
@@ -52,6 +54,8 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
         }
 
         Nurse nurse = nurseMapper.toEntity(request, user);
+        uploadDocuments(nurse, request.getNationalIdFront(), request.getNationalIdBack(),
+                request.getLicenseImage(), request.getProfessionalCertificate());
         return toProfileResponse(nurseRepository.save(nurse));
     }
 
@@ -67,6 +71,8 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
         }
 
         nurseMapper.updateEntity(request, nurse);
+        uploadDocuments(nurse, request.getNationalIdFront(), request.getNationalIdBack(),
+                request.getLicenseImage(), request.getProfessionalCertificate());
         return toProfileResponse(nurseRepository.save(nurse));
     }
 
@@ -95,22 +101,9 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
                         .serviceType(serviceType)
                         .build());
 
-        link.setCustomPrice(request.getCustomPrice());
         link.setIsActive(true);
 
         return nurseMapper.toServiceResponse(nurseServiceRepository.save(link));
-    }
-
-    @Override
-    @Transactional
-    public NurseServiceResponse updateServicePrice(UUID nurseId, UUID userId, UUID serviceTypeId, UpdateServicePriceRequest request) {
-        getOwnedNurseOrThrow(nurseId, userId);
-        NurseService nurseService = nurseServiceRepository
-                .findByNurse_IdAndServiceType_Id(nurseId, serviceTypeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Nurse service not found"));
-
-        nurseService.setCustomPrice(request.getCustomPrice());
-        return nurseMapper.toServiceResponse(nurseServiceRepository.save(nurseService));
     }
 
     @Override
@@ -142,6 +135,26 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
                 .orElseThrow(() -> new ResourceNotFoundException("Service type not found"));
     }
 
+    private void uploadDocuments(Nurse nurse, MultipartFile nationalIdFront, MultipartFile nationalIdBack,
+                                 MultipartFile licenseImage, MultipartFile professionalCertificate) {
+        if (hasContent(nationalIdFront)) {
+            nurse.setNationalIdFrontUrl(cloudinaryService.upload(nationalIdFront));
+        }
+        if (hasContent(nationalIdBack)) {
+            nurse.setNationalIdBackUrl(cloudinaryService.upload(nationalIdBack));
+        }
+        if (hasContent(licenseImage)) {
+            nurse.setLicenseImageUrl(cloudinaryService.upload(licenseImage));
+        }
+        if (hasContent(professionalCertificate)) {
+            nurse.setProfessionalCertificateUrl(cloudinaryService.upload(professionalCertificate));
+        }
+    }
+
+    private boolean hasContent(MultipartFile file) {
+        return file != null && !file.isEmpty();
+    }
+
     private NurseResponse toProfileResponse(Nurse nurse) {
         List<NurseServiceResponse> services = nurseServiceRepository.findAllByNurse_Id(nurse.getId()).stream()
                 .map(nurseMapper::toServiceResponse)
@@ -149,5 +162,16 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
                 .toList();
 
         return nurseMapper.toResponse(nurse, services);
+    }
+
+    @Override
+    public List<NurseResponse> findVerifiedNursesByServiceTypeName(String serviceTypeName) {
+        return nurseServiceRepository.findByServiceType_NameContainingIgnoreCaseAndIsActiveTrue(serviceTypeName)
+                .stream()
+                .map(NurseService::getNurse)
+                .filter(nurse -> nurse.getVerificationStatus() == VerificationStatus.APPROVED)
+                .distinct()
+                .map(nurseMapper::toSimpleResponse)
+                .toList();
     }
 }

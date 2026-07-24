@@ -1,0 +1,112 @@
+:host {
+  display: block;
+  height: 100%;
+  font-family: var(--admin-font-body);
+  background: var(--admin-bg);
+  color: var(--admin-ink);
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  min-height: 100vh;
+}
+
+.shell__sidebar {
+  background: var(--admin-primary-strong);
+  color: #EAF2F0;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1rem;
+}
+
+.shell__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0 0.5rem 1.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(234, 242, 240, 0.14);
+}
+
+.shell__brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-accent);
+  color: #3A2409;
+  display: grid;
+  place-items: center;
+  font: 700 0.8rem var(--admin-font-body);
+}
+
+.shell__brand-name {
+  font: 600 0.92rem var(--admin-font-display);
+  line-height: 1.2;
+}
+
+.shell__brand-sub {
+  font: 500 0.7rem var(--admin-font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(234, 242, 240, 0.6);
+}
+
+.shell__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.shell__nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--admin-radius-sm);
+  color: rgba(234, 242, 240, 0.82);
+  text-decoration: none;
+  font: 500 0.87rem var(--admin-font-body);
+  transition: background 120ms ease;
+
+  &:hover { background: rgba(234, 242, 240, 0.08); color: #fff; }
+}
+
+.shell__nav-link--active {
+  background: rgba(234, 242, 240, 0.14);
+  color: #fff;
+  font-weight: 600;
+}
+
+.shell__nav-icon {
+  font-size: 0.95rem;
+  width: 1.1rem;
+  text-align: center;
+}
+
+.shell__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.shell__topbar {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  background: var(--admin-surface);
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.shell__topbar-title {
+  font: 600 0.9rem var(--admin-font-body);
+  color: var(--admin-ink-soft);
+}
+
+.shell__content {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1100px;
+  width: 100%;
+}

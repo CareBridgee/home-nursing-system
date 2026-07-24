@@ -5,7 +5,6 @@ import iti.jets.java.homenursing.dto.nurse.NurseResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceRequest;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseUpdateRequest;
-import iti.jets.java.homenursing.dto.nurse.UpdateServicePriceRequest;
 
 import java.util.List;
 import java.util.UUID;
@@ -22,7 +21,7 @@ public interface NurseService {
 
     NurseServiceResponse addService(UUID nurseId, UUID userId, NurseServiceRequest request);
 
-    NurseServiceResponse updateServicePrice(UUID nurseId, UUID userId, UUID serviceTypeId, UpdateServicePriceRequest request);
-
     void removeService(UUID nurseId, UUID userId, UUID serviceTypeId);
+
+    List<NurseResponse> findVerifiedNursesByServiceTypeName(String serviceTypeName);
 }

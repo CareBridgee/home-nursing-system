@@ -3,6 +3,7 @@ package iti.jets.java.homenursing.controller;
 import iti.jets.java.homenursing.dto.ServiceTypeRequest;
 import iti.jets.java.homenursing.dto.ServiceTypeResponse;
 import iti.jets.java.homenursing.service.ServiceTypeService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,8 +29,8 @@ public class ServiceTypeController {
     public ResponseEntity<ServiceTypeResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(serviceTypeService.getById(id));
     }
-    @PostMapping
-    public ResponseEntity<ServiceTypeResponse> createServiceType(@RequestBody ServiceTypeRequest request) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ServiceTypeResponse> createServiceType(@ModelAttribute ServiceTypeRequest request) {
         ServiceTypeResponse response = serviceTypeService.create(request);
         return ResponseEntity.ok().body(response);
     }

@@ -1,0 +1,187 @@
+<section class="nurses">
+  <header class="nurses__header">
+    <div>
+      <h1>Nurse Applications</h1>
+      <p class="nurses__subtitle">Review credentials and approve or reject nurses requesting to join the platform.</p>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    @for (tab of tabs; track tab.label) {
+      <button type="button" class="tabs__item" [class.tabs__item--active]="activeTab().label === tab.label" (click)="selectTab(tab)">
+        {{ tab.label }}
+      </button>
+    }
+  </nav>
+
+  @if (error()) {
+    <div class="banner banner--danger">
+      {{ error() }}
+      <button type="button" (click)="refresh()">Retry</button>
+    </div>
+  }
+
+  <div class="nurses__table-wrap">
+    @if (loading()) {
+      <div class="state">Loading applications…</div>
+    } @else if (nurses().length === 0) {
+      <div class="state">No applications in this view.</div>
+    } @else {
+      <table class="nurses__table">
+        <thead>
+        <tr>
+          <th>Nurse</th>
+          <th>Specialization</th>
+          <th>Experience</th>
+          <th>Status</th>
+          <th class="col-actions">Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+          @for (nurse of nurses(); track nurse.id) {
+            <tr>
+              <td>
+                <div class="cell-name">{{ nurse.firstName }} {{ nurse.lastName }}</div>
+                <div class="cell-sub">{{ nurse.phoneNumber }}</div>
+              </td>
+              <td>{{ nurse.specialization || '—' }}</td>
+              <td>{{ nurse.yearsOfExperience != null ? nurse.yearsOfExperience + ' yrs' : '—' }}</td>
+              <td>
+                <app-status-badge [tone]="statusTone(nurse.verificationStatus)">
+                  {{ nurse.verificationStatus }}
+                </app-status-badge>
+              </td>
+              <td class="col-actions">
+                <button type="button" class="link-btn" (click)="openDetails(nurse)">View Details</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+
+  @if (detailOpen() && selectedNurse()) {
+    <div class="scrim" (click)="closeDetails()">
+      <div class="drawer" (click)="$event.stopPropagation()">
+        <div class="drawer__header">
+          <h2>{{ selectedNurse()!.firstName }} {{ selectedNurse()!.lastName }}</h2>
+          <button type="button" class="icon-btn" (click)="closeDetails()">✕</button>
+        </div>
+
+        <div class="drawer__content">
+          <div class="detail-section">
+            <h3>Personal Information</h3>
+            <dl class="detail-grid">
+              <dt>Phone</dt><dd>{{ selectedNurse()!.phoneNumber }}</dd>
+              <dt>National ID</dt><dd>{{ selectedNurse()!.nationalId }}</dd>
+              <dt>Specialization</dt><dd>{{ selectedNurse()!.specialization }}</dd>
+              <dt>Experience</dt><dd>{{ selectedNurse()!.yearsOfExperience }} years</dd>
+              <dt>Hourly Rate</dt><dd>${{ selectedNurse()!.hourlyRate }}</dd>
+              <dt>Bio</dt><dd class="bio-text">{{ selectedNurse()!.bio || 'No bio provided.' }}</dd>
+            </dl>
+          </div>
+
+          <div class="detail-section">
+            <h3>Uploaded Documents</h3>
+            <div class="image-grid">
+              @if (selectedNurse()!.nationalIdFrontUrl) {
+                <div class="image-card">
+                  <span>National ID (Front)</span>
+                  <a [href]="selectedNurse()!.nationalIdFrontUrl" target="_blank" class="img-wrapper">
+                    <img [src]="selectedNurse()!.nationalIdFrontUrl" alt="National ID Front" />
+                  </a>
+                </div>
+              }
+              @if (selectedNurse()!.nationalIdBackUrl) {
+                <div class="image-card">
+                  <span>National ID (Back)</span>
+                  <a [href]="selectedNurse()!.nationalIdBackUrl" target="_blank" class="img-wrapper">
+                    <img [src]="selectedNurse()!.nationalIdBackUrl" alt="National ID Back" />
+                  </a>
+                </div>
+              }
+              @if (selectedNurse()!.licenseImageUrl) {
+                <div class="image-card">
+                  <span>License</span>
+                  <a [href]="selectedNurse()!.licenseImageUrl" target="_blank" class="img-wrapper">
+                    <img [src]="selectedNurse()!.licenseImageUrl" alt="License" />
+                  </a>
+                </div>
+              }
+              @if (selectedNurse()!.professionalCertificateUrl) {
+                <div class="image-card">
+                  <span>Certificate</span>
+                  <a [href]="selectedNurse()!.professionalCertificateUrl" target="_blank" class="img-wrapper">
+                    <img [src]="selectedNurse()!.professionalCertificateUrl" alt="Certificate" />
+                  </a>
+                </div>
+              }
+            </div>
+          </div>
+
+          @if (selectedNurse()!.verificationStatus === VerificationStatus.UNDER_REVIEW) {
+            <div class="detail-actions">
+              @if (!rejectFormOpen()) {
+                <button type="button" class="btn btn--primary" [disabled]="actioningId() === selectedNurse()!.id" (click)="approve(selectedNurse()!)">
+                  {{ actioningId() === selectedNurse()!.id ? 'Approving…' : 'Approve Application' }}
+                </button>
+                <button type="button" class="btn btn--danger" (click)="openRejectForm()">Reject Application</button>
+              } @else {
+                <form [formGroup]="rejectForm" (ngSubmit)="submitReject()" class="reject-form">
+                  <h4>Reject Application</h4>
+
+                  <div class="field">
+                    <label class="field__label" for="overallReason">Overall Reason</label>
+                    <textarea id="overallReason" rows="3" formControlName="overallReason" placeholder="Explain why the application is being rejected..."></textarea>
+                    @if (rejectForm.get('overallReason')?.invalid && rejectForm.get('overallReason')?.touched) {
+                      <span class="field__error">Please provide a detailed reason (at least 10 characters).</span>
+                    }
+                  </div>
+
+                  <div class="field">
+                    <div class="field__header">
+                      <label class="field__label">Failed Steps</label>
+                      <button type="button" class="btn btn--small btn--ghost" (click)="addFailedStep()">+ Add Step</button>
+                    </div>
+
+                    <div formArrayName="failedSteps" class="failed-steps-list">
+                      @for (stepGroup of failedStepsArray.controls; track $index; let i = $index) {
+                        <div [formGroupName]="i" class="failed-step-item">
+                          <select formControlName="step">
+                            <option value="" disabled>Select step...</option>
+                            @for (opt of availableSteps; track opt) {
+                              <option [value]="opt">{{ opt }}</option>
+                            }
+                          </select>
+                          <input type="text" formControlName="reason" placeholder="Reason for failure..." />
+                          <button type="button" class="icon-btn icon-btn--danger" (click)="removeFailedStep(i)">✕</button>
+                        </div>
+                      }
+                    </div>
+                    @if (failedStepsArray.length === 0) {
+                      <span class="field__hint">Add at least one failed step to proceed.</span>
+                    }
+                  </div>
+
+                  <div class="form-actions">
+                    <button type="button" class="btn btn--ghost" (click)="closeRejectForm()">Cancel</button>
+                    <button type="submit" class="btn btn--danger" [disabled]="actioningId() === selectedNurse()!.id || rejectForm.invalid || failedStepsArray.length === 0">
+                      {{ actioningId() === selectedNurse()!.id ? 'Rejecting…' : 'Confirm Rejection' }}
+                    </button>
+                  </div>
+                </form>
+              }
+            </div>
+          } @else {
+            <div class="detail-actions">
+              <app-status-badge [tone]="statusTone(selectedNurse()!.verificationStatus)" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                This application has already been {{ selectedNurse()!.verificationStatus.toLowerCase() }}.
+              </app-status-badge>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</section>

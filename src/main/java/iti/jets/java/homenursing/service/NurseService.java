@@ -25,4 +25,6 @@ public interface NurseService {
     NurseServiceResponse updateServicePrice(UUID nurseId, UUID userId, UUID serviceTypeId, UpdateServicePriceRequest request);
 
     void removeService(UUID nurseId, UUID userId, UUID serviceTypeId);
+
+    List<NurseResponse> findVerifiedNursesByServiceTypeName(String serviceTypeName);
 }

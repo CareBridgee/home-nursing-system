@@ -22,6 +22,7 @@ import iti.jets.java.homenursing.service.ProfileService;
 import iti.jets.java.homenursing.service.ServiceRequestService;
 import iti.jets.java.homenursing.util.HaversineUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.geo.Point;
 import org.springframework.stereotype.Service;
@@ -35,6 +36,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ServiceRequestServiceImpl implements ServiceRequestService {
@@ -80,6 +82,8 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         // nurse location by socket
         List<NurseLocation> nurseLocations = nurseLocationProvider.getNurseLocations();
 
+        log.info("nurseLocations: {}" , nurseLocations);
+
 
         // get all nurses in my area
         List<NearbyNurse> nearbyNurses = nearbyNurseMatcher.findNearbyNurse(
@@ -87,6 +91,8 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 request.latitude(),
                 request.longitude(),
                 nursesForRequiredService);
+
+        log.info("nearbyNurses: {}" , nearbyNurses);
 
         if (nearbyNurses.isEmpty()) {
             throw new BadRequestException("No nearby nurses found for this service within the given radius");

@@ -4,6 +4,8 @@ import iti.jets.java.homenursing.dto.EmergencyContactRequest;
 import iti.jets.java.homenursing.dto.EmergencyContactResponse;
 import iti.jets.java.homenursing.entity.EmergencyContact;
 import iti.jets.java.homenursing.entity.Profile;
+import iti.jets.java.homenursing.exception.BadRequestException;
+import iti.jets.java.homenursing.exception.DuplicateResourceException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.EmergencyContactMapper;
 import iti.jets.java.homenursing.repository.EmergencyContactRepository;
@@ -45,8 +47,16 @@ public class EmergencyContactServiceImpl implements EmergencyContactService {
     @Transactional
     public EmergencyContactResponse create(UUID profileId, UUID userId, EmergencyContactRequest request) {
         Profile profile = profileService.getOwnedProfileEntity(profileId, userId);
+
+        String normalizedPhone = normalizePhoneNumber(request.getPhoneNumber());
+
+        if (emergencyContactRepository.existsByProfile_IdAndPhoneNumber(profileId, normalizedPhone)) {
+            throw new DuplicateResourceException("Emergency contact with this phone number already exists for this profile");
+        }
+
         EmergencyContact contact = emergencyContactMapper.toEntity(request);
         contact.setProfile(profile);
+        contact.setPhoneNumber(normalizedPhone);
         EmergencyContact saved = emergencyContactRepository.save(contact);
         return emergencyContactMapper.toResponse(saved);
     }
@@ -57,7 +67,14 @@ public class EmergencyContactServiceImpl implements EmergencyContactService {
         EmergencyContact contact = loadOwned(id, userId);
         if (request.getContactName() != null) contact.setContactName(request.getContactName());
         if (request.getRelationship() != null) contact.setRelationship(request.getRelationship());
-        if (request.getPhoneNumber() != null) contact.setPhoneNumber(request.getPhoneNumber());
+        if (request.getPhoneNumber() != null) {
+            String normalizedPhone = normalizePhoneNumber(request.getPhoneNumber());
+            if (emergencyContactRepository.existsByProfile_IdAndPhoneNumberAndIdNot(
+                    contact.getProfile().getId(), normalizedPhone, contact.getId())) {
+                throw new DuplicateResourceException("Emergency contact with this phone number already exists for this profile");
+            }
+            contact.setPhoneNumber(normalizedPhone);
+        }
         EmergencyContact saved = emergencyContactRepository.save(contact);
         return emergencyContactMapper.toResponse(saved);
     }
@@ -76,5 +93,21 @@ public class EmergencyContactServiceImpl implements EmergencyContactService {
             throw new ResourceNotFoundException("Emergency contact not found: " + id);
         }
         return contact;
+    }
+
+    private static String normalizePhoneNumber(String raw) {
+        if (raw == null) {
+            throw new BadRequestException("Invalid phone number format");
+        }
+        String trimmed = raw.trim();
+        if (trimmed.isEmpty()) {
+            throw new BadRequestException("Invalid phone number format");
+        }
+        boolean hasPlus = trimmed.startsWith("+");
+        String digitsOnly = trimmed.replaceAll("[^0-9]", "");
+        if (digitsOnly.length() < 7 || digitsOnly.length() > 20) {
+            throw new BadRequestException("Invalid phone number format");
+        }
+        return hasPlus ? "+" + digitsOnly : digitsOnly;
     }
 }

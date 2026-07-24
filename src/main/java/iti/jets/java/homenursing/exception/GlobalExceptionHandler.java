@@ -81,15 +81,46 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiError> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         Throwable cause = ex.getRootCause();
-        boolean uniqueViolation = cause instanceof SQLException sqlEx
-                && sqlEx.getSQLState() != null && sqlEx.getSQLState().startsWith("23")
-                || (cause != null && cause.getClass().getSimpleName().equals("ConstraintViolationException"));
-        if (uniqueViolation) {
+        String sqlState = null;
+        String sqlMessage = null;
+        if (cause instanceof SQLException sqlEx) {
+            sqlState = sqlEx.getSQLState();
+            sqlMessage = sqlEx.getMessage();
+        } else if (cause != null && cause.getClass().getSimpleName().equals("ConstraintViolationException")) {
+            sqlState = "23000";
+            sqlMessage = cause.getMessage();
+        }
+        if (sqlState == null) {
+            log.error("Data integrity violation", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ApiError.from(HttpStatus.INTERNAL_SERVER_ERROR, "DATA_INTEGRITY_VIOLATION",
+                            "Data integrity violation", null));
+        }
+        if ("23505".equals(sqlState)) {
+            log.error("Unique violation (sqlState={}, message={})", sqlState, sqlMessage, ex);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(
                     ApiError.from(HttpStatus.CONFLICT, "DUPLICATE_RESOURCE",
                             "A resource with the same unique field already exists", null));
         }
-        log.error("Data integrity violation", ex);
+        if ("23503".equals(sqlState)) {
+            log.error("Foreign key violation (sqlState={}, message={})", sqlState, sqlMessage, ex);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    ApiError.from(HttpStatus.CONFLICT, "INVALID_REFERENCE",
+                            "Referenced resource does not exist", null));
+        }
+        if ("23502".equals(sqlState) || "23514".equals(sqlState)) {
+            log.error("Not-null or check violation (sqlState={}, message={})", sqlState, sqlMessage, ex);
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
+                    ApiError.from(HttpStatus.UNPROCESSABLE_ENTITY, "DATA_INTEGRITY_VIOLATION",
+                            "Invalid data: not-null or check constraint", null));
+        }
+        if (sqlState.startsWith("23")) {
+            log.error("Other integrity violation (sqlState={}, message={})", sqlState, sqlMessage, ex);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    ApiError.from(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION",
+                            "Data integrity violation", null));
+        }
+        log.error("Unhandled data integrity violation (sqlState={}, message={})", sqlState, sqlMessage, ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 ApiError.from(HttpStatus.INTERNAL_SERVER_ERROR, "DATA_INTEGRITY_VIOLATION",
                         "Data integrity violation", null));

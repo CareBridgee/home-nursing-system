@@ -11,4 +11,8 @@ import java.util.UUID;
 public interface EmergencyContactRepository extends JpaRepository<EmergencyContact, UUID> {
 
     List<EmergencyContact> findByProfileId(UUID profileId);
+
+    boolean existsByProfile_IdAndPhoneNumber(UUID profileId, String phoneNumber);
+
+    boolean existsByProfile_IdAndPhoneNumberAndIdNot(UUID profileId, String phoneNumber, UUID id);
 }

@@ -5,7 +5,6 @@ import iti.jets.java.homenursing.dto.nurse.NurseResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceRequest;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseUpdateRequest;
-import iti.jets.java.homenursing.dto.nurse.UpdateServicePriceRequest;
 import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.NurseService;
 import iti.jets.java.homenursing.entity.ServiceType;
@@ -102,22 +101,9 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
                         .serviceType(serviceType)
                         .build());
 
-        link.setCustomPrice(request.getCustomPrice());
         link.setIsActive(true);
 
         return nurseMapper.toServiceResponse(nurseServiceRepository.save(link));
-    }
-
-    @Override
-    @Transactional
-    public NurseServiceResponse updateServicePrice(UUID nurseId, UUID userId, UUID serviceTypeId, UpdateServicePriceRequest request) {
-        getOwnedNurseOrThrow(nurseId, userId);
-        NurseService nurseService = nurseServiceRepository
-                .findByNurse_IdAndServiceType_Id(nurseId, serviceTypeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Nurse service not found"));
-
-        nurseService.setCustomPrice(request.getCustomPrice());
-        return nurseMapper.toServiceResponse(nurseServiceRepository.save(nurseService));
     }
 
     @Override

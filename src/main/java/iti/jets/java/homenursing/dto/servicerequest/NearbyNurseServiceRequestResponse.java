@@ -20,6 +20,7 @@ public record NearbyNurseServiceRequestResponse(
         BigDecimal latitude,
         BigDecimal longitude,
         double distanceKm,
+        BigDecimal estimatedPrice,
         LocalDateTime createdAt
 ) {
 }

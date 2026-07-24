@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -50,6 +51,12 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     @Value("${nearby.nurses.radius-km:10}")
     private double nearbyNursesRadiusKm;
+
+    @Value("${nearby.nurses.included-distance-km:5}")
+    private double includedDistanceKm;
+
+    @Value("${nearby.nurses.price-per-km:12}")
+    private BigDecimal pricePerKm;
 
     @Override
     @Transactional
@@ -190,6 +197,14 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 request.getLatitude(),
                 request.getLongitude(),
                 distanceKm,
+                calculatePrice(request.getServiceType().getBasePrice(), distanceKm),
                 request.getCreatedAt());
+    }
+
+    private BigDecimal calculatePrice(BigDecimal basePrice, double distanceKm) {
+        double extraDistanceKm = Math.max(0, distanceKm - includedDistanceKm);
+        return basePrice
+                .add(pricePerKm.multiply(BigDecimal.valueOf(extraDistanceKm)))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 }

@@ -19,6 +19,5 @@ public class NurseServiceResponse {
     private String serviceName;
     private String serviceDescription;
     private BigDecimal basePrice;
-    private BigDecimal customPrice;
     private Boolean isActive;
 }

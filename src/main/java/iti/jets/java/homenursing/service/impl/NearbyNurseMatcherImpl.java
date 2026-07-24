@@ -37,7 +37,11 @@ public class NearbyNurseMatcherImpl implements NearbyNurseMatcher {
                 .filter(loc -> nursesForRequiredService == null || nursesForRequiredService.contains(loc.nurseId()))
                 .map(loc -> {
                     double distance = HaversineUtil.distanceKm(userLatitude, userLongitude, loc.latitude(), loc.longitude());
-                    return new NearbyNurse(loc.nurseId(), loc.latitude(), loc.longitude(), distance);
+                    return new NearbyNurse(
+                            loc.nurseId(),
+                            loc.latitude(),
+                            loc.longitude(),
+                            distance);
                 })
                 .filter(match -> match.distanceKm() <= defaultRadiusKm)
                 .sorted(Comparator.comparingDouble(NearbyNurse::distanceKm))

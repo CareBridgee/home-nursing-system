@@ -119,7 +119,9 @@ public class NurseOfferServiceImpl implements NurseOfferService {
                 .orElseThrow(() -> new ResourceNotFoundException("Nurse offer not found: " + id));
         ServiceRequest serviceRequest = offer.getServiceRequest();
 
-        if (!serviceRequest.getProfile().getUser().getId().equals(userId)) {
+        boolean isPatient = serviceRequest.getProfile().getUser().getId().equals(userId);
+        boolean isNurse = offer.getNurse().getUser().getId().equals(userId);
+        if (!isPatient && !isNurse) {
             throw new ResourceNotFoundException("Nurse offer not found: " + id);
         }
         if (offer.getStatus() != NurseOfferStatus.PENDING) {
@@ -172,6 +174,56 @@ public class NurseOfferServiceImpl implements NurseOfferService {
             throw new BadRequestException("Only pending offers can be deleted");
         }
         offer.setIsDeleted(true);
+        nurseOfferRepository.save(offer);
+    }
+
+    @Override
+    @Transactional
+    public NurseOfferResponse counterOffer(UUID id, UUID userId, NurseOfferUpdateRequest request) {
+        NurseOffer offer = getAuthorizedOffer(id, userId);
+        if (!offer.getServiceRequest().getProfile().getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Nurse offer not found: " + id);
+        }
+        if (offer.getStatus() != NurseOfferStatus.PENDING) {
+            throw new BadRequestException("Only pending offers can be countered");
+        }
+        if (request.proposedPrice() != null) {
+            offer.setProposedPrice(request.proposedPrice());
+        }
+        if (request.proposedDate() != null) {
+            offer.setProposedDate(request.proposedDate());
+        }
+        if (request.proposedTime() != null) {
+            offer.setProposedTime(request.proposedTime());
+        }
+        if (request.message() != null) {
+            offer.setMessage(request.message());
+        }
+        return nurseOfferMapper.toResponse(nurseOfferRepository.save(offer));
+    }
+
+    @Override
+    @Transactional
+    public void reject(UUID id, UUID userId) {
+        NurseOffer offer = getAuthorizedOffer(id, userId);
+        if (!offer.getServiceRequest().getProfile().getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Nurse offer not found: " + id);
+        }
+        if (offer.getStatus() != NurseOfferStatus.PENDING) {
+            throw new BadRequestException("Only pending offers can be rejected");
+        }
+        offer.setStatus(NurseOfferStatus.REJECTED);
+        nurseOfferRepository.save(offer);
+    }
+
+    @Override
+    @Transactional
+    public void withdraw(UUID id, UUID userId) {
+        NurseOffer offer = getOwnedOffer(id, userId);
+        if (offer.getStatus() != NurseOfferStatus.PENDING) {
+            throw new BadRequestException("Only pending offers can be withdrawn");
+        }
+        offer.setStatus(NurseOfferStatus.WITHDRAWN);
         nurseOfferRepository.save(offer);
     }
 

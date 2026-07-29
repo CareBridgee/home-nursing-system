@@ -2,6 +2,7 @@ package iti.jets.java.homenursing.repository;
 
 import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.enums.VerificationStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -17,6 +18,9 @@ public interface NurseRepository extends JpaRepository<Nurse, UUID> {
     boolean existsByNationalId(String nationalId);
 
     Optional<Nurse> findByUser_Id(UUID userId);
+
+    @EntityGraph(attributePaths = "user")
+    Optional<Nurse> findWithUserById(UUID id);
 
     List<Nurse> findByVerificationStatus(VerificationStatus status);
 }

@@ -22,14 +22,13 @@ public class HomeNursingTools {
     }
 
     @Tool(description = "List all home nursing service types offered on the platform, with description and price.")
-    public List<ServiceTypeResponse> listServiceTypes(
-            @ToolParam(description = "Always pass an empty string \"\" or omit this parameter", required = false) String dummy) {
+    public List<ServiceTypeResponse> listServiceTypes() {
         return serviceTypeService.findAll();
     }
 
-    @Tool(description = "Find verified nurses who offer a given service type. Service type name must match one returned by listServiceTypes.")
-    public List<NurseResponse> findNursesForService(
-            @ToolParam(description = "Exact or close service type name, e.g. 'Wound Care', 'Elderly Care'") String serviceTypeName) {
-        return nurseService.findVerifiedNursesByServiceTypeName(serviceTypeName);
-    }
+//    @Tool(description = "Find verified nurses who offer a given service type. Service type name must match one returned by listServiceTypes.")
+//    public List<NurseResponse> findNursesForService(
+//            @ToolParam(description = "Exact or close service type name, e.g. 'Wound Care', 'Elderly Care'") String serviceTypeName) {
+//        return nurseService.findVerifiedNursesByServiceTypeName(serviceTypeName);
+//    }
 }

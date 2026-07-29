@@ -143,4 +143,16 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<Map<String, String>> handleAiToolCallError(BadRequestException ex) {
+        // Optional: Log the actual error so you can see it in the console for debugging
+        // System.err.println("AI Tool call failed: " + ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(
+                        "error", "AI_SERVICE_UNAVAILABLE",
+                        "message", "I'm sorry, I couldn't process that request right now. Please try rephrasing your question or ask something else."
+                ));
+    }
 }

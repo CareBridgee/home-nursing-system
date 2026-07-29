@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: care-nest-db
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -13,7 +13,7 @@ services:
     volumes:
       - care_nest_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 5s
       timeout: 5s
       retries: 15
@@ -43,6 +43,9 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY}
       GROQ_BASE_URL: ${GROQ_BASE_URL}
       GROQ_MODEL: ${GROQ_MODEL}
+      GEMINI_EMBEDDING_API_KEY: ${GEMINI_EMBEDDING_API_KEY}
+      GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL}
+      GEMINI_EMBEDDING_BASE_URL: ${GEMINI_EMBEDDING_BASE_URL}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:?}
       SPRING_DATASOURCE_USERNAME: ${DB_USER:?}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?}

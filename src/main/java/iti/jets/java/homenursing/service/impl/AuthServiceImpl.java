@@ -2,12 +2,17 @@ package iti.jets.java.homenursing.service.impl;
 
 
 import iti.jets.java.homenursing.dto.DevOtpResponse;
+import iti.jets.java.homenursing.dto.NurseTokenPair;
 import iti.jets.java.homenursing.dto.TokenPair;
 import iti.jets.java.homenursing.dto.UserResponse;
+import iti.jets.java.homenursing.dto.nurse.NurseResponse;
+import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.User;
+import iti.jets.java.homenursing.exception.ConflictException;
 import iti.jets.java.homenursing.exception.InvalidOtpException;
 import iti.jets.java.homenursing.exception.RateLimitException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
+import iti.jets.java.homenursing.mapper.NurseMapper;
 import iti.jets.java.homenursing.mapper.UserMapper;
 import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
@@ -21,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -34,6 +40,7 @@ public class AuthServiceImpl implements AuthService {
     private final TwilioSmsService twilioSmsService;
     private final TokenService tokenService;
     private final PasswordEncoder passwordEncoder;
+    private final NurseMapper nurseMapper;
     private final ProfileService profileService;
 
     @Override
@@ -70,19 +77,75 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public TokenPair verifyOtpAndLogin(String rawPhone, String otp) {
-        return verifyAndLogin(normalizePhoneNumber(rawPhone), otp, false);
+        String phone = normalizePhoneNumber(rawPhone);
+        verifyOtp(phone, otp);
+
+        User user = findOrCreateUser(phone, false);
+        return loginUser(user);
     }
 
     @Override
-    public TokenPair verifyNurseOtpAndLogin(String rawPhone, String otp) {
-        return verifyAndLogin(normalizePhoneNumber(rawPhone), otp, true);
+    public NurseTokenPair verifyNurseOtpAndLogin(String rawPhone, String otp) {
+        String phone = normalizePhoneNumber(rawPhone);
+        verifyOtp(phone, otp);
+
+        User user = userRepository.findByPhoneNumberWithProfiles(phone).orElse(null);
+
+        if (user != null) {
+            if (Boolean.TRUE.equals(user.getIsDeleted())) {
+                throw new ResourceNotFoundException("User not found");
+            }
+            Optional<Nurse> nurseOpt = nurseRepository.findByUser_Id(user.getId());
+            if (nurseOpt.isEmpty()) {
+                throw new ConflictException("This phone is already registered as a regular user. Please use the user login.");
+            }
+        } else {
+            user = createNurseUser(phone);
+        }
+
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        String userId = user.getId().toString();
+        Nurse nurse = nurseRepository.findByUser_Id(user.getId()).orElse(null);
+        String role = nurse != null ? "NURSE" : "USER";
+        String accessToken = tokenService.generateAccessToken(userId, role);
+        String refreshToken = tokenService.generateRefreshToken(userId);
+
+        NurseResponse nurseResponse;
+        if (nurse != null) {
+            nurseResponse = nurseMapper.toSimpleResponse(nurse);
+        } else {
+            nurseResponse = NurseResponse.builder()
+                    .userId(user.getId())
+                    .firstName(user.getFirstName())
+                    .lastName(user.getLastName())
+                    .phoneNumber(user.getPhoneNumber())
+                    .build();
+        }
+
+        return new NurseTokenPair(accessToken, refreshToken, tokenService.getAccessTokenTtlSeconds(), nurseResponse);
     }
 
-    private TokenPair verifyAndLogin(String phone, String otp, boolean isNurse) {
-        verifyOtp(phone, otp);
-        User user = userRepository.findByPhoneNumberWithProfiles(phone)
-                .orElseGet(() -> isNurse ? createNurseUser(phone) : createUser(phone));
-        return loginUser(user);
+    private User findOrCreateUser(String phone, boolean isNurse) {
+        User user = userRepository.findByPhoneNumberWithProfiles(phone).orElse(null);
+
+        if (user != null) {
+            if (Boolean.TRUE.equals(user.getIsDeleted())) {
+                throw new ResourceNotFoundException("User not found");
+            }
+            boolean hasNurseRecord = nurseRepository.existsByUser_Id(user.getId());
+            if (hasNurseRecord && !isNurse) {
+                throw new ConflictException("This phone is already registered as a nurse. Please use the nurse login.");
+            }
+            if (!hasNurseRecord && isNurse) {
+                throw new ConflictException("This phone is already registered as a regular user. Please use the user login.");
+            }
+        } else {
+            user = isNurse ? createNurseUser(phone) : createUser(phone);
+        }
+
+        return user;
     }
 
     @Override
@@ -93,6 +156,10 @@ public class AuthServiceImpl implements AuthService {
 
         User user = userRepository.findByIdWithProfiles(UUID.fromString(userId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (Boolean.TRUE.equals(user.getIsDeleted())) {
+            throw new ResourceNotFoundException("User not found");
+        }
 
         String role = nurseRepository.existsByUser_Id(user.getId()) ? "NURSE" : "USER";
         String newAccessToken = tokenService.generateAccessToken(userId, role);

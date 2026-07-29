@@ -3,6 +3,7 @@ package iti.jets.java.homenursing.controller;
 import iti.jets.java.homenursing.dto.DevOtpResponse;
 import iti.jets.java.homenursing.dto.LoginRequest;
 import iti.jets.java.homenursing.dto.RefreshRequest;
+import iti.jets.java.homenursing.dto.NurseTokenPair;
 import iti.jets.java.homenursing.dto.TokenPair;
 import iti.jets.java.homenursing.dto.UserResponse;
 import iti.jets.java.homenursing.dto.VerifyOtpRequest;
@@ -47,9 +48,9 @@ public class AuthController {
     }
 
     @PostMapping("/nurse/verify-otp")
-    public ResponseEntity<TokenPair> verifyNurseOtp(
+    public ResponseEntity<NurseTokenPair> verifyNurseOtp(
             @Valid @RequestBody VerifyOtpRequest request) {
-        TokenPair tokens = authService.verifyNurseOtpAndLogin(
+        NurseTokenPair tokens = authService.verifyNurseOtpAndLogin(
                 request.getPhoneNumber(), request.getOtp());
         return ResponseEntity.ok(tokens);
     }

@@ -35,7 +35,11 @@ public class ProfileServiceImpl implements ProfileService {
                 .dateOfBirth(user.getDateOfBirth())
                 .gender(user.getGender())
                 .build();
-        return profileRepository.save(profile);
+        profile = profileRepository.save(profile);
+        if (user.getProfiles() != null) {
+            user.getProfiles().add(profile);
+        }
+        return profile;
     }
 
     @Override

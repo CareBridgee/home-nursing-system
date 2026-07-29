@@ -1,6 +1,7 @@
 package iti.jets.java.homenursing.service;
 
 import iti.jets.java.homenursing.dto.DevOtpResponse;
+import iti.jets.java.homenursing.dto.NurseTokenPair;
 import iti.jets.java.homenursing.dto.TokenPair;
 import iti.jets.java.homenursing.dto.UserResponse;
 
@@ -12,7 +13,7 @@ public interface AuthService {
 
     TokenPair verifyOtpAndLogin(String phoneNumber, String otp);
 
-    TokenPair verifyNurseOtpAndLogin(String phoneNumber, String otp);
+    NurseTokenPair verifyNurseOtpAndLogin(String phoneNumber, String otp);
 
     TokenPair refreshToken(String refreshToken);
 

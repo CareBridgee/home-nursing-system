@@ -2,6 +2,7 @@ package iti.jets.java.homenursing.repository;
 
 import iti.jets.java.homenursing.entity.ServiceRequest;
 import iti.jets.java.homenursing.entity.enums.ServiceRequestStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,6 +20,9 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
     List<ServiceRequest> findByProfile_IdAndIsDeletedFalseOrderByCreatedAtDesc(UUID profileId);
 
     Optional<ServiceRequest> findByIdAndIsDeletedFalse(UUID id);
+
+    @EntityGraph(attributePaths = {"profile.user", "nurse.user"})
+    Optional<ServiceRequest> findWithDetailsById(UUID id);
 
     @Query("""
             SELECT s FROM ServiceRequest s

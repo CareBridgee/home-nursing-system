@@ -23,4 +23,10 @@ public interface NurseOfferService {
     NurseOfferResponse update(UUID id, UUID userId, NurseOfferUpdateRequest request);
 
     void delete(UUID id, UUID userId);
+
+    NurseOfferResponse counterOffer(UUID id, UUID userId, NurseOfferUpdateRequest request);
+
+    void reject(UUID id, UUID userId);
+
+    void withdraw(UUID id, UUID userId);
 }

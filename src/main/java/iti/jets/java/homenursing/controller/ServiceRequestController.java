@@ -1,14 +1,20 @@
 package iti.jets.java.homenursing.controller;
 
+import iti.jets.java.homenursing.dto.nurse.NearbyNurse;
+import iti.jets.java.homenursing.dto.servicerequest.NearbyNurseServiceRequestResponse;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestRequest;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestResponse;
-import iti.jets.java.homenursing.dto.servicerequest.NearbyNurseServiceRequestResponse;
+import iti.jets.java.homenursing.entity.Nurse;
+import iti.jets.java.homenursing.entity.ServiceType;
+import iti.jets.java.homenursing.repository.NurseRepository;
+import iti.jets.java.homenursing.repository.ServiceTypeRepository;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.ServiceRequestService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,13 +33,50 @@ import java.util.UUID;
 public class ServiceRequestController {
 
     private final ServiceRequestService serviceRequestService;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final NurseRepository nurseRepository;
+    private final ServiceTypeRepository serviceTypeRepository;
 
     @PostMapping
     public ResponseEntity<NearbyServiceRequestResponse> createRequest(@Valid @RequestBody NearbyServiceRequestRequest request) {
-        NearbyServiceRequestResponse response = serviceRequestService.createRequest( request);
+        NearbyServiceRequestResponse response = serviceRequestService.createRequest(request);
+
+        pushToNearbyNurses(response);
+
         return ResponseEntity.status(HttpStatus.CREATED)
                 .location(URI.create("/api/v1/service-requests/" + response.serviceRequestId()))
                 .body(response);
+    }
+
+    private void pushToNearbyNurses(NearbyServiceRequestResponse response) {
+        if (response.nearbyNurses() == null) return;
+
+        String serviceName = serviceTypeRepository.findById(response.serviceTypeId())
+                .map(ServiceType::getName)
+                .orElse(null);
+
+        for (NearbyNurse nearby : response.nearbyNurses()) {
+            Nurse nurse = nurseRepository.findWithUserById(nearby.nurseId()).orElse(null);
+            if (nurse == null) continue;
+
+            NearbyNurseServiceRequestResponse pushPayload = new NearbyNurseServiceRequestResponse(
+                    response.serviceRequestId(),
+                    response.profileId(),
+                    response.serviceTypeId(),
+                    serviceName,
+                    null,
+                    null,
+                    null,
+                    response.status(),
+                    response.latitude(),
+                    response.longitude(),
+                    nearby.distanceKm(),
+                    null,
+                    response.createdAt());
+
+            String nurseUserId = nurse.getUser().getId().toString();
+            messagingTemplate.convertAndSendToUser(nurseUserId, "/queue/nearby-request", pushPayload);
+        }
     }
 
     @GetMapping("/nearby")

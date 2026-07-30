@@ -43,7 +43,7 @@ public class Nurse {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "national_id", unique = true, length = 100)
+    @Column(name = "national_id", unique = true, nullable = true, length = 100)
     private String nationalId;
 
     @Column(name = "license_number", unique = true, nullable = true, length = 100)

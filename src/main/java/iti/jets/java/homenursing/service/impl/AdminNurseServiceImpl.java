@@ -7,6 +7,7 @@ import iti.jets.java.homenursing.dto.nurse.NurseServiceResponse;
 import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.NurseRejectionDetail;
 import iti.jets.java.homenursing.entity.enums.VerificationStatus;
+import iti.jets.java.homenursing.exception.BadRequestException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.NurseMapper;
 import iti.jets.java.homenursing.repository.NurseRepository;
@@ -43,6 +44,9 @@ public class AdminNurseServiceImpl implements AdminNurseService {
     @Transactional
     public NurseResponse approve(UUID nurseId) {
         Nurse nurse = getNurseOrThrow(nurseId);
+        if (nurse.getNationalId() == null) {
+            throw new BadRequestException("Cannot approve a nurse who hasn't completed registration");
+        }
         nurse.setVerificationStatus(VerificationStatus.APPROVED);
         nurse.setRejectionReason(null);
         nurse.setRejectionDetail(null);

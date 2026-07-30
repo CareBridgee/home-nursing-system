@@ -45,15 +45,26 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        if (nurseRepository.existsByUser_Id(user.getId())) {
-            throw new BadRequestException("This user already has a nurse profile");
+        Nurse nurse = nurseRepository.findByUser_Id(user.getId()).orElse(null);
+
+        if (nurse == null) {
+            if (request.getNationalId() != null && nurseRepository.existsByNationalId(request.getNationalId())) {
+                throw new BadRequestException("National ID already exists");
+            }
+            nurse = nurseMapper.toEntity(request, user);
+        } else {
+            if (request.getNationalId() != null &&
+                    !request.getNationalId().equals(nurse.getNationalId()) &&
+                    nurseRepository.existsByNationalId(request.getNationalId())) {
+                throw new BadRequestException("National ID already exists");
+            }
+            nurse.setNationalId(request.getNationalId());
+            nurse.setLicenseNumber(request.getLicenseNumber());
+            nurse.setSpecialization(request.getSpecialization());
+            nurse.setYearsOfExperience(request.getYearsOfExperience());
+            nurse.setBio(request.getBio());
         }
 
-        if (request.getNationalId() != null && nurseRepository.existsByNationalId(request.getNationalId())) {
-            throw new BadRequestException("National ID already exists");
-        }
-
-        Nurse nurse = nurseMapper.toEntity(request, user);
         uploadDocuments(nurse, request.getNationalIdFront(), request.getNationalIdBack(),
                 request.getLicenseImage(), request.getProfessionalCertificate());
         return toProfileResponse(nurseRepository.save(nurse));

@@ -9,6 +9,7 @@ import iti.jets.java.homenursing.dto.UserResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseAuthResponse;
 import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.User;
+import iti.jets.java.homenursing.entity.enums.VerificationStatus;
 import iti.jets.java.homenursing.exception.ConflictException;
 import iti.jets.java.homenursing.exception.InvalidOtpException;
 import iti.jets.java.homenursing.exception.RateLimitException;
@@ -243,7 +244,15 @@ public class AuthServiceImpl implements AuthService {
                 .lastName("")
                 .isDeleted(false)
                 .build();
-        return userRepository.save(user);
+        user = userRepository.save(user);
+
+        Nurse nurse = Nurse.builder()
+                .user(user)
+                .verificationStatus(VerificationStatus.UNDER_REVIEW)
+                .build();
+        nurseRepository.save(nurse);
+
+        return user;
     }
 
     private void verifyOtp(String phone, String otp) {

@@ -66,9 +66,6 @@ public class Nurse {
     @Column(name = "years_of_experience")
     private Integer yearsOfExperience;
 
-    @Column(name = "hourly_rate", precision = 10, scale = 2)
-    private BigDecimal hourlyRate;
-
     @Column(columnDefinition = "TEXT")
     private String bio;
 
@@ -79,10 +76,6 @@ public class Nurse {
     @Builder.Default
     @Column(name = "total_reviews")
     private Integer totalReviews = 0;
-
-    @Builder.Default
-    @Column(name = "is_available")
-    private Boolean isAvailable = true;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

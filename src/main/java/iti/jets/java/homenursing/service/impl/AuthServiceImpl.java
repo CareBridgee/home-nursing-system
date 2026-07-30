@@ -3,16 +3,16 @@ package iti.jets.java.homenursing.service.impl;
 
 import iti.jets.java.homenursing.dto.DevOtpResponse;
 import iti.jets.java.homenursing.dto.NurseTokenPair;
+import iti.jets.java.homenursing.dto.NurseUserResponse;
 import iti.jets.java.homenursing.dto.TokenPair;
 import iti.jets.java.homenursing.dto.UserResponse;
-import iti.jets.java.homenursing.dto.nurse.NurseResponse;
+import iti.jets.java.homenursing.dto.nurse.NurseAuthResponse;
 import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.User;
 import iti.jets.java.homenursing.exception.ConflictException;
 import iti.jets.java.homenursing.exception.InvalidOtpException;
 import iti.jets.java.homenursing.exception.RateLimitException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
-import iti.jets.java.homenursing.mapper.NurseMapper;
 import iti.jets.java.homenursing.mapper.UserMapper;
 import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
@@ -40,7 +40,6 @@ public class AuthServiceImpl implements AuthService {
     private final TwilioSmsService twilioSmsService;
     private final TokenService tokenService;
     private final PasswordEncoder passwordEncoder;
-    private final NurseMapper nurseMapper;
     private final ProfileService profileService;
 
     @Override
@@ -112,19 +111,44 @@ public class AuthServiceImpl implements AuthService {
         String accessToken = tokenService.generateAccessToken(userId, role);
         String refreshToken = tokenService.generateRefreshToken(userId);
 
-        NurseResponse nurseResponse;
+        NurseAuthResponse nurseData = null;
         if (nurse != null) {
-            nurseResponse = nurseMapper.toSimpleResponse(nurse);
-        } else {
-            nurseResponse = NurseResponse.builder()
-                    .userId(user.getId())
-                    .firstName(user.getFirstName())
-                    .lastName(user.getLastName())
-                    .phoneNumber(user.getPhoneNumber())
+            nurseData = NurseAuthResponse.builder()
+                    .id(nurse.getId())
+                    .nationalId(nurse.getNationalId())
+                    .nationalIdFrontUrl(nurse.getNationalIdFrontUrl())
+                    .nationalIdBackUrl(nurse.getNationalIdBackUrl())
+                    .licenseImageUrl(nurse.getLicenseImageUrl())
+                    .professionalCertificateUrl(nurse.getProfessionalCertificateUrl())
+                    .specialization(nurse.getSpecialization())
+                    .yearsOfExperience(nurse.getYearsOfExperience())
+                    .bio(nurse.getBio())
+                    .rejectionReason(nurse.getRejectionReason())
+                    .ratingAvg(nurse.getRatingAvg())
+                    .totalReviews(nurse.getTotalReviews())
+                    .verificationStatus(nurse.getVerificationStatus())
                     .build();
         }
 
-        return new NurseTokenPair(accessToken, refreshToken, tokenService.getAccessTokenTtlSeconds(), nurseResponse);
+        UserResponse userResponse = userMapper.toResponse(user);
+        NurseUserResponse nurseUser = NurseUserResponse.builder()
+                .id(userResponse.getId())
+                .phoneNumber(userResponse.getPhoneNumber())
+                .email(userResponse.getEmail())
+                .firstName(userResponse.getFirstName())
+                .lastName(userResponse.getLastName())
+                .dateOfBirth(userResponse.getDateOfBirth())
+                .gender(userResponse.getGender())
+                .profileImageUrl(userResponse.getProfileImageUrl())
+                .isDeleted(userResponse.getIsDeleted())
+                .createdAt(userResponse.getCreatedAt())
+                .updatedAt(userResponse.getUpdatedAt())
+                .lastLoginAt(userResponse.getLastLoginAt())
+                .defaultProfileId(userResponse.getDefaultProfileId())
+                .nurse(nurseData)
+                .build();
+
+        return new NurseTokenPair(accessToken, refreshToken, tokenService.getAccessTokenTtlSeconds(), nurseUser);
     }
 
     private User findOrCreateUser(String phone, boolean isNurse) {

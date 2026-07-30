@@ -6,8 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.math.BigDecimal;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -22,6 +20,5 @@ public class NurseUpdateRequest {
     private MultipartFile professionalCertificate;
     private String specialization;
     private Integer yearsOfExperience;
-    private BigDecimal hourlyRate;
     private String bio;
 }

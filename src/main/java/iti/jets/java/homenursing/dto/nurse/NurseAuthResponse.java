@@ -14,13 +14,9 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class NurseResponse {
+public class NurseAuthResponse {
 
     private UUID id;
-    private UUID userId;
-    private String firstName;
-    private String lastName;
-    private String phoneNumber;
     private String nationalId;
     private String nationalIdFrontUrl;
     private String nationalIdBackUrl;

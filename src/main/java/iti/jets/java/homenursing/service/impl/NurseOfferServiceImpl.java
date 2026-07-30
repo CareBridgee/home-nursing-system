@@ -56,8 +56,7 @@ public class NurseOfferServiceImpl implements NurseOfferService {
         if (serviceRequest.getStatus() != ServiceRequestStatus.SEARCHING || serviceRequest.getNurse() != null) {
             throw new BadRequestException("This service request is not accepting offers");
         }
-        if (nurse.getVerificationStatus() != VerificationStatus.APPROVED
-                || !Boolean.TRUE.equals(nurse.getIsAvailable())) {
+        if (nurse.getVerificationStatus() != VerificationStatus.APPROVED) {
             throw new BadRequestException("Nurse is not eligible to create offers");
         }
         boolean providesRequestedService = nurseServiceRepository

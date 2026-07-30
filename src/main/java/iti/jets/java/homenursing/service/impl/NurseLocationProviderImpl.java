@@ -46,8 +46,7 @@ public class NurseLocationProviderImpl implements NurseLocationProvider {
 
         Nurse nurse = nurseRepository.findByUser_Id(userId).orElse(null);
         if (nurse == null
-                || nurse.getVerificationStatus() != VerificationStatus.APPROVED
-                || !Boolean.TRUE.equals(nurse.getIsAvailable())) {
+                || nurse.getVerificationStatus() != VerificationStatus.APPROVED) {
             return null;
         }
 

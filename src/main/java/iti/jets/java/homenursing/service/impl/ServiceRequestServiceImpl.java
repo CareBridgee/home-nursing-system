@@ -129,8 +129,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         Nurse nurse = nurseRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Nurse profile not found"));
 
-        if (!Boolean.TRUE.equals(nurse.getIsAvailable())
-                || nurse.getVerificationStatus() != VerificationStatus.APPROVED) {
+        if (nurse.getVerificationStatus() != VerificationStatus.APPROVED) {
             throw new BadRequestException("Nurse is not eligible to receive service requests");
         }
 

@@ -113,8 +113,6 @@ specialization VARCHAR(255),
 
 years_of_experience INT,
 
-hourly_rate NUMERIC(10,2),
-
 bio TEXT,
 
 -- =========================
@@ -123,12 +121,6 @@ bio TEXT,
 
 rating_avg NUMERIC(3,2) DEFAULT 0,
 total_reviews INT DEFAULT 0,
-
--- =========================
--- Availability
--- =========================
-
-is_available BOOLEAN DEFAULT TRUE,
 
 verification_status VARCHAR(50)
 DEFAULT 'UNDER_REVIEW'
@@ -734,13 +726,11 @@ SELECT
     n.national_id,
     n.specialization,
     n.years_of_experience,
-    n.hourly_rate,
     n.bio,
 
     n.rating_avg,
     n.total_reviews,
 
-    n.is_available,
     n.verification_status
 
 FROM nurses n
@@ -748,8 +738,7 @@ FROM nurses n
               ON u.id = n.user_id
 
 WHERE
-    n.is_available = TRUE
-  AND n.verification_status = 'APPROVED'
+    n.verification_status = 'APPROVED'
   AND u.is_deleted = FALSE;
 
 -- ==========================================================
@@ -994,9 +983,6 @@ CREATE UNIQUE INDEX idx_profiles_primary
 
 CREATE INDEX idx_nurses_user
     ON nurses(user_id);
-
-CREATE INDEX idx_nurses_available
-    ON nurses(is_available);
 
 CREATE INDEX idx_nurse_services_nurse
     ON nurse_services(nurse_id);

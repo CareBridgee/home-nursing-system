@@ -7,12 +7,9 @@ import lombok.NoArgsConstructor;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.math.BigDecimal;
 
 @Data
 @NoArgsConstructor
@@ -47,10 +44,6 @@ public class NurseRegistrationRequest {
     @NotNull(message = "Years of experience is required")
     @PositiveOrZero(message = "Years of experience cannot be negative")
     private Integer yearsOfExperience;
-
-    @NotNull(message = "Hourly rate is required")
-    @Positive(message = "Hourly rate must be greater than zero")
-    private BigDecimal hourlyRate;
 
     private String bio;
 }

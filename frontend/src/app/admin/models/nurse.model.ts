@@ -17,11 +17,9 @@ export interface NurseResponse {
   professionalCertificateUrl: string;
   specialization: string;
   yearsOfExperience: number;
-  hourlyRate: number;
   bio: string;
   ratingAvg: number;
   totalReviews: number;
-  isAvailable: boolean;
   verificationStatus: VerificationStatus;
   rejectionReason: string;
 }

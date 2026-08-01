@@ -7,6 +7,8 @@ public record ChatMessageResponse(
         UUID id,
         UUID serviceRequestId,
         UUID senderUserId,
+        String senderName,
+        String senderPhone,
         String content,
         LocalDateTime createdAt
 ) {

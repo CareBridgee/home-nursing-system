@@ -1,20 +1,17 @@
 package iti.jets.java.homenursing.controller;
 
-import iti.jets.java.homenursing.dto.ChatMessageResponse;
 import iti.jets.java.homenursing.dto.notification.NotificationRequest;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferRequest;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferResponse;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferUpdateRequest;
 import iti.jets.java.homenursing.dto.reservation.ReservationEvent;
-import iti.jets.java.homenursing.entity.ChatMessage;
 import iti.jets.java.homenursing.entity.ServiceRequest;
 import iti.jets.java.homenursing.entity.enums.NotificationType;
-import iti.jets.java.homenursing.repository.ChatMessageRepository;
 import iti.jets.java.homenursing.repository.ServiceRequestRepository;
+import iti.jets.java.homenursing.service.ChatMessageService;
 import iti.jets.java.homenursing.service.NurseOfferService;
 import iti.jets.java.homenursing.service.NotificationService;
 import iti.jets.java.homenursing.service.ServiceRequestService;
-import iti.jets.java.homenursing.service.impl.ReservationParticipantService;
 import iti.jets.java.homenursing.service.impl.WebSocketPresenceService;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -30,31 +27,28 @@ import java.util.UUID;
 @Controller
 public class WebSocketController {
 
-    private final ChatMessageRepository chatMessageRepository;
     private final ServiceRequestRepository serviceRequestRepository;
-    private final ReservationParticipantService participantService;
     private final SimpMessagingTemplate messagingTemplate;
     private final WebSocketPresenceService presenceService;
     private final NurseOfferService nurseOfferService;
     private final ServiceRequestService serviceRequestService;
     private final NotificationService notificationService;
+    private final ChatMessageService chatMessageService;
 
-    public WebSocketController(ChatMessageRepository chatMessageRepository,
-                                ServiceRequestRepository serviceRequestRepository,
-                                ReservationParticipantService participantService,
+    public WebSocketController(ServiceRequestRepository serviceRequestRepository,
                                 SimpMessagingTemplate messagingTemplate,
                                 WebSocketPresenceService presenceService,
                                 NurseOfferService nurseOfferService,
                                 ServiceRequestService serviceRequestService,
-                                NotificationService notificationService) {
-        this.chatMessageRepository = chatMessageRepository;
+                                NotificationService notificationService,
+                                ChatMessageService chatMessageService) {
         this.serviceRequestRepository = serviceRequestRepository;
-        this.participantService = participantService;
         this.messagingTemplate = messagingTemplate;
         this.presenceService = presenceService;
         this.nurseOfferService = nurseOfferService;
         this.serviceRequestService = serviceRequestService;
         this.notificationService = notificationService;
+        this.chatMessageService = chatMessageService;
     }
 
     @MessageMapping("/heartbeat")
@@ -210,30 +204,9 @@ public class WebSocketController {
     public void sendChatMessage(@DestinationVariable UUID reservationId,
                                  @Payload Map<String, Object> payload,
                                  Principal principal) {
-        String userId = principal.getName();
-        UUID senderId = UUID.fromString(userId);
-
-        if (!participantService.isParticipant(reservationId, senderId)) {
-            return;
-        }
-
+        UUID senderId = UUID.fromString(principal.getName());
         String content = (String) payload.get("content");
-        if (content == null || content.isBlank()) return;
-
-        ServiceRequest serviceRequest = serviceRequestRepository.findById(reservationId).orElse(null);
-        if (serviceRequest == null) return;
-
-        ChatMessage message = ChatMessage.builder()
-                .serviceRequest(serviceRequest)
-                .senderUserId(senderId)
-                .content(content)
-                .build();
-        chatMessageRepository.save(message);
-
-        ChatMessageResponse response = new ChatMessageResponse(
-                message.getId(), reservationId, senderId, content, message.getCreatedAt());
-
-        messagingTemplate.convertAndSend("/topic/chat/" + reservationId, response);
+        chatMessageService.sendMessage(reservationId, senderId, content);
     }
 
     private void pushEvent(UUID reservationId, String type, Object data) {

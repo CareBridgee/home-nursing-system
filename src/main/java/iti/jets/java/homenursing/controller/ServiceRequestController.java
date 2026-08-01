@@ -1,9 +1,11 @@
 package iti.jets.java.homenursing.controller;
 
 import iti.jets.java.homenursing.dto.nurse.NearbyNurse;
+import iti.jets.java.homenursing.dto.servicerequest.CompleteServiceRequestRequest;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyNurseServiceRequestResponse;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestRequest;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestResponse;
+import iti.jets.java.homenursing.dto.servicerequest.VisitCodeResponse;
 import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.ServiceType;
 import iti.jets.java.homenursing.repository.NurseRepository;
@@ -87,6 +89,19 @@ public class ServiceRequestController {
     @PatchMapping("/{serviceRequestId}/cancel")
     public ResponseEntity<Void> cancelRequest(@PathVariable UUID serviceRequestId) {
         serviceRequestService.cancelRequest(serviceRequestId, SecurityUtils.currentUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{serviceRequestId}/visit-code")
+    public ResponseEntity<VisitCodeResponse> generateVisitCode(@PathVariable UUID serviceRequestId) {
+        VisitCodeResponse response = serviceRequestService.generateVisitCode(serviceRequestId, SecurityUtils.currentUserId());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{serviceRequestId}/complete")
+    public ResponseEntity<Void> completeRequest(@PathVariable UUID serviceRequestId,
+                                                @Valid @RequestBody CompleteServiceRequestRequest request) {
+        serviceRequestService.completeRequest(serviceRequestId, request.visitCode(), SecurityUtils.currentUserId());
         return ResponseEntity.noContent().build();
     }
 }

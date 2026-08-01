@@ -70,6 +70,7 @@ All reservation-scoped events are pushed as a single JSON wrapper:
 | `OFFER_WITHDRAWN` | `{ "offerId": "uuid" }` | Nurse withdraws their offer |
 | `OFFER_REJECTED` | `{ "offerId": "uuid" }` | Patient rejects an offer |
 | `REQUEST_CANCELLED` | `{}` | Patient cancels the entire request |
+| `COMPLETED` | `null` | Assigned nurse completes the visit via QR scan (REST-driven) |
 | `OFFERS_LIST` | `[NurseOfferResponse, ...]` | Response to `/app/reservation/offers/list` |
 
 ---
@@ -102,6 +103,13 @@ All reservation-scoped events are pushed as a single JSON wrapper:
 |---|---|---|---|
 | `/app/reservation/cancel` | `{ "serviceRequestId": "uuid" }` | Patient | Cancels request, rejects all pending offers |
 | `/app/reservation/offers/list` | `{ "serviceRequestId": "uuid" }` | Participant | Triggers server to push `OFFERS_LIST` on the reservation topic |
+
+### Visit Completion (QR)
+
+| Step | Call | Who | Effect |
+|---|---|---|---|
+| 1. Get visit code | `POST /api/v1/service-requests/{id}/visit-code` | Patient | Mints (or reuses) an 8-char code, stored in Redis with TTL; returns `VisitCodeResponse(serviceRequestId, code, expiresAt)` — UI renders it as a QR. Only allowed while status is `ACCEPTED`; notifies the patient on fresh mint |
+| 2. Complete | `POST /api/v1/service-requests/{id}/complete` body `{ "visitCode": "..." }` | Assigned nurse | Verifies the code (single-use, 5-attempt lockout), sets status `COMPLETED`, pushes `COMPLETED` on `/topic/reservation/{id}`, notifies the patient |
 
 ### Chat
 
@@ -411,6 +419,8 @@ On reconnect:
 | `GET /api/v1/nurse-offers?serviceRequestId=` | Patient fetches current offers on reconnect |
 | `GET /api/v1/reservations/{id}/messages` | Fetch chat messages (`?after=ISO-DATE-TIME` optional — omit for full history) |
 | `POST /api/v1/reservations/{id}/messages` | Send a chat message via REST: body `{ "content": "..." }` — persists + broadcasts to `/topic/chat/{id}` + notifies the other participant |
+| `POST /api/v1/service-requests/{id}/visit-code` | Patient fetches (mints or reuses) the visit code to render as a QR |
+| `POST /api/v1/service-requests/{id}/complete` | Assigned nurse completes the visit: body `{ "visitCode": "..." }` — sets status `COMPLETED`, pushes `COMPLETED` event, notifies the patient |
 | `GET /api/v1/notifications?after=` | Fetch missed notifications |
 
 ---
@@ -423,6 +433,7 @@ On reconnect:
 | Subscribe to unauthorized topic | `ERROR` (403, "Not a participant") | Alert user, do not retry |
 | Connection lost | WebSocket close | Offline indicator, auto-reconnect with backoff, re-subscribe, pull missed data via REST |
 | Invalid offer operation | `ERROR` (e.g., "Only pending offers can be accepted") | Show feedback to user |
+| Invalid / locked-out visit code | `400` from `POST .../complete` | Prompt the patient to regenerate the QR via `POST .../visit-code` |
 
 ---
 

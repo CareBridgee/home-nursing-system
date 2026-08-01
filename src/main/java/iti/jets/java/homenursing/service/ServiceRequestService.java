@@ -3,6 +3,7 @@ package iti.jets.java.homenursing.service;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestRequest;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestResponse;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyNurseServiceRequestResponse;
+import iti.jets.java.homenursing.dto.servicerequest.VisitCodeResponse;
 
 import java.util.List;
 import java.util.UUID;
@@ -14,4 +15,8 @@ public interface ServiceRequestService {
     List<NearbyNurseServiceRequestResponse> listNearbyForNurse(UUID userId);
 
     void cancelRequest(UUID serviceRequestId, UUID userId);
+
+    VisitCodeResponse generateVisitCode(UUID serviceRequestId, UUID userId);
+
+    void completeRequest(UUID serviceRequestId, String visitCode, UUID userId);
 }

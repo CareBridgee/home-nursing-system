@@ -95,36 +95,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         ServiceType serviceType = serviceTypeRepository.findById(request.serviceTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Service type not found: " + request.serviceTypeId()));
 
-        // get all nurses ids have this service
-        Set<UUID> nursesForRequiredService = nurseServiceRepository
-                .findByServiceType_IdAndIsActiveTrue(request.serviceTypeId())
-                .stream()
-                .map(NurseService::getNurse)
-                .map(Nurse::getId)
-                .collect(Collectors.toSet());
-
-        if (nursesForRequiredService.isEmpty()) {
-            throw new BadRequestException("No nurses currently offer this service");
-        }
-
-        // nurse location by socket
-        List<NurseLocation> nurseLocations = nurseLocationProvider.getNurseLocations();
-
-        log.info("nurseLocations: {}" , nurseLocations);
-
-
-        // get all nurses in my area
-        List<NearbyNurse> nearbyNurses = nearbyNurseMatcher.findNearbyNurse(
-                nurseLocations,
-                request.latitude(),
-                request.longitude(),
-                nursesForRequiredService);
-
-        log.info("nearbyNurses: {}" , nearbyNurses);
-
-        if (nearbyNurses.isEmpty()) {
-            throw new BadRequestException("No nearby nurses found for this service within the given radius");
-        }
+        List<NearbyNurse> nearbyNurses = findNearbyNursesFor(serviceType, request.latitude(), request.longitude());
 
         ServiceRequest serviceRequest = ServiceRequest.builder()
                 .profile(profile)
@@ -215,6 +186,30 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
         tokenService.delete(visitCodeKey(serviceRequestId));
         tokenService.delete(visitCodeAttemptsKey(serviceRequestId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NearbyNurse> getNearbyNursesForRequest(UUID serviceRequestId, UUID userId) {
+        ServiceRequest serviceRequest = serviceRequestRepository.findByIdAndIsDeletedFalse(serviceRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Service request not found: " + serviceRequestId));
+
+        if (!serviceRequest.getProfile().getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Service request not found: " + serviceRequestId);
+        }
+
+        Set<ServiceRequestStatus> openStatuses = Set.of(
+                ServiceRequestStatus.PENDING,
+                ServiceRequestStatus.SEARCHING,
+                ServiceRequestStatus.NEGOTIATING);
+        if (!openStatuses.contains(serviceRequest.getStatus())) {
+            throw new BadRequestException("This service request is not open for matching anymore");
+        }
+
+        return findNearbyNursesFor(
+                serviceRequest.getServiceType(),
+                serviceRequest.getLatitude(),
+                serviceRequest.getLongitude());
     }
 
     @Override
@@ -333,6 +328,29 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         return MessageDigest.isEqual(
                 expected.getBytes(StandardCharsets.UTF_8),
                 actual.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private List<NearbyNurse> findNearbyNursesFor(ServiceType serviceType, BigDecimal latitude, BigDecimal longitude) {
+        Set<UUID> nursesForRequiredService = nurseServiceRepository
+                .findByServiceType_IdAndIsActiveTrue(serviceType.getId())
+                .stream()
+                .map(NurseService::getNurse)
+                .map(Nurse::getId)
+                .collect(Collectors.toSet());
+
+        List<NurseLocation> nurseLocations = nurseLocationProvider.getNurseLocations();
+
+        log.info("nurseLocations: {}" , nurseLocations);
+
+        List<NearbyNurse> nearbyNurses = nearbyNurseMatcher.findNearbyNurse(
+                nurseLocations,
+                latitude,
+                longitude,
+                nursesForRequiredService);
+
+        log.info("nearbyNurses: {}" , nearbyNurses);
+
+        return nearbyNurses;
     }
 
     private NearbyNurseServiceRequestResponse toNearbyNurseResponse(ServiceRequest request, BigDecimal nurseLatitude, BigDecimal nurseLongitude) {

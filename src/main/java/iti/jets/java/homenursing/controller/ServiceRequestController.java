@@ -86,6 +86,11 @@ public class ServiceRequestController {
         return ResponseEntity.ok(serviceRequestService.listNearbyForNurse(SecurityUtils.currentUserId()));
     }
 
+    @GetMapping("/{serviceRequestId}/nearby-nurses")
+    public ResponseEntity<List<NearbyNurse>> getNearbyNursesForRequest(@PathVariable UUID serviceRequestId) {
+        return ResponseEntity.ok(serviceRequestService.getNearbyNursesForRequest(serviceRequestId, SecurityUtils.currentUserId()));
+    }
+
     @PatchMapping("/{serviceRequestId}/cancel")
     public ResponseEntity<Void> cancelRequest(@PathVariable UUID serviceRequestId) {
         serviceRequestService.cancelRequest(serviceRequestId, SecurityUtils.currentUserId());

@@ -416,6 +416,7 @@ On reconnect:
 | Endpoint | Purpose |
 |---|---|
 | `GET /api/v1/service-requests/nearby` | Nurse fetches all open requests on first load |
+| `GET /api/v1/service-requests/{id}/nearby-nurses` | Patient fetches currently-nearby nurses for their open request (on demand — e.g., when nurses go available) |
 | `GET /api/v1/nurse-offers?serviceRequestId=` | Patient fetches current offers on reconnect |
 | `GET /api/v1/reservations/{id}/messages` | Fetch chat messages (`?after=ISO-DATE-TIME` optional — omit for full history) |
 | `POST /api/v1/reservations/{id}/messages` | Send a chat message via REST: body `{ "content": "..." }` — persists + broadcasts to `/topic/chat/{id}` + notifies the other participant |

@@ -13,6 +13,8 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.validation.method.ParameterValidationResult;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -42,6 +44,19 @@ public class GlobalExceptionHandler {
                 "Validation failed", details
         );
         return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiError> handleHandlerMethodValidation(HandlerMethodValidationException ex) {
+        Map<String, Object> details = new HashMap<>();
+        for (ParameterValidationResult result : ex.getParameterValidationResults()) {
+            String name = result.getMethodParameter().getParameterName() != null
+                    ? result.getMethodParameter().getParameterName()
+                    : "request";
+            result.getResolvableErrors().forEach(e -> details.put(name, e.getDefaultMessage()));
+        }
+        return ResponseEntity.badRequest().body(
+                ApiError.from(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "Validation failed", details));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

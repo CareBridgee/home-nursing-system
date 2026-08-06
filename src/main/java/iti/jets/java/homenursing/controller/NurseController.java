@@ -2,12 +2,13 @@ package iti.jets.java.homenursing.controller;
 
 import iti.jets.java.homenursing.dto.nurse.NurseRegistrationRequest;
 import iti.jets.java.homenursing.dto.nurse.NurseResponse;
+import iti.jets.java.homenursing.dto.nurse.NurseServiceBatchResult;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceRequest;
-import iti.jets.java.homenursing.dto.nurse.NurseServiceResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseUpdateRequest;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.NurseService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -57,10 +58,9 @@ public class NurseController {
     }
 
     @PostMapping("/{nurseId}/services")
-    public ResponseEntity<NurseServiceResponse> addService(@PathVariable UUID nurseId,
-                                                           @Valid @RequestBody NurseServiceRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(nurseService.addService(nurseId, SecurityUtils.currentUserId(), request));
+    public ResponseEntity<NurseServiceBatchResult> addServices(@PathVariable UUID nurseId,
+                                                               @NotEmpty @RequestBody List<NurseServiceRequest> requests) {
+        return ResponseEntity.ok(nurseService.addServices(nurseId, SecurityUtils.currentUserId(), requests));
     }
 
     @DeleteMapping("/{nurseId}/services/{serviceTypeId}")

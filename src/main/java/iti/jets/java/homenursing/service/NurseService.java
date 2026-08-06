@@ -2,8 +2,8 @@ package iti.jets.java.homenursing.service;
 
 import iti.jets.java.homenursing.dto.nurse.NurseRegistrationRequest;
 import iti.jets.java.homenursing.dto.nurse.NurseResponse;
+import iti.jets.java.homenursing.dto.nurse.NurseServiceBatchResult;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceRequest;
-import iti.jets.java.homenursing.dto.nurse.NurseServiceResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseUpdateRequest;
 
 import java.util.List;
@@ -19,7 +19,7 @@ public interface NurseService {
 
     List<NurseResponse> listNurses();
 
-    NurseServiceResponse addService(UUID nurseId, UUID userId, NurseServiceRequest request);
+    NurseServiceBatchResult addServices(UUID nurseId, UUID userId, List<NurseServiceRequest> requests);
 
     void removeService(UUID nurseId, UUID userId, UUID serviceTypeId);
 

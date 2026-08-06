@@ -2,6 +2,7 @@ package iti.jets.java.homenursing.service.impl;
 
 import iti.jets.java.homenursing.dto.nurse.NurseRegistrationRequest;
 import iti.jets.java.homenursing.dto.nurse.NurseResponse;
+import iti.jets.java.homenursing.dto.nurse.NurseServiceBatchResult;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceRequest;
 import iti.jets.java.homenursing.dto.nurse.NurseServiceResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseUpdateRequest;
@@ -23,7 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -101,20 +104,53 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
 
     @Override
     @Transactional
-    public NurseServiceResponse addService(UUID nurseId, UUID userId, NurseServiceRequest request) {
+    public NurseServiceBatchResult addServices(UUID nurseId, UUID userId, List<NurseServiceRequest> requests) {
         Nurse nurse = getOwnedNurseOrThrow(nurseId, userId);
-        ServiceType serviceType = getServiceTypeOrThrow(request.getServiceTypeId());
 
-        NurseService link = nurseServiceRepository
-                .findByNurse_IdAndServiceType_Id(nurseId, request.getServiceTypeId())
-                .orElseGet(() -> NurseService.builder()
-                        .nurse(nurse)
-                        .serviceType(serviceType)
+        LinkedHashSet<UUID> serviceTypeIds = new LinkedHashSet<>();
+        for (NurseServiceRequest request : requests) {
+            if (request.getServiceTypeId() != null) {
+                serviceTypeIds.add(request.getServiceTypeId());
+            }
+        }
+
+        List<NurseServiceResponse> added = new ArrayList<>();
+        List<NurseServiceBatchResult.BatchFailure> failed = new ArrayList<>();
+
+        for (UUID serviceTypeId : serviceTypeIds) {
+            ServiceType serviceType = serviceTypeRepository.findById(serviceTypeId).orElse(null);
+            if (serviceType == null) {
+                failed.add(NurseServiceBatchResult.BatchFailure.builder()
+                        .serviceTypeId(serviceTypeId)
+                        .reason("Service type not found")
                         .build());
+                continue;
+            }
 
-        link.setIsActive(true);
+            NurseService link = nurseServiceRepository
+                    .findByNurse_IdAndServiceType_Id(nurseId, serviceTypeId)
+                    .orElseGet(() -> NurseService.builder()
+                            .nurse(nurse)
+                            .serviceType(serviceType)
+                            .build());
 
-        return nurseMapper.toServiceResponse(nurseServiceRepository.save(link));
+            link.setIsActive(true);
+            added.add(nurseMapper.toServiceResponse(nurseServiceRepository.save(link)));
+        }
+
+        for (NurseServiceRequest request : requests) {
+            if (request.getServiceTypeId() == null) {
+                failed.add(NurseServiceBatchResult.BatchFailure.builder()
+                        .serviceTypeId(null)
+                        .reason("Service type id is required")
+                        .build());
+            }
+        }
+
+        return NurseServiceBatchResult.builder()
+                .added(added)
+                .failed(failed)
+                .build();
     }
 
     @Override
@@ -139,11 +175,6 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
             throw new ResourceNotFoundException("Nurse not found");
         }
         return nurse;
-    }
-
-    private ServiceType getServiceTypeOrThrow(UUID serviceTypeId) {
-        return serviceTypeRepository.findById(serviceTypeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Service type not found"));
     }
 
     private void uploadDocuments(Nurse nurse, MultipartFile nationalIdFront, MultipartFile nationalIdBack,

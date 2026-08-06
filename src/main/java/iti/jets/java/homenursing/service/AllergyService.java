@@ -2,6 +2,7 @@ package iti.jets.java.homenursing.service;
 
 import iti.jets.java.homenursing.dto.AllergyRequest;
 import iti.jets.java.homenursing.dto.AllergyResponse;
+import iti.jets.java.homenursing.entity.enums.CatalogSource;
 
 import java.util.List;
 import java.util.UUID;
@@ -9,6 +10,8 @@ import java.util.UUID;
 public interface AllergyService {
 
     List<AllergyResponse> findAll();
+
+    List<AllergyResponse> findAll(CatalogSource source);
 
     AllergyResponse getById(UUID id);
 

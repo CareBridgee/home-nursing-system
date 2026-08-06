@@ -3,6 +3,7 @@ package iti.jets.java.homenursing.service.impl;
 import iti.jets.java.homenursing.dto.MedicationRequest;
 import iti.jets.java.homenursing.dto.MedicationResponse;
 import iti.jets.java.homenursing.entity.Medication;
+import iti.jets.java.homenursing.entity.enums.CatalogSource;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.MedicationMapper;
 import iti.jets.java.homenursing.repository.MedicationRepository;
@@ -25,6 +26,14 @@ public class MedicationServiceImpl implements MedicationService {
     @Transactional(readOnly = true)
     public List<MedicationResponse> findAll() {
         return medicationRepository.findAll().stream()
+                .map(medicationMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MedicationResponse> findAll(CatalogSource source) {
+        return medicationRepository.findBySource(source).stream()
                 .map(medicationMapper::toResponse)
                 .toList();
     }

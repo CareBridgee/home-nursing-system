@@ -224,6 +224,7 @@ CREATE TABLE medical_conditions (
 
     name VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
+    source VARCHAR(20) NOT NULL DEFAULT 'ADMIN',
 
     created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP
@@ -281,6 +282,8 @@ CREATE TABLE allergies (
    type VARCHAR(50)
        CHECK (type IN ('DRUG', 'FOOD', 'OTHER')),
 
+   source VARCHAR(20) NOT NULL DEFAULT 'ADMIN',
+
    created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
    updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -319,6 +322,7 @@ CREATE TABLE profile_allergies (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
      name VARCHAR(255) UNIQUE NOT NULL,
+     source VARCHAR(20) NOT NULL DEFAULT 'ADMIN',
 
      created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
      updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP
@@ -336,6 +340,9 @@ CREATE TABLE profile_medications (
 
      created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
      updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
+
+     CONSTRAINT uq_profile_medication
+         UNIQUE (profile_id, medication_id),
 
      CONSTRAINT fk_pm_profile
          FOREIGN KEY (profile_id)

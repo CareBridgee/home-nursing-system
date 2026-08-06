@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,7 +27,9 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "profile_medications")
+@Table(name = "profile_medications", uniqueConstraints = {
+        @UniqueConstraint(name = "uq_profile_medication", columnNames = {"profile_id", "medication_id"})
+})
 public class ProfileMedication {
 
     @Id

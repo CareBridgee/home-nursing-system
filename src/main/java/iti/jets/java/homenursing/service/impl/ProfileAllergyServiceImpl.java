@@ -5,6 +5,7 @@ import iti.jets.java.homenursing.dto.ProfileAllergyResponse;
 import iti.jets.java.homenursing.entity.Allergy;
 import iti.jets.java.homenursing.entity.Profile;
 import iti.jets.java.homenursing.entity.ProfileAllergy;
+import iti.jets.java.homenursing.entity.enums.AllergyType;
 import iti.jets.java.homenursing.exception.BadRequestException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.ProfileAllergyMapper;
@@ -13,6 +14,7 @@ import iti.jets.java.homenursing.repository.ProfileAllergyRepository;
 import iti.jets.java.homenursing.service.ProfileAllergyService;
 import iti.jets.java.homenursing.service.ProfileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,10 +25,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ProfileAllergyServiceImpl implements ProfileAllergyService {
 
+    private static final int MAX_NAME_LENGTH = 255;
+
     private final ProfileAllergyRepository profileAllergyRepository;
     private final ProfileAllergyMapper profileAllergyMapper;
     private final ProfileService profileService;
     private final AllergyRepository allergyRepository;
+    private final CatalogEntryCreator catalogEntryCreator;
 
     @Override
     @Transactional(readOnly = true)
@@ -42,16 +47,16 @@ public class ProfileAllergyServiceImpl implements ProfileAllergyService {
     public ProfileAllergyResponse addToProfile(UUID profileId, UUID userId, ProfileAllergyRequest request) {
         Profile profile = profileService.getOwnedProfileEntity(profileId, userId);
 
-        Allergy allergy = allergyRepository.findById(request.allergyId())
-                .orElseThrow(() -> new ResourceNotFoundException("Allergy not found"));
+        Allergy allergy = resolveAllergy(request);
 
-        if (profileAllergyRepository.existsByProfileIdAndAllergyId(profileId, request.allergyId())) {
+        if (profileAllergyRepository.existsByProfileIdAndAllergyId(profileId, allergy.getId())) {
             throw new BadRequestException("Allergy already linked to this profile");
         }
 
-        ProfileAllergy profileAllergy = profileAllergyMapper.toEntity(request);
-        profileAllergy.setProfile(profile);
-        profileAllergy.setAllergy(allergy);
+        ProfileAllergy profileAllergy = ProfileAllergy.builder()
+                .profile(profile)
+                .allergy(allergy)
+                .build();
 
         ProfileAllergy saved = profileAllergyRepository.save(profileAllergy);
         return profileAllergyMapper.toResponse(saved);
@@ -66,5 +71,36 @@ public class ProfileAllergyServiceImpl implements ProfileAllergyService {
                 .orElseThrow(() -> new ResourceNotFoundException("Allergy link not found"));
 
         profileAllergyRepository.delete(profileAllergy);
+    }
+
+    private Allergy resolveAllergy(ProfileAllergyRequest request) {
+        if (request.allergyId() != null) {
+            return allergyRepository.findById(request.allergyId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Allergy not found"));
+        }
+
+        String name = normalizeName(request.name(), "Provide either allergy id or name to add an allergy");
+        return allergyRepository.findByNameIgnoreCase(name)
+                .orElseGet(() -> createUserAllergy(name, request.type()));
+    }
+
+    private Allergy createUserAllergy(String name, AllergyType type) {
+        try {
+            return catalogEntryCreator.createAllergy(name, type);
+        } catch (DataIntegrityViolationException e) {
+            return allergyRepository.findByNameIgnoreCase(name)
+                    .orElseThrow(() -> new IllegalStateException("Failed to create allergy: " + name, e));
+        }
+    }
+
+    private String normalizeName(String rawName, String blankMessage) {
+        if (rawName == null || rawName.isBlank()) {
+            throw new BadRequestException(blankMessage);
+        }
+        String name = rawName.trim();
+        if (name.length() > MAX_NAME_LENGTH) {
+            throw new BadRequestException("Name must not exceed " + MAX_NAME_LENGTH + " characters");
+        }
+        return name;
     }
 }

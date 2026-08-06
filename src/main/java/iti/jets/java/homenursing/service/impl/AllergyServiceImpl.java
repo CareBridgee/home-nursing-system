@@ -3,6 +3,7 @@ package iti.jets.java.homenursing.service.impl;
 import iti.jets.java.homenursing.dto.AllergyRequest;
 import iti.jets.java.homenursing.dto.AllergyResponse;
 import iti.jets.java.homenursing.entity.Allergy;
+import iti.jets.java.homenursing.entity.enums.CatalogSource;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.AllergyMapper;
 import iti.jets.java.homenursing.repository.AllergyRepository;
@@ -25,6 +26,14 @@ public class AllergyServiceImpl implements AllergyService {
     @Transactional(readOnly = true)
     public List<AllergyResponse> findAll() {
         return allergyRepository.findAll().stream()
+                .map(allergyMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AllergyResponse> findAll(CatalogSource source) {
+        return allergyRepository.findBySource(source).stream()
                 .map(allergyMapper::toResponse)
                 .toList();
     }

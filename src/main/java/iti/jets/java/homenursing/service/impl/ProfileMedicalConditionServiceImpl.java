@@ -13,6 +13,7 @@ import iti.jets.java.homenursing.repository.ProfileMedicalConditionRepository;
 import iti.jets.java.homenursing.service.ProfileMedicalConditionService;
 import iti.jets.java.homenursing.service.ProfileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,10 +24,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ProfileMedicalConditionServiceImpl implements ProfileMedicalConditionService {
 
+    private static final int MAX_NAME_LENGTH = 255;
+
     private final ProfileMedicalConditionRepository profileMedicalConditionRepository;
     private final ProfileMedicalConditionMapper profileMedicalConditionMapper;
     private final ProfileService profileService;
     private final MedicalConditionRepository medicalConditionRepository;
+    private final CatalogEntryCreator catalogEntryCreator;
 
     @Override
     @Transactional(readOnly = true)
@@ -42,16 +46,16 @@ public class ProfileMedicalConditionServiceImpl implements ProfileMedicalConditi
     public ProfileMedicalConditionResponse addToProfile(UUID profileId, UUID userId, ProfileMedicalConditionRequest request) {
         Profile profile = profileService.getOwnedProfileEntity(profileId, userId);
 
-        MedicalCondition condition = medicalConditionRepository.findById(request.medicalConditionId())
-                .orElseThrow(() -> new ResourceNotFoundException("Medical condition not found"));
+        MedicalCondition condition = resolveCondition(request);
 
-        if (profileMedicalConditionRepository.existsByProfileIdAndMedicalConditionId(profileId, request.medicalConditionId())) {
+        if (profileMedicalConditionRepository.existsByProfileIdAndMedicalConditionId(profileId, condition.getId())) {
             throw new BadRequestException("Medical condition already linked to this profile");
         }
 
-        ProfileMedicalCondition profileMedicalCondition = profileMedicalConditionMapper.toEntity(request);
-        profileMedicalCondition.setProfile(profile);
-        profileMedicalCondition.setMedicalCondition(condition);
+        ProfileMedicalCondition profileMedicalCondition = ProfileMedicalCondition.builder()
+                .profile(profile)
+                .medicalCondition(condition)
+                .build();
 
         ProfileMedicalCondition saved = profileMedicalConditionRepository.save(profileMedicalCondition);
         return profileMedicalConditionMapper.toResponse(saved);
@@ -67,5 +71,36 @@ public class ProfileMedicalConditionServiceImpl implements ProfileMedicalConditi
                 .orElseThrow(() -> new ResourceNotFoundException("Medical condition link not found"));
 
         profileMedicalConditionRepository.delete(profileMedicalCondition);
+    }
+
+    private MedicalCondition resolveCondition(ProfileMedicalConditionRequest request) {
+        if (request.medicalConditionId() != null) {
+            return medicalConditionRepository.findById(request.medicalConditionId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Medical condition not found"));
+        }
+
+        String name = normalizeName(request.name(), "Provide either medical condition id or name to add a condition");
+        return medicalConditionRepository.findByNameIgnoreCase(name)
+                .orElseGet(() -> createUserCondition(name, request.description()));
+    }
+
+    private MedicalCondition createUserCondition(String name, String description) {
+        try {
+            return catalogEntryCreator.createMedicalCondition(name, description);
+        } catch (DataIntegrityViolationException e) {
+            return medicalConditionRepository.findByNameIgnoreCase(name)
+                    .orElseThrow(() -> new IllegalStateException("Failed to create medical condition: " + name, e));
+        }
+    }
+
+    private String normalizeName(String rawName, String blankMessage) {
+        if (rawName == null || rawName.isBlank()) {
+            throw new BadRequestException(blankMessage);
+        }
+        String name = rawName.trim();
+        if (name.length() > MAX_NAME_LENGTH) {
+            throw new BadRequestException("Name must not exceed " + MAX_NAME_LENGTH + " characters");
+        }
+        return name;
     }
 }

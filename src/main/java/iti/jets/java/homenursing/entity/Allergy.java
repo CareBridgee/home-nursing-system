@@ -1,6 +1,7 @@
 package iti.jets.java.homenursing.entity;
 
 import iti.jets.java.homenursing.entity.enums.AllergyType;
+import iti.jets.java.homenursing.entity.enums.CatalogSource;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -39,6 +40,11 @@ public class Allergy {
     @Enumerated(EnumType.STRING)
     @Column(length = 50)
     private AllergyType type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private CatalogSource source = CatalogSource.ADMIN;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

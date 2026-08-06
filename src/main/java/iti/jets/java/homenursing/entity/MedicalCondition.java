@@ -1,7 +1,10 @@
 package iti.jets.java.homenursing.entity;
 
+import iti.jets.java.homenursing.entity.enums.CatalogSource;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -35,6 +38,11 @@ public class MedicalCondition {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private CatalogSource source = CatalogSource.ADMIN;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

@@ -3,6 +3,7 @@ package iti.jets.java.homenursing.service.impl;
 import iti.jets.java.homenursing.dto.MedicalConditionRequest;
 import iti.jets.java.homenursing.dto.MedicalConditionResponse;
 import iti.jets.java.homenursing.entity.MedicalCondition;
+import iti.jets.java.homenursing.entity.enums.CatalogSource;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.MedicalConditionMapper;
 import iti.jets.java.homenursing.repository.MedicalConditionRepository;
@@ -25,6 +26,14 @@ public class MedicalConditionServiceImpl implements MedicalConditionService {
     @Transactional(readOnly = true)
     public List<MedicalConditionResponse> findAll() {
         return medicalConditionRepository.findAll().stream()
+                .map(medicalConditionMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MedicalConditionResponse> findAll(CatalogSource source) {
+        return medicalConditionRepository.findBySource(source).stream()
                 .map(medicalConditionMapper::toResponse)
                 .toList();
     }

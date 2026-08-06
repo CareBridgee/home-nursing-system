@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.controller;
 
 import com.openai.errors.BadRequestException;
-import com.openai.errors.OpenAiException;
+import com.openai.errors.OpenAIException;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -49,8 +49,8 @@ public class ChatController {
                 ));
     }
 
-    @ExceptionHandler(OpenAiException.class)
-    public ResponseEntity<Map<String, String>> handleAiServiceError(OpenAiException ex) {
+    @ExceptionHandler(OpenAIException.class)
+    public ResponseEntity<Map<String, String>> handleAiServiceError(OpenAIException ex) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(Map.of(
                         "error", "AI_SERVICE_UNAVAILABLE",

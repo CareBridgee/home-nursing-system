@@ -4,6 +4,8 @@ import iti.jets.java.homenursing.dto.nurse.NearbyNurse;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestRequest;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestResponse;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyNurseServiceRequestResponse;
+import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestDetailsResponse;
+import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestHistoryResponse;
 import iti.jets.java.homenursing.dto.servicerequest.VisitCodeResponse;
 
 import java.util.List;
@@ -22,4 +24,8 @@ public interface ServiceRequestService {
     VisitCodeResponse generateVisitCode(UUID serviceRequestId, UUID userId);
 
     void completeRequest(UUID serviceRequestId, String visitCode, UUID userId);
+
+    ServiceRequestDetailsResponse getDetails(UUID serviceRequestId, UUID userId);
+
+    List<ServiceRequestHistoryResponse> listConfirmedHistory(UUID userId);
 }

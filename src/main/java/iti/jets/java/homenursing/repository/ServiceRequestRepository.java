@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,6 +19,10 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
     List<ServiceRequest> findByProfile_User_IdAndIsDeletedFalseOrderByCreatedAtDesc(UUID userId);
 
     List<ServiceRequest> findByProfile_IdAndIsDeletedFalseOrderByCreatedAtDesc(UUID profileId);
+
+    @EntityGraph(attributePaths = {"serviceType", "nurse.user"})
+    List<ServiceRequest> findByProfile_User_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(
+            UUID userId, Collection<ServiceRequestStatus> statuses);
 
     Optional<ServiceRequest> findByIdAndIsDeletedFalse(UUID id);
 

@@ -3,10 +3,13 @@ package iti.jets.java.homenursing.service.impl;
 import iti.jets.java.homenursing.dto.notification.NotificationRequest;
 import iti.jets.java.homenursing.dto.nurse.NearbyNurse;
 import iti.jets.java.homenursing.dto.nurse.NurseLocation;
+import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferResponse;
 import iti.jets.java.homenursing.dto.reservation.ReservationEvent;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyNurseServiceRequestResponse;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestRequest;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestResponse;
+import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestDetailsResponse;
+import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestHistoryResponse;
 import iti.jets.java.homenursing.dto.servicerequest.VisitCodeResponse;
 import iti.jets.java.homenursing.entity.*;
 import iti.jets.java.homenursing.entity.enums.NotificationType;
@@ -16,6 +19,7 @@ import iti.jets.java.homenursing.entity.enums.VerificationStatus;
 import iti.jets.java.homenursing.exception.BadRequestException;
 import iti.jets.java.homenursing.exception.ForbiddenException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
+import iti.jets.java.homenursing.mapper.NurseOfferMapper;
 import iti.jets.java.homenursing.repository.NurseOfferRepository;
 import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.NurseServiceRepository;
@@ -59,6 +63,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     private final NurseOfferRepository nurseOfferRepository;
     private final NurseRepository nurseRepository;
     private final NurseServiceRepository nurseServiceRepository;
+    private final NurseOfferMapper nurseOfferMapper;
     private final ProfileService profileService;
     private final NurseLocationProvider nurseLocationProvider;
     private final NearbyNurseMatcher nearbyNurseMatcher;
@@ -303,6 +308,110 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 NotificationType.BOOKING,
                 "SERVICE_REQUEST",
                 serviceRequestId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ServiceRequestDetailsResponse getDetails(UUID serviceRequestId, UUID userId) {
+        ServiceRequest serviceRequest = serviceRequestRepository.findWithDetailsById(serviceRequestId)
+                .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("Service request not found: " + serviceRequestId));
+
+        if (!serviceRequestRepository.isParticipant(serviceRequestId, userId)) {
+            throw new ResourceNotFoundException("Service request not found: " + serviceRequestId);
+        }
+
+        List<NurseOfferResponse> offers = nurseOfferRepository
+                .findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(serviceRequestId)
+                .stream()
+                .map(nurseOfferMapper::toResponse)
+                .toList();
+
+        Profile profile = serviceRequest.getProfile();
+        User profileUser = profile.getUser();
+        ServiceRequestDetailsResponse.ProfileSummary profileSummary = new ServiceRequestDetailsResponse.ProfileSummary(
+                profile.getId(),
+                profileUser.getFirstName(),
+                profileUser.getLastName(),
+                profileUser.getPhoneNumber());
+
+        ServiceType serviceType = serviceRequest.getServiceType();
+        ServiceRequestDetailsResponse.ServiceTypeSummary serviceTypeSummary = serviceType == null
+                ? null
+                : new ServiceRequestDetailsResponse.ServiceTypeSummary(
+                        serviceType.getId(),
+                        serviceType.getName(),
+                        serviceType.getBasePrice());
+
+        Nurse nurse = serviceRequest.getNurse();
+        ServiceRequestDetailsResponse.NurseSummary nurseSummary = null;
+        if (nurse != null) {
+            User nurseUser = nurse.getUser();
+            nurseSummary = new ServiceRequestDetailsResponse.NurseSummary(
+                    nurse.getId(),
+                    nurseUser.getFirstName(),
+                    nurseUser.getLastName(),
+                    nurseUser.getPhoneNumber(),
+                    nurse.getRatingAvg(),
+                    nurse.getTotalReviews());
+        }
+
+        return new ServiceRequestDetailsResponse(
+                serviceRequest.getId(),
+                serviceTypeSummary,
+                profileSummary,
+                nurseSummary,
+                serviceRequest.getServiceDescription(),
+                serviceRequest.getPreferredDate(),
+                serviceRequest.getPreferredTime(),
+                serviceRequest.getDurationMinutes(),
+                serviceRequest.getStatus(),
+                serviceRequest.getLatitude(),
+                serviceRequest.getLongitude(),
+                serviceRequest.getCreatedAt(),
+                serviceRequest.getUpdatedAt(),
+                offers);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ServiceRequestHistoryResponse> listConfirmedHistory(UUID userId) {
+        List<ServiceRequestStatus> confirmedStatuses = List.of(
+                ServiceRequestStatus.ACCEPTED,
+                ServiceRequestStatus.IN_PROGRESS,
+                ServiceRequestStatus.COMPLETED);
+
+        return serviceRequestRepository
+                .findByProfile_User_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(userId, confirmedStatuses)
+                .stream()
+                .map(this::toHistoryResponse)
+                .toList();
+    }
+
+    private ServiceRequestHistoryResponse toHistoryResponse(ServiceRequest s) {
+        ServiceType serviceType = s.getServiceType();
+        Nurse nurse = s.getNurse();
+        String nurseName = null;
+        if (nurse != null && nurse.getUser() != null) {
+            User nurseUser = nurse.getUser();
+            String first = nurseUser.getFirstName() == null ? "" : nurseUser.getFirstName();
+            String last = nurseUser.getLastName() == null ? "" : nurseUser.getLastName();
+            String combined = (first + " " + last).trim();
+            nurseName = combined.isEmpty() ? null : combined;
+        }
+
+        return new ServiceRequestHistoryResponse(
+                s.getId(),
+                serviceType == null ? null : serviceType.getId(),
+                serviceType == null ? null : serviceType.getName(),
+                s.getServiceDescription(),
+                s.getPreferredDate(),
+                s.getPreferredTime(),
+                s.getStatus(),
+                nurse == null ? null : nurse.getId(),
+                nurseName,
+                s.getCreatedAt(),
+                s.getUpdatedAt());
     }
 
     private String visitCodeKey(UUID serviceRequestId) {

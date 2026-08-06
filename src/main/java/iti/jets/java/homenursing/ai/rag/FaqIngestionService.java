@@ -1,6 +1,8 @@
 package iti.jets.java.homenursing.ai.rag;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
 import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig;
@@ -17,6 +19,8 @@ import java.util.List;
 @Component
 public class FaqIngestionService implements ApplicationRunner {
 
+    private static final Logger log = LoggerFactory.getLogger(FaqIngestionService.class);
+
     private final VectorStore vectorStore;
     private final JdbcTemplate jdbcTemplate;
     private final Resource faqPdf;
@@ -31,11 +35,19 @@ public class FaqIngestionService implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        Integer existing = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM vector_store", Integer.class);
-        if (existing != null && existing > 0) {
-            return; // already ingested, skip
+        if (!faqPdf.exists()) {
+            log.warn("classpath:documents/faqs.pdf not found; skipping FAQ ingestion");
+            return;
         }
-        ingest();
+        try {
+            Integer existing = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM vector_store", Integer.class);
+            if (existing != null && existing > 0) {
+                return; // already ingested, skip
+            }
+            ingest();
+        } catch (Exception e) {
+            log.warn("FAQ ingestion skipped: {}", e.getMessage());
+        }
     }
 
     public void ingest() {

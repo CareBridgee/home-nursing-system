@@ -13,6 +13,8 @@ public interface ProfileMedicationRepository extends JpaRepository<ProfileMedica
 
     List<ProfileMedication> findByProfileId(UUID profileId);
 
+    boolean existsByProfileId(UUID profileId);
+
     boolean existsByProfileIdAndMedicationId(UUID profileId, UUID medicationId);
 
     Optional<ProfileMedication> findByProfileIdAndMedicationId(UUID profileId, UUID medicationId);

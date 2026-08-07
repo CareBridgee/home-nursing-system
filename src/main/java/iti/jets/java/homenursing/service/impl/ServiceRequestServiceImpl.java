@@ -165,13 +165,10 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     @Override
     @Transactional
-    public void cancelRequest(UUID serviceRequestId, UUID userId) {
+    public void cancelRequest(UUID serviceRequestId) {
         ServiceRequest serviceRequest = serviceRequestRepository.findByIdAndIsDeletedFalse(serviceRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Service request not found: " + serviceRequestId));
 
-        if (!serviceRequest.getProfile().getUser().getId().equals(userId)) {
-            throw new ResourceNotFoundException("Service request not found: " + serviceRequestId);
-        }
 
         Set<ServiceRequestStatus> cancellableStatuses = Set.of(
                 ServiceRequestStatus.PENDING,

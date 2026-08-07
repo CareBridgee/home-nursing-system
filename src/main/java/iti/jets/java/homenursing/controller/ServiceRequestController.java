@@ -95,7 +95,7 @@ public class ServiceRequestController {
 
     @PatchMapping("/{serviceRequestId}/cancel")
     public ResponseEntity<Void> cancelRequest(@PathVariable UUID serviceRequestId) {
-        serviceRequestService.cancelRequest(serviceRequestId, SecurityUtils.currentUserId());
+        serviceRequestService.cancelRequest(serviceRequestId);
         return ResponseEntity.noContent().build();
     }
 

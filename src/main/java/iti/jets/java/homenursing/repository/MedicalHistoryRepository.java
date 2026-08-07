@@ -11,4 +11,6 @@ import java.util.UUID;
 public interface MedicalHistoryRepository extends JpaRepository<MedicalHistory, UUID> {
 
     List<MedicalHistory> findByProfileIdOrderByCreatedAtDesc(UUID profileId);
+
+    boolean existsByProfileId(UUID profileId);
 }

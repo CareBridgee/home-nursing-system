@@ -28,4 +28,5 @@ public class UserResponse {
     private LocalDateTime updatedAt;
     private LocalDateTime lastLoginAt;
     private UUID defaultProfileId;
+    private Boolean profileCompleted;
 }

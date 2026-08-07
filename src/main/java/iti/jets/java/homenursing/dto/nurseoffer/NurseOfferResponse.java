@@ -1,5 +1,6 @@
 package iti.jets.java.homenursing.dto.nurseoffer;
 
+import iti.jets.java.homenursing.dto.nurse.NurseSummaryResponse;
 import iti.jets.java.homenursing.entity.enums.NurseOfferStatus;
 
 import java.math.BigDecimal;
@@ -11,7 +12,7 @@ import java.util.UUID;
 public record NurseOfferResponse(
         UUID id,
         UUID serviceRequestId,
-        UUID nurseId,
+        NurseSummaryResponse nurse,
         BigDecimal proposedPrice,
         LocalDate proposedDate,
         LocalTime proposedTime,

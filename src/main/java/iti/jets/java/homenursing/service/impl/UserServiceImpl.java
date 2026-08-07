@@ -11,6 +11,7 @@ import iti.jets.java.homenursing.repository.MedicalHistoryRepository;
 import iti.jets.java.homenursing.repository.ProfileRepository;
 import iti.jets.java.homenursing.repository.ReviewRatingRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
+import iti.jets.java.homenursing.service.NurseRatingUpdater;
 import iti.jets.java.homenursing.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -31,6 +32,7 @@ public class UserServiceImpl implements UserService {
     private final MedicalHistoryRepository medicalHistoryRepository;
     private final EmergencyContactRepository emergencyContactRepository;
     private final ReviewRatingRepository reviewRatingRepository;
+    private final NurseRatingUpdater nurseRatingUpdater;
 
     @Override
     @Transactional(readOnly = true)
@@ -85,7 +87,10 @@ public class UserServiceImpl implements UserService {
                     .forEach(emergencyContactRepository::delete);
 
             reviewRatingRepository.findByProfileId(profile.getId())
-                    .forEach(reviewRatingRepository::delete);
+                    .forEach(review -> {
+                        nurseRatingUpdater.onReviewDeleted(review.getNurse(), review.getRating());
+                        reviewRatingRepository.delete(review);
+                    });
         }
     }
 

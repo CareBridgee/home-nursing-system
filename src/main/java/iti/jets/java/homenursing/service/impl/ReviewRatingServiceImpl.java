@@ -12,6 +12,7 @@ import iti.jets.java.homenursing.mapper.ReviewRatingMapper;
 import iti.jets.java.homenursing.repository.BookingRepository;
 import iti.jets.java.homenursing.repository.ReviewRatingRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
+import iti.jets.java.homenursing.service.NurseRatingUpdater;
 import iti.jets.java.homenursing.service.ReviewRatingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,6 +30,7 @@ public class ReviewRatingServiceImpl implements ReviewRatingService {
     private final ReviewRatingMapper reviewRatingMapper;
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
+    private final NurseRatingUpdater nurseRatingUpdater;
 
     @Override
     @Transactional(readOnly = true)
@@ -69,6 +71,7 @@ public class ReviewRatingServiceImpl implements ReviewRatingService {
         review.setNurse(booking.getNurse());
 
         ReviewRating saved = reviewRatingRepository.save(review);
+        nurseRatingUpdater.onReviewCreated(saved.getNurse(), saved.getRating());
         return reviewRatingMapper.toResponse(saved);
     }
 
@@ -76,10 +79,16 @@ public class ReviewRatingServiceImpl implements ReviewRatingService {
     @Transactional
     public ReviewRatingResponse update(UUID id, UUID userId, ReviewRatingRequest request) {
         ReviewRating review = loadOwned(id, userId);
-        if (request.getRating() != null) review.setRating(request.getRating());
+        int oldRating = review.getRating();
+        if (request.getRating() != null) {
+            review.setRating(request.getRating());
+        }
         if (request.getReviewText() != null) review.setReviewText(request.getReviewText());
         if (request.getIsAnonymous() != null) review.setIsAnonymous(request.getIsAnonymous());
         ReviewRating saved = reviewRatingRepository.save(review);
+        if (request.getRating() != null) {
+            nurseRatingUpdater.onReviewUpdated(saved.getNurse(), oldRating, saved.getRating());
+        }
         return reviewRatingMapper.toResponse(saved);
     }
 
@@ -87,6 +96,7 @@ public class ReviewRatingServiceImpl implements ReviewRatingService {
     @Transactional
     public void delete(UUID id, UUID userId) {
         ReviewRating review = loadOwned(id, userId);
+        nurseRatingUpdater.onReviewDeleted(review.getNurse(), review.getRating());
         reviewRatingRepository.delete(review);
     }
 

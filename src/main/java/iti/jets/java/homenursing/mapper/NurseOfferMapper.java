@@ -1,7 +1,9 @@
 package iti.jets.java.homenursing.mapper;
 
+import iti.jets.java.homenursing.dto.nurse.NurseSummaryResponse;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferRequest;
 import iti.jets.java.homenursing.dto.nurseoffer.NurseOfferResponse;
+import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.NurseOffer;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -18,6 +20,10 @@ public interface NurseOfferMapper {
     NurseOffer toEntity(NurseOfferRequest request);
 
     @Mapping(target = "serviceRequestId", source = "serviceRequest.id")
-    @Mapping(target = "nurseId", source = "nurse.id")
+    @Mapping(target = "nurse", source = "nurse")
     NurseOfferResponse toResponse(NurseOffer offer);
+
+    @Mapping(target = "firstName", source = "user.firstName")
+    @Mapping(target = "lastName", source = "user.lastName")
+    NurseSummaryResponse toNurseSummary(Nurse nurse);
 }

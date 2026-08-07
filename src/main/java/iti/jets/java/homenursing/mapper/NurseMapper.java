@@ -28,6 +28,8 @@ public interface NurseMapper {
     @Mapping(target = "nationalIdBackUrl", ignore = true)
     @Mapping(target = "licenseImageUrl", ignore = true)
     @Mapping(target = "professionalCertificateUrl", ignore = true)
+    @Mapping(target = "ratingAvg", ignore = true)
+    @Mapping(target = "totalReviews", ignore = true)
     Nurse toEntity(NurseRegistrationRequest request, User user);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)

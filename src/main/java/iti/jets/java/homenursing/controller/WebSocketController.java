@@ -181,7 +181,7 @@ public class WebSocketController {
                                Principal principal) {
         UUID userId = UUID.fromString(principal.getName());
         UUID serviceRequestId = UUID.fromString((String) payload.get("serviceRequestId"));
-        serviceRequestService.cancelRequest(serviceRequestId, userId);
+        serviceRequestService.cancelRequest(serviceRequestId);
 
         pushEvent(serviceRequestId, "REQUEST_CANCELLED", Map.of());
 

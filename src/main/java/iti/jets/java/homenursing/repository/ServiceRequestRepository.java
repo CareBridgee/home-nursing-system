@@ -26,7 +26,7 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
 
     Optional<ServiceRequest> findByIdAndIsDeletedFalse(UUID id);
 
-    @EntityGraph(attributePaths = {"profile.user", "nurse.user"})
+    @EntityGraph(attributePaths = {"profile.user", "nurse.user", "serviceType"})
     Optional<ServiceRequest> findWithDetailsById(UUID id);
 
     @Query("""

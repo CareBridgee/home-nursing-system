@@ -6,6 +6,8 @@ import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestResponse
 import iti.jets.java.homenursing.dto.servicerequest.NearbyNurseServiceRequestResponse;
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestDetailsResponse;
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestHistoryResponse;
+import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestNursePreviewResponse;
+import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestNurseProfileResponse;
 import iti.jets.java.homenursing.dto.servicerequest.VisitCodeResponse;
 
 import java.util.List;
@@ -26,6 +28,10 @@ public interface ServiceRequestService {
     void completeRequest(UUID serviceRequestId, String visitCode, UUID userId);
 
     ServiceRequestDetailsResponse getDetails(UUID serviceRequestId, UUID userId);
+
+    ServiceRequestNursePreviewResponse getNursePreview(UUID serviceRequestId, UUID userId);
+
+    ServiceRequestNurseProfileResponse getAssignedNurseProfile(UUID serviceRequestId, UUID userId);
 
     List<ServiceRequestHistoryResponse> listConfirmedHistory(UUID userId);
 }

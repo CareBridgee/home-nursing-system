@@ -7,12 +7,16 @@ import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestRequest;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestResponse;
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestDetailsResponse;
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestHistoryResponse;
+import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestNursePreviewResponse;
+import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestNurseProfileResponse;
 import iti.jets.java.homenursing.dto.servicerequest.VisitCodeResponse;
 import iti.jets.java.homenursing.entity.Nurse;
+import iti.jets.java.homenursing.entity.ServiceRequest;
 import iti.jets.java.homenursing.entity.ServiceType;
 import iti.jets.java.homenursing.repository.NurseRepository;
-import iti.jets.java.homenursing.repository.ServiceTypeRepository;
+import iti.jets.java.homenursing.repository.ServiceRequestRepository;
 import iti.jets.java.homenursing.security.SecurityUtils;
+import iti.jets.java.homenursing.service.PriceEstimator;
 import iti.jets.java.homenursing.service.ServiceRequestService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +43,8 @@ public class ServiceRequestController {
     private final ServiceRequestService serviceRequestService;
     private final SimpMessagingTemplate messagingTemplate;
     private final NurseRepository nurseRepository;
-    private final ServiceTypeRepository serviceTypeRepository;
+    private final ServiceRequestRepository serviceRequestRepository;
+    private final PriceEstimator priceEstimator;
 
     @PostMapping
     public ResponseEntity<NearbyServiceRequestResponse> createRequest(@Valid @RequestBody NearbyServiceRequestRequest request) {
@@ -55,9 +60,11 @@ public class ServiceRequestController {
     private void pushToNearbyNurses(NearbyServiceRequestResponse response) {
         if (response.nearbyNurses() == null) return;
 
-        String serviceName = serviceTypeRepository.findById(response.serviceTypeId())
-                .map(ServiceType::getName)
-                .orElse(null);
+        ServiceRequest request = serviceRequestRepository.findWithDetailsById(response.serviceRequestId()).orElse(null);
+        if (request == null || request.getServiceType() == null) return;
+
+        ServiceType serviceType = request.getServiceType();
+        String serviceName = serviceType.getName();
 
         for (NearbyNurse nearby : response.nearbyNurses()) {
             Nurse nurse = nurseRepository.findWithUserById(nearby.nurseId()).orElse(null);
@@ -68,14 +75,14 @@ public class ServiceRequestController {
                     response.profileId(),
                     response.serviceTypeId(),
                     serviceName,
-                    null,
-                    null,
-                    null,
+                    request.getServiceDescription(),
+                    request.getPreferredDate(),
+                    request.getPreferredTime(),
                     response.status(),
                     response.latitude(),
                     response.longitude(),
                     nearby.distanceKm(),
-                    null,
+                    priceEstimator.estimate(serviceType.getBasePrice(), nearby.distanceKm()),
                     response.createdAt());
 
             String nurseUserId = nurse.getUser().getId().toString();
@@ -115,6 +122,18 @@ public class ServiceRequestController {
     @GetMapping("/{serviceRequestId}")
     public ResponseEntity<ServiceRequestDetailsResponse> getDetails(@PathVariable UUID serviceRequestId) {
         return ResponseEntity.ok(serviceRequestService.getDetails(serviceRequestId, SecurityUtils.currentUserId()));
+    }
+
+    @GetMapping("/{serviceRequestId}/preview")
+    public ResponseEntity<ServiceRequestNursePreviewResponse> getNursePreview(@PathVariable UUID serviceRequestId) {
+        return ResponseEntity.ok(
+                serviceRequestService.getNursePreview(serviceRequestId, SecurityUtils.currentUserId()));
+    }
+
+    @GetMapping("/{serviceRequestId}/profile")
+    public ResponseEntity<ServiceRequestNurseProfileResponse> getAssignedNurseProfile(@PathVariable UUID serviceRequestId) {
+        return ResponseEntity.ok(
+                serviceRequestService.getAssignedNurseProfile(serviceRequestId, SecurityUtils.currentUserId()));
     }
 
     @GetMapping("/confirmed")

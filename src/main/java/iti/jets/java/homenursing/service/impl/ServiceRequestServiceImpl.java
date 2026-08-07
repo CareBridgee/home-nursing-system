@@ -8,8 +8,11 @@ import iti.jets.java.homenursing.dto.reservation.ReservationEvent;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyNurseServiceRequestResponse;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestRequest;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestResponse;
+import iti.jets.java.homenursing.dto.servicerequest.PatientMedicalSummary;
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestDetailsResponse;
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestHistoryResponse;
+import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestNursePreviewResponse;
+import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestNurseProfileResponse;
 import iti.jets.java.homenursing.dto.servicerequest.VisitCodeResponse;
 import iti.jets.java.homenursing.entity.*;
 import iti.jets.java.homenursing.entity.enums.NotificationType;
@@ -20,6 +23,7 @@ import iti.jets.java.homenursing.exception.BadRequestException;
 import iti.jets.java.homenursing.exception.ForbiddenException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.NurseOfferMapper;
+import iti.jets.java.homenursing.repository.AddressRepository;
 import iti.jets.java.homenursing.repository.NurseOfferRepository;
 import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.NurseServiceRepository;
@@ -28,6 +32,7 @@ import iti.jets.java.homenursing.repository.ServiceTypeRepository;
 import iti.jets.java.homenursing.service.NearbyNurseMatcher;
 import iti.jets.java.homenursing.service.NurseLocationProvider;
 import iti.jets.java.homenursing.service.NotificationService;
+import iti.jets.java.homenursing.service.PriceEstimator;
 import iti.jets.java.homenursing.service.ProfileService;
 import iti.jets.java.homenursing.service.ServiceRequestService;
 import iti.jets.java.homenursing.service.TokenService;
@@ -41,7 +46,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -67,19 +71,16 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     private final ProfileService profileService;
     private final NurseLocationProvider nurseLocationProvider;
     private final NearbyNurseMatcher nearbyNurseMatcher;
+    private final PriceEstimator priceEstimator;
     private final WebSocketPresenceService webSocketPresenceService;
     private final TokenService tokenService;
     private final NotificationService notificationService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final PatientMedicalSummaryAssembler patientMedicalSummaryAssembler;
+    private final AddressRepository addressRepository;
 
     @Value("${nearby.nurses.radius-km:10}")
     private double nearbyNursesRadiusKm;
-
-    @Value("${nearby.nurses.included-distance-km:5}")
-    private double includedDistanceKm;
-
-    @Value("${nearby.nurses.price-per-km:12}")
-    private BigDecimal pricePerKm;
 
     @Value("${visit.code.ttl-hours:24}")
     private long visitCodeTtlHours;
@@ -114,7 +115,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 .isDeleted(false)
                 .build();
 
-        ServiceRequest saved = serviceRequestRepository.save(serviceRequest);
+        ServiceRequest saved = serviceRequestRepository.saveAndFlush(serviceRequest);
 
         return new NearbyServiceRequestResponse(
                 saved.getId(),
@@ -372,6 +373,119 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     @Override
     @Transactional(readOnly = true)
+    public ServiceRequestNursePreviewResponse getNursePreview(UUID serviceRequestId, UUID userId) {
+        Nurse nurse = requireApprovedNurse(userId);
+
+        ServiceRequest request = serviceRequestRepository.findByIdAndIsDeletedFalse(serviceRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Service request not found: " + serviceRequestId));
+
+        Set<ServiceRequestStatus> openStatuses = Set.of(
+                ServiceRequestStatus.PENDING,
+                ServiceRequestStatus.SEARCHING,
+                ServiceRequestStatus.NEGOTIATING);
+        if (request.getNurse() != null || !openStatuses.contains(request.getStatus())) {
+            throw new ResourceNotFoundException("Service request not found: " + serviceRequestId);
+        }
+
+        if (request.getLatitude() == null || request.getLongitude() == null) {
+            throw new BadRequestException("Service request location is unavailable");
+        }
+        if (!providesService(nurse, request.getServiceType())) {
+            throw new ForbiddenException("Nurse does not provide the requested service");
+        }
+
+        Point nurseLocation = webSocketPresenceService.getAvailableLocation(userId.toString())
+                .orElseThrow(() -> new BadRequestException("Nurse location is unavailable"));
+
+        double distanceKm = HaversineUtil.distanceKm(
+                BigDecimal.valueOf(nurseLocation.getY()),
+                BigDecimal.valueOf(nurseLocation.getX()),
+                request.getLatitude(),
+                request.getLongitude());
+
+        if (distanceKm > nearbyNursesRadiusKm) {
+            throw new ForbiddenException("Nurse is outside the matching radius for this service request");
+        }
+
+        ServiceType serviceType = request.getServiceType();
+        PatientMedicalSummary summary = patientMedicalSummaryAssembler.build(request.getProfile(), false);
+
+        return new ServiceRequestNursePreviewResponse(
+                request.getId(),
+                serviceType.getId(),
+                serviceType.getName(),
+                request.getServiceDescription(),
+                request.getPreferredDate(),
+                request.getPreferredTime(),
+                request.getStatus(),
+                priceEstimator.estimate(serviceType.getBasePrice(), distanceKm),
+                request.getCreatedAt(),
+                summary);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ServiceRequestNurseProfileResponse getAssignedNurseProfile(UUID serviceRequestId, UUID userId) {
+        ServiceRequest request = serviceRequestRepository.findWithDetailsById(serviceRequestId)
+                .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("Service request not found: " + serviceRequestId));
+
+        if (request.getNurse() == null || !request.getNurse().getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Service request not found: " + serviceRequestId);
+        }
+
+        Set<ServiceRequestStatus> assignedStatuses = Set.of(
+                ServiceRequestStatus.BOOKING,
+                ServiceRequestStatus.ACCEPTED,
+                ServiceRequestStatus.IN_PROGRESS,
+                ServiceRequestStatus.COMPLETED);
+        if (!assignedStatuses.contains(request.getStatus())) {
+            throw new BadRequestException("Service request is not assigned yet");
+        }
+
+        Profile profile = request.getProfile();
+        ServiceType serviceType = request.getServiceType();
+        PatientMedicalSummary summary = patientMedicalSummaryAssembler.build(profile, true);
+
+        String patientPhoneNumber = profile.getUser() == null ? null : profile.getUser().getPhoneNumber();
+
+        ServiceRequestNurseProfileResponse.AddressSummary addressSummary = addressRepository
+                .findByProfileId(profile.getId())
+                .map(a -> new ServiceRequestNurseProfileResponse.AddressSummary(
+                        a.getCountry(),
+                        a.getCity(),
+                        a.getArea(),
+                        a.getStreet(),
+                        a.getBuildingNumber(),
+                        a.getApartmentNumber()))
+                .orElse(null);
+
+        double distanceKm = webSocketPresenceService
+                .getAvailableLocation(userId.toString())
+                .map(location -> HaversineUtil.distanceKm(
+                        BigDecimal.valueOf(location.getY()),
+                        BigDecimal.valueOf(location.getX()),
+                        request.getLatitude(),
+                        request.getLongitude()))
+                .orElse(0.0);
+
+        return new ServiceRequestNurseProfileResponse(
+                request.getId(),
+                serviceType.getId(),
+                serviceType.getName(),
+                request.getServiceDescription(),
+                request.getPreferredDate(),
+                request.getPreferredTime(),
+                request.getStatus(),
+                priceEstimator.estimate(serviceType.getBasePrice(), distanceKm),
+                request.getCreatedAt(),
+                summary,
+                patientPhoneNumber,
+                addressSummary);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ServiceRequestHistoryResponse> listConfirmedHistory(UUID userId) {
         List<ServiceRequestStatus> confirmedStatuses = List.of(
                 ServiceRequestStatus.ACCEPTED,
@@ -436,6 +550,22 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 actual.getBytes(StandardCharsets.UTF_8));
     }
 
+    private Nurse requireApprovedNurse(UUID userId) {
+        Nurse nurse = nurseRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Nurse profile not found"));
+        if (nurse.getVerificationStatus() != VerificationStatus.APPROVED) {
+            throw new BadRequestException("Nurse is not eligible to receive service requests");
+        }
+        return nurse;
+    }
+
+    private boolean providesService(Nurse nurse, ServiceType serviceType) {
+        return nurseServiceRepository
+                .findByNurse_IdAndServiceType_Id(nurse.getId(), serviceType.getId())
+                .map(nurseService -> Boolean.TRUE.equals(nurseService.getIsActive()))
+                .orElse(false);
+    }
+
     private List<NearbyNurse> findNearbyNursesFor(ServiceType serviceType, BigDecimal latitude, BigDecimal longitude) {
         Set<UUID> nursesForRequiredService = nurseServiceRepository
                 .findByServiceType_IdAndIsActiveTrue(serviceType.getId())
@@ -475,14 +605,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 request.getLatitude(),
                 request.getLongitude(),
                 distanceKm,
-                calculatePrice(request.getServiceType().getBasePrice(), distanceKm),
+                priceEstimator.estimate(request.getServiceType().getBasePrice(), distanceKm),
                 request.getCreatedAt());
-    }
-
-    private BigDecimal calculatePrice(BigDecimal basePrice, double distanceKm) {
-        double extraDistanceKm = Math.max(0, distanceKm - includedDistanceKm);
-        return basePrice
-                .add(pricePerKm.multiply(BigDecimal.valueOf(extraDistanceKm)))
-                .setScale(2, RoundingMode.HALF_UP);
     }
 }

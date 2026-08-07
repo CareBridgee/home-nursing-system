@@ -13,6 +13,8 @@ public interface ProfileAllergyRepository extends JpaRepository<ProfileAllergy, 
 
     List<ProfileAllergy> findByProfileId(UUID profileId);
 
+    boolean existsByProfileId(UUID profileId);
+
     boolean existsByProfileIdAndAllergyId(UUID profileId, UUID allergyId);
 
     Optional<ProfileAllergy> findByProfileIdAndAllergyId(UUID profileId, UUID allergyId);

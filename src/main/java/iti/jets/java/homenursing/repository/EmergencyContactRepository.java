@@ -12,6 +12,8 @@ public interface EmergencyContactRepository extends JpaRepository<EmergencyConta
 
     List<EmergencyContact> findByProfileId(UUID profileId);
 
+    boolean existsByProfileId(UUID profileId);
+
     boolean existsByProfile_IdAndPhoneNumber(UUID profileId, String phoneNumber);
 
     boolean existsByProfile_IdAndPhoneNumberAndIdNot(UUID profileId, String phoneNumber, UUID id);

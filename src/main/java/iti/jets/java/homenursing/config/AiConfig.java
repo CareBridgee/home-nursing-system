@@ -1,13 +1,14 @@
 package iti.jets.java.homenursing.config;
 
 import iti.jets.java.homenursing.ai.HomeNursingTools;
+import iti.jets.java.homenursing.ai.ReservationTools;
 import iti.jets.java.homenursing.ai.rag.FaqSearchTool;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
-import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -64,10 +65,23 @@ public class AiConfig {
             
             Medical safety:
             - If the user describes symptoms suggesting a medical emergency (for example severe chest pain, severe bleeding, difficulty breathing, or loss of consciousness), advise them to contact emergency medical services immediately instead of relying on the platform.
+            - Also call the setUrgency tool with level e.g. HOSPITALIZATION and a short reason so the system can inform the hospital and the UI.
+            
+            Reservation draft collection (the booking assistant's main job):
+            - The user is looking to book home nursing care. The assistant collects reservation details over the course of the conversation using the updateReservationDraft tool, one field at a time.
+            - Allowed draft fields:
+              - serviceTypeId: the UUID shown by the listServiceTypes tool (id: ...). Always pick the exact UUID, do not guess.
+              - preferredDate: a date in yyyy-MM-dd format.
+              - preferredTime: a time in HH:mm format.
+            - Collect the service type first, then ask for the preferred date and time if the user wants to schedule ahead.
+            - Ask exactly one question at a time. Do not ask for a field already recorded (the system will tell you the current draft state).
+            - When the draft is complete, tell the user their request is ready for confirmation and briefly summarize service, date and time.
             
             Booking flow:
             1. Understand the user's needs.
             2. Recommend the appropriate service.
+            3. Collect the service type UUID with updateReservationDraft.
+            4. Collect preferred date/time when relevant.
             """;
 
     @Bean
@@ -79,17 +93,18 @@ public class AiConfig {
     }
 
     @Bean
-    public ChatClient chatClient(OpenAiChatModel chatModel, ChatMemory chatMemory,
-                                 HomeNursingTools tools, FaqSearchTool faqSearchTool) {
+    public ChatClient chatClient(GoogleGenAiChatModel chatModel, ChatMemory chatMemory,
+                                 HomeNursingTools tools, FaqSearchTool faqSearchTool,
+                                 ReservationTools reservationTools) {
         return ChatClient.builder(chatModel)
                 .defaultSystem(SYSTEM_PROMPT)
                 .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
-                .defaultTools(tools, faqSearchTool)
+                .defaultTools(tools, faqSearchTool, reservationTools)
                 .build();
     }
 
     @Bean
-    public ChatClient reportChatClient(OpenAiChatModel chatModel) {
+    public ChatClient reportChatClient(GoogleGenAiChatModel chatModel) {
         return ChatClient.builder(chatModel).build();
     }
 }

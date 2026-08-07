@@ -29,7 +29,8 @@ public class HomeNursingTools {
                 return "No service types are currently available.";
             }
             return types.stream()
-                    .map(t -> t.name() + " - " + t.description() + " - " + t.basePrice() + " EGP")
+                    .map(t -> t.name() + " - " + t.description() + " - " + t.basePrice() + " EGP"
+                            + " (id: " + t.id() + ")")
                     .collect(Collectors.joining("\n"));
         } catch (Exception e) {
             log.warn("Service type list failed: {}", e.getMessage());

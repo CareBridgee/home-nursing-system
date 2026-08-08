@@ -63,6 +63,7 @@ public class UserServiceImpl implements UserService {
         if (request.getGender() != null) user.setGender(request.getGender());
         if (request.getProfileImageUrl() != null) user.setProfileImageUrl(request.getProfileImageUrl());
         uploadProfileImage(user, request.getProfileImage());
+        syncPrimaryProfileImage(user);
 
         User saved = userRepository.save(user);
         return userMapper.toResponse(saved);
@@ -118,5 +119,13 @@ public class UserServiceImpl implements UserService {
         if (profileImage != null && !profileImage.isEmpty()) {
             user.setProfileImageUrl(cloudinaryService.upload(profileImage));
         }
+    }
+
+    private void syncPrimaryProfileImage(User user) {
+        profileRepository.findByUserIdAndIsPrimaryTrueAndIsDeletedFalse(user.getId())
+                .ifPresent(primary -> {
+                    primary.setProfileImageUrl(user.getProfileImageUrl());
+                    profileRepository.save(primary);
+                });
     }
 }

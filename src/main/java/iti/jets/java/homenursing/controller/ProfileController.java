@@ -4,9 +4,11 @@ import iti.jets.java.homenursing.dto.ProfileRequest;
 import iti.jets.java.homenursing.dto.ProfileResponse;
 import iti.jets.java.homenursing.service.ProfileService;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ModelAttribute;
 
 import java.net.URI;
 import java.util.List;
@@ -40,17 +42,17 @@ public class ProfileController {
         return ResponseEntity.ok(profileService.getDefaultProfile(userId));
     }
 
-    @PostMapping
-    public ResponseEntity<ProfileResponse> createFamilyProfile(@Valid @RequestBody ProfileRequest request) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProfileResponse> createFamilyProfile(@Valid @ModelAttribute ProfileRequest request) {
         UUID userId = currentUserId();
         ProfileResponse response = profileService.createFamilyProfile(userId, request);
         return ResponseEntity.created(URI.create("/api/v1/profiles/" + response.getId()))
                 .body(response);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProfileResponse> updateProfile(@PathVariable UUID id,
-                                                         @Valid @RequestBody ProfileRequest request) {
+                                                         @Valid @ModelAttribute ProfileRequest request) {
         UUID userId = currentUserId();
         return ResponseEntity.ok(profileService.updateProfile(id, userId, request));
     }

@@ -79,6 +79,9 @@ public class Profile {
     @Column(name = "previous_hospitalizations", columnDefinition = "TEXT")
     private String previousHospitalizations;
 
+    @Column(name = "profile_image_url", columnDefinition = "TEXT")
+    private String profileImageUrl;
+
     @Builder.Default
     @Column(name = "is_primary")
     private Boolean isPrimary = false;

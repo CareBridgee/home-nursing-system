@@ -4,6 +4,7 @@ import iti.jets.java.homenursing.dto.servicerequest.PatientMedicalSummary;
 import iti.jets.java.homenursing.entity.EmergencyContact;
 import iti.jets.java.homenursing.entity.Profile;
 import iti.jets.java.homenursing.repository.EmergencyContactRepository;
+import iti.jets.java.homenursing.util.ProfileImageUtil;
 import iti.jets.java.homenursing.repository.MedicalHistoryRepository;
 import iti.jets.java.homenursing.repository.ProfileAllergyRepository;
 import iti.jets.java.homenursing.repository.ProfileMedicalConditionRepository;
@@ -54,7 +55,7 @@ public class PatientMedicalSummaryAssembler {
                 profile.getId(),
                 profile.getFirstName(),
                 profile.getLastName(),
-                profile.getUser() == null ? null : profile.getUser().getProfileImageUrl(),
+                ProfileImageUtil.resolveProfileImageUrl(profile),
                 profile.getDateOfBirth(),
                 profile.getGender(),
                 profile.getBloodType(),

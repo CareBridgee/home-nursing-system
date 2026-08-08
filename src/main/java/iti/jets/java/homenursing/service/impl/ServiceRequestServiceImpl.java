@@ -38,6 +38,7 @@ import iti.jets.java.homenursing.service.ServiceRequestService;
 import iti.jets.java.homenursing.service.TokenService;
 import iti.jets.java.homenursing.util.AfterCommitExecutor;
 import iti.jets.java.homenursing.util.HaversineUtil;
+import iti.jets.java.homenursing.util.ProfileImageUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -381,10 +382,10 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         User profileUser = profile.getUser();
         ServiceRequestDetailsResponse.ProfileSummary profileSummary = new ServiceRequestDetailsResponse.ProfileSummary(
                 profile.getId(),
-                profileUser.getFirstName(),
-                profileUser.getLastName(),
+                profile.getFirstName(),
+                profile.getLastName(),
                 profileUser.getPhoneNumber(),
-                profileUser.getProfileImageUrl());
+                ProfileImageUtil.resolveProfileImageUrl(profile));
 
         ServiceType serviceType = serviceRequest.getServiceType();
         ServiceRequestDetailsResponse.ServiceTypeSummary serviceTypeSummary = serviceType == null
@@ -690,14 +691,14 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     private NearbyNurseServiceRequestResponse toNearbyNurseResponse(ServiceRequest request, BigDecimal nurseLatitude, BigDecimal nurseLongitude) {
         double distanceKm = HaversineUtil.distanceKm(
                 nurseLatitude, nurseLongitude, request.getLatitude(), request.getLongitude());
-        User patientUser = request.getProfile().getUser();
+        Profile profile = request.getProfile();
 
         return new NearbyNurseServiceRequestResponse(
                 request.getId(),
-                request.getProfile().getId(),
-                patientUser.getFirstName(),
-                patientUser.getLastName(),
-                patientUser.getProfileImageUrl(),
+                profile.getId(),
+                profile.getFirstName(),
+                profile.getLastName(),
+                ProfileImageUtil.resolveProfileImageUrl(profile),
                 request.getServiceType().getId(),
                 request.getServiceType().getName(),
                 request.getServiceDescription(),

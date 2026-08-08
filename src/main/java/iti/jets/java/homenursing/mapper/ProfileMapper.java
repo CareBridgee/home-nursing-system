@@ -14,6 +14,7 @@ public interface ProfileMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "isPrimary", ignore = true)
+    @Mapping(target = "profileImageUrl", ignore = true)
     Profile toEntity(ProfileRequest request);
 
     @Mapping(target = "userId", source = "user.id")

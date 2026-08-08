@@ -11,15 +11,15 @@ import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestNursePreviewRe
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestNurseProfileResponse;
 import iti.jets.java.homenursing.dto.servicerequest.VisitCodeResponse;
 import iti.jets.java.homenursing.entity.Nurse;
+import iti.jets.java.homenursing.entity.Profile;
 import iti.jets.java.homenursing.entity.ServiceRequest;
 import iti.jets.java.homenursing.entity.ServiceType;
-import iti.jets.java.homenursing.entity.User;
 import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.ServiceRequestRepository;
-import iti.jets.java.homenursing.repository.UserRepository;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.PriceEstimator;
 import iti.jets.java.homenursing.service.ServiceRequestService;
+import iti.jets.java.homenursing.util.ProfileImageUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -46,7 +46,6 @@ public class ServiceRequestController {
     private final SimpMessagingTemplate messagingTemplate;
     private final NurseRepository nurseRepository;
     private final ServiceRequestRepository serviceRequestRepository;
-    private final UserRepository userRepository;
     private final PriceEstimator priceEstimator;
 
     @PostMapping
@@ -70,10 +69,10 @@ ServiceRequest request = serviceRequestRepository.findWithDetailsById(response.s
         String serviceName = serviceType.getName();
         Integer estimatedDurationMinutes = serviceType.getEstimatedDurationMinutes();
 
-        User patientUser = userRepository.findById(SecurityUtils.currentUserId()).orElse(null);
-        String patientFirstName = patientUser != null ? patientUser.getFirstName() : null;
-        String patientLastName = patientUser != null ? patientUser.getLastName() : null;
-        String patientProfileImageUrl = patientUser != null ? patientUser.getProfileImageUrl() : null;
+        Profile profile = request.getProfile();
+        String patientFirstName = profile != null ? profile.getFirstName() : null;
+        String patientLastName = profile != null ? profile.getLastName() : null;
+        String patientProfileImageUrl = ProfileImageUtil.resolveProfileImageUrl(profile);
 
         for (NearbyNurse nearby : response.nearbyNurses()) {
             Nurse nurse = nurseRepository.findWithUserById(nearby.nurseId()).orElse(null);

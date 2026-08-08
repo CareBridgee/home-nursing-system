@@ -33,6 +33,7 @@ public class ProfileResponse {
     private String mobilityNotes;
     private String previousSurgeries;
     private String previousHospitalizations;
+    private String profileImageUrl;
     private Boolean isPrimary;
     private Boolean isDeleted;
     private LocalDateTime createdAt;

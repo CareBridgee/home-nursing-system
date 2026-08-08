@@ -8,10 +8,13 @@ import iti.jets.java.homenursing.exception.BadRequestException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.ProfileMapper;
 import iti.jets.java.homenursing.repository.ProfileRepository;
+import iti.jets.java.homenursing.service.CloudinaryService;
 import iti.jets.java.homenursing.service.ProfileService;
+import iti.jets.java.homenursing.util.ProfileImageUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -22,6 +25,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     private final ProfileRepository profileRepository;
     private final ProfileMapper profileMapper;
+    private final CloudinaryService cloudinaryService;
 
     @Override
     @Transactional
@@ -34,6 +38,7 @@ public class ProfileServiceImpl implements ProfileService {
                 .lastName(user.getLastName())
                 .dateOfBirth(user.getDateOfBirth())
                 .gender(user.getGender())
+                .profileImageUrl(user.getProfileImageUrl())
                 .build();
         profile = profileRepository.save(profile);
         if (user.getProfiles() != null) {
@@ -47,7 +52,7 @@ public class ProfileServiceImpl implements ProfileService {
     public ProfileResponse getDefaultProfile(UUID userId) {
         Profile profile = profileRepository.findByUserIdAndIsPrimaryTrueAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Default profile not found for user " + userId));
-        return profileMapper.toResponse(profile);
+        return toResponse(profile);
     }
 
     @Override
@@ -55,7 +60,7 @@ public class ProfileServiceImpl implements ProfileService {
     public List<ProfileResponse> listProfiles(UUID userId) {
         return profileRepository.findByUserIdAndIsDeletedFalse(userId)
                 .stream()
-                .map(profileMapper::toResponse)
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -63,7 +68,7 @@ public class ProfileServiceImpl implements ProfileService {
     @Transactional(readOnly = true)
     public ProfileResponse getOwnedProfile(UUID profileId, UUID userId) {
         Profile profile = loadOwnedProfile(profileId, userId);
-        return profileMapper.toResponse(profile);
+        return toResponse(profile);
     }
 
     @Override
@@ -82,9 +87,10 @@ public class ProfileServiceImpl implements ProfileService {
         profile.setUser(primary.getUser());
         profile.setIsPrimary(false);
         profile.setIsDeleted(false);
+        applyProfileImage(profile, request);
 
         Profile saved = profileRepository.save(profile);
-        return profileMapper.toResponse(saved);
+        return toResponse(saved);
     }
 
     @Override
@@ -106,9 +112,10 @@ public class ProfileServiceImpl implements ProfileService {
         if (request.getPreviousHospitalizations() != null) {
             profile.setPreviousHospitalizations(request.getPreviousHospitalizations());
         }
+        applyProfileImage(profile, request);
 
         Profile saved = profileRepository.save(profile);
-        return profileMapper.toResponse(saved);
+        return toResponse(saved);
     }
 
     @Override
@@ -135,5 +142,24 @@ public class ProfileServiceImpl implements ProfileService {
     public Profile getProfile(UUID profileId) {
         return profileRepository.findById(profileId)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found: " + profileId));
+    }
+
+    private void applyProfileImage(Profile profile, ProfileRequest request) {
+        if (request.getProfileImageUrl() != null) {
+            profile.setProfileImageUrl(request.getProfileImageUrl());
+        }
+        uploadProfileImage(profile, request.getProfileImage());
+    }
+
+    private void uploadProfileImage(Profile profile, MultipartFile profileImage) {
+        if (profileImage != null && !profileImage.isEmpty()) {
+            profile.setProfileImageUrl(cloudinaryService.upload(profileImage));
+        }
+    }
+
+    private ProfileResponse toResponse(Profile profile) {
+        ProfileResponse response = profileMapper.toResponse(profile);
+        response.setProfileImageUrl(ProfileImageUtil.resolveProfileImageUrl(profile));
+        return response;
     }
 }

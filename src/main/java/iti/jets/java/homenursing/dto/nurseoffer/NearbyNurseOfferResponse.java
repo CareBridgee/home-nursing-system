@@ -12,6 +12,7 @@ public record NearbyNurseOfferResponse(
         UUID id,
         UUID serviceRequestId,
         UUID nurseId,
+        String nurseProfileImageUrl,
         BigDecimal proposedPrice,
         LocalDate proposedDate,
         LocalTime proposedTime,

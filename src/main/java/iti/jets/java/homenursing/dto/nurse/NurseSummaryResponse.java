@@ -7,6 +7,7 @@ public record NurseSummaryResponse(
         UUID id,
         String firstName,
         String lastName,
+        String profileImageUrl,
         BigDecimal ratingAvg,
         Integer totalReviews
 ) {

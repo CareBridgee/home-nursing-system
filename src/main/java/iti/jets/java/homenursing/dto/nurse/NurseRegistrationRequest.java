@@ -46,4 +46,6 @@ public class NurseRegistrationRequest {
     private Integer yearsOfExperience;
 
     private String bio;
+
+    private MultipartFile profileImage;
 }

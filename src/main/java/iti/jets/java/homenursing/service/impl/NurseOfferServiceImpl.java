@@ -88,7 +88,7 @@ public class NurseOfferServiceImpl implements NurseOfferService {
         offer.setNurse(nurse);
         offer.setStatus(NurseOfferStatus.PENDING);
         offer.setIsDeleted(false);
-        NurseOfferResponse response = nurseOfferMapper.toResponse(nurseOfferRepository.save(offer));
+        NurseOfferResponse response = toOfferResponseWithDistance(nurseOfferRepository.save(offer));
 
         pushEvent(serviceRequest.getId(), "OFFER_CREATED", response);
         notifyPatient(serviceRequest, "New Offer Received",
@@ -102,7 +102,7 @@ public class NurseOfferServiceImpl implements NurseOfferService {
     public List<NurseOfferResponse> listByServiceRequest(UUID serviceRequestId, UUID userId) {
         getAuthorizedServiceRequest(serviceRequestId, userId);
         return nurseOfferRepository.findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(serviceRequestId).stream()
-                .map(nurseOfferMapper::toResponse)
+                .map(this::toOfferResponseWithDistance)
                 .toList();
     }
 
@@ -126,7 +126,7 @@ public class NurseOfferServiceImpl implements NurseOfferService {
     @Override
     @Transactional(readOnly = true)
     public NurseOfferResponse get(UUID id, UUID userId) {
-        return nurseOfferMapper.toResponse(getAuthorizedOffer(id, userId));
+        return toOfferResponseWithDistance(getAuthorizedOffer(id, userId));
     }
 
     @Override
@@ -158,7 +158,7 @@ public class NurseOfferServiceImpl implements NurseOfferService {
                 .filter(otherOffer -> otherOffer.getStatus() == NurseOfferStatus.PENDING)
                 .forEach(otherOffer -> otherOffer.setStatus(NurseOfferStatus.REJECTED));
 
-        NurseOfferResponse response = nurseOfferMapper.toResponse(nurseOfferRepository.save(offer));
+NurseOfferResponse response = toOfferResponseWithDistance(nurseOfferRepository.save(offer));
 
         pushEvent(serviceRequest.getId(), "OFFER_ACCEPTED", response);
         notifyPatient(serviceRequest, "Offer Accepted",
@@ -196,7 +196,7 @@ public class NurseOfferServiceImpl implements NurseOfferService {
         if (request.message() != null) {
             offer.setMessage(request.message());
         }
-        NurseOfferResponse response = nurseOfferMapper.toResponse(nurseOfferRepository.save(offer));
+        NurseOfferResponse response = toOfferResponseWithDistance(nurseOfferRepository.save(offer));
 
         pushEvent(response.serviceRequestId(), "OFFER_UPDATED", response);
         notifyPatient(offer.getServiceRequest(), "Offer Terms Updated",
@@ -227,7 +227,7 @@ public class NurseOfferServiceImpl implements NurseOfferService {
         if (request.message() != null) {
             offer.setMessage(request.message());
         }
-        NurseOfferResponse response = nurseOfferMapper.toResponse(nurseOfferRepository.save(offer));
+NurseOfferResponse response = toOfferResponseWithDistance(nurseOfferRepository.save(offer));
 
         pushEvent(response.serviceRequestId(), "OFFER_COUNTERED", response);
         UUID nurseUserId = offer.getNurse().getUser().getId();
@@ -334,6 +334,7 @@ public class NurseOfferServiceImpl implements NurseOfferService {
                 offer.getId(),
                 serviceRequest.getId(),
                 offer.getNurse().getId(),
+                offer.getNurse().getUser().getProfileImageUrl(),
                 offer.getProposedPrice(),
                 offer.getProposedDate(),
                 offer.getProposedTime(),
@@ -344,6 +345,37 @@ public class NurseOfferServiceImpl implements NurseOfferService {
                 distanceKm,
                 offer.getCreatedAt(),
                 offer.getUpdatedAt());
+    }
+
+    private NurseOfferResponse toOfferResponseWithDistance(NurseOffer offer) {
+        NurseOfferResponse base = nurseOfferMapper.toResponse(offer);
+        return new NurseOfferResponse(
+                base.id(),
+                base.serviceRequestId(),
+                base.nurse(),
+                base.proposedPrice(),
+                base.proposedDate(),
+                base.proposedTime(),
+                base.message(),
+                base.status(),
+                computeDistanceKm(offer),
+                base.createdAt(),
+                base.updatedAt());
+    }
+
+    private Double computeDistanceKm(NurseOffer offer) {
+        ServiceRequest serviceRequest = offer.getServiceRequest();
+        if (serviceRequest.getLatitude() == null || serviceRequest.getLongitude() == null) {
+            return null;
+        }
+        return webSocketPresenceService
+                .getAvailableLocation(offer.getNurse().getUser().getId().toString())
+                .map(location -> HaversineUtil.distanceKm(
+                        serviceRequest.getLatitude(),
+                        serviceRequest.getLongitude(),
+                        BigDecimal.valueOf(location.getY()),
+                        BigDecimal.valueOf(location.getX())))
+                .orElse(null);
     }
 
     private void pushEvent(UUID reservationId, String type, Object data) {

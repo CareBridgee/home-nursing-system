@@ -21,4 +21,6 @@ public class NurseUpdateRequest {
     private String specialization;
     private Integer yearsOfExperience;
     private String bio;
+
+    private MultipartFile profileImage;
 }

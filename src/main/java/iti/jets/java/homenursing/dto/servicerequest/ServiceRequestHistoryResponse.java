@@ -17,6 +17,8 @@ public record ServiceRequestHistoryResponse(
         ServiceRequestStatus status,
         UUID nurseId,
         String nurseName,
+        String nurseProfileImageUrl,
+        Double distanceKm,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

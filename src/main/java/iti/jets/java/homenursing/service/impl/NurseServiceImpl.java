@@ -70,6 +70,7 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
 
         uploadDocuments(nurse, request.getNationalIdFront(), request.getNationalIdBack(),
                 request.getLicenseImage(), request.getProfessionalCertificate());
+        uploadProfileImage(user, request.getProfileImage());
         return toProfileResponse(nurseRepository.save(nurse));
     }
 
@@ -87,6 +88,7 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
         nurseMapper.updateEntity(request, nurse);
         uploadDocuments(nurse, request.getNationalIdFront(), request.getNationalIdBack(),
                 request.getLicenseImage(), request.getProfessionalCertificate());
+        uploadProfileImage(nurse.getUser(), request.getProfileImage());
         return toProfileResponse(nurseRepository.save(nurse));
     }
 
@@ -195,6 +197,13 @@ public class NurseServiceImpl implements iti.jets.java.homenursing.service.Nurse
 
     private boolean hasContent(MultipartFile file) {
         return file != null && !file.isEmpty();
+    }
+
+    private void uploadProfileImage(User user, MultipartFile profileImage) {
+        if (hasContent(profileImage)) {
+            user.setProfileImageUrl(cloudinaryService.upload(profileImage));
+            userRepository.save(user);
+        }
     }
 
     private NurseResponse toProfileResponse(Nurse nurse) {

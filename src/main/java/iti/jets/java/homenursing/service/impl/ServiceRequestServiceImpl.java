@@ -374,7 +374,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         List<NurseOfferResponse> offers = nurseOfferRepository
                 .findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(serviceRequestId)
                 .stream()
-                .map(nurseOfferMapper::toResponse)
+                .map(this::toOfferResponseWithDistance)
                 .toList();
 
         Profile profile = serviceRequest.getProfile();
@@ -383,7 +383,8 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 profile.getId(),
                 profileUser.getFirstName(),
                 profileUser.getLastName(),
-                profileUser.getPhoneNumber());
+                profileUser.getPhoneNumber(),
+                profileUser.getProfileImageUrl());
 
         ServiceType serviceType = serviceRequest.getServiceType();
         ServiceRequestDetailsResponse.ServiceTypeSummary serviceTypeSummary = serviceType == null
@@ -395,6 +396,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
         Nurse nurse = serviceRequest.getNurse();
         ServiceRequestDetailsResponse.NurseSummary nurseSummary = null;
+        Double distanceKm = null;
         if (nurse != null) {
             User nurseUser = nurse.getUser();
             nurseSummary = new ServiceRequestDetailsResponse.NurseSummary(
@@ -402,8 +404,10 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                     nurseUser.getFirstName(),
                     nurseUser.getLastName(),
                     nurseUser.getPhoneNumber(),
+                    nurseUser.getProfileImageUrl(),
                     nurse.getRatingAvg(),
                     nurse.getTotalReviews());
+            distanceKm = computeDistanceKm(serviceRequest, nurse);
         }
 
         return new ServiceRequestDetailsResponse(
@@ -418,6 +422,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 serviceRequest.getStatus(),
                 serviceRequest.getLatitude(),
                 serviceRequest.getLongitude(),
+                distanceKm,
                 serviceRequest.getCreatedAt(),
                 serviceRequest.getUpdatedAt(),
                 offers);
@@ -563,6 +568,8 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
             nurseName = combined.isEmpty() ? null : combined;
         }
 
+        Double distanceKm = nurse != null ? computeDistanceKm(s, nurse) : null;
+
         return new ServiceRequestHistoryResponse(
                 s.getId(),
                 serviceType == null ? null : serviceType.getId(),
@@ -573,8 +580,40 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 s.getStatus(),
                 nurse == null ? null : nurse.getId(),
                 nurseName,
+                nurse != null && nurse.getUser() != null ? nurse.getUser().getProfileImageUrl() : null,
+                distanceKm,
                 s.getCreatedAt(),
                 s.getUpdatedAt());
+    }
+
+    private NurseOfferResponse toOfferResponseWithDistance(NurseOffer offer) {
+        NurseOfferResponse base = nurseOfferMapper.toResponse(offer);
+        return new NurseOfferResponse(
+                base.id(),
+                base.serviceRequestId(),
+                base.nurse(),
+                base.proposedPrice(),
+                base.proposedDate(),
+                base.proposedTime(),
+                base.message(),
+                base.status(),
+                computeDistanceKm(offer.getServiceRequest(), offer.getNurse()),
+                base.createdAt(),
+                base.updatedAt());
+    }
+
+    private Double computeDistanceKm(ServiceRequest serviceRequest, Nurse nurse) {
+        if (serviceRequest.getLatitude() == null || serviceRequest.getLongitude() == null || nurse == null) {
+            return null;
+        }
+        return webSocketPresenceService
+                .getAvailableLocation(nurse.getUser().getId().toString())
+                .map(location -> HaversineUtil.distanceKm(
+                        serviceRequest.getLatitude(),
+                        serviceRequest.getLongitude(),
+                        BigDecimal.valueOf(location.getY()),
+                        BigDecimal.valueOf(location.getX())))
+                .orElse(null);
     }
 
     private String visitCodeKey(UUID serviceRequestId) {
@@ -644,10 +683,14 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     private NearbyNurseServiceRequestResponse toNearbyNurseResponse(ServiceRequest request, BigDecimal nurseLatitude, BigDecimal nurseLongitude) {
         double distanceKm = HaversineUtil.distanceKm(
                 nurseLatitude, nurseLongitude, request.getLatitude(), request.getLongitude());
+        User patientUser = request.getProfile().getUser();
 
         return new NearbyNurseServiceRequestResponse(
                 request.getId(),
                 request.getProfile().getId(),
+                patientUser.getFirstName(),
+                patientUser.getLastName(),
+                patientUser.getProfileImageUrl(),
                 request.getServiceType().getId(),
                 request.getServiceType().getName(),
                 request.getServiceDescription(),

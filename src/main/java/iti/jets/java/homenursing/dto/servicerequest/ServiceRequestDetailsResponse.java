@@ -22,6 +22,7 @@ public record ServiceRequestDetailsResponse(
         ServiceRequestStatus status,
         BigDecimal latitude,
         BigDecimal longitude,
+        Double distanceKm,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         List<NurseOfferResponse> offers
@@ -38,7 +39,8 @@ public record ServiceRequestDetailsResponse(
             UUID id,
             String firstName,
             String lastName,
-            String phoneNumber
+            String phoneNumber,
+            String profileImageUrl
     ) {
     }
 
@@ -47,6 +49,7 @@ public record ServiceRequestDetailsResponse(
             String firstName,
             String lastName,
             String phoneNumber,
+            String profileImageUrl,
             BigDecimal ratingAvg,
             Integer totalReviews
     ) {

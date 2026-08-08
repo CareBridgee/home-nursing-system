@@ -19,6 +19,8 @@ public record NurseOfferResponse(
         String message,
         NurseOfferStatus status,
         Double distanceKm,
+        String serviceTypeName,
+        Integer estimatedDurationMinutes,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

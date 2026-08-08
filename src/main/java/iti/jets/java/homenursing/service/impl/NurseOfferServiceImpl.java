@@ -9,6 +9,7 @@ import iti.jets.java.homenursing.dto.reservation.ReservationEvent;
 import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.NurseOffer;
 import iti.jets.java.homenursing.entity.ServiceRequest;
+import iti.jets.java.homenursing.entity.ServiceType;
 import iti.jets.java.homenursing.entity.enums.NotificationType;
 import iti.jets.java.homenursing.entity.enums.NurseOfferStatus;
 import iti.jets.java.homenursing.entity.enums.ServiceRequestStatus;
@@ -343,11 +344,16 @@ NurseOfferResponse response = toOfferResponseWithDistance(nurseOfferRepository.s
                 nurseLatitude,
                 nurseLongitude,
                 distanceKm,
+                serviceRequest.getServiceType() == null
+                        ? null
+                        : serviceRequest.getServiceType().getEstimatedDurationMinutes(),
                 offer.getCreatedAt(),
                 offer.getUpdatedAt());
     }
 
     private NurseOfferResponse toOfferResponseWithDistance(NurseOffer offer) {
+        ServiceRequest serviceRequest = offer.getServiceRequest();
+        ServiceType serviceType = serviceRequest.getServiceType();
         NurseOfferResponse base = nurseOfferMapper.toResponse(offer);
         return new NurseOfferResponse(
                 base.id(),
@@ -359,6 +365,8 @@ NurseOfferResponse response = toOfferResponseWithDistance(nurseOfferRepository.s
                 base.message(),
                 base.status(),
                 computeDistanceKm(offer),
+                serviceType == null ? null : serviceType.getName(),
+                serviceType == null ? null : serviceType.getEstimatedDurationMinutes(),
                 base.createdAt(),
                 base.updatedAt());
     }

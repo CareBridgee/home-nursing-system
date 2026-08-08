@@ -24,6 +24,7 @@ public record NearbyNurseServiceRequestResponse(
         BigDecimal longitude,
         double distanceKm,
         BigDecimal estimatedPrice,
+        Integer estimatedDurationMinutes,
         LocalDateTime createdAt
 ) {
 }

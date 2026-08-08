@@ -392,7 +392,8 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 : new ServiceRequestDetailsResponse.ServiceTypeSummary(
                         serviceType.getId(),
                         serviceType.getName(),
-                        serviceType.getBasePrice());
+                        serviceType.getBasePrice(),
+                        serviceType.getEstimatedDurationMinutes());
 
         Nurse nurse = serviceRequest.getNurse();
         ServiceRequestDetailsResponse.NurseSummary nurseSummary = null;
@@ -582,11 +583,14 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 nurseName,
                 nurse != null && nurse.getUser() != null ? nurse.getUser().getProfileImageUrl() : null,
                 distanceKm,
+                serviceType == null ? null : serviceType.getEstimatedDurationMinutes(),
                 s.getCreatedAt(),
                 s.getUpdatedAt());
     }
 
     private NurseOfferResponse toOfferResponseWithDistance(NurseOffer offer) {
+        ServiceRequest serviceRequest = offer.getServiceRequest();
+        ServiceType serviceType = serviceRequest.getServiceType();
         NurseOfferResponse base = nurseOfferMapper.toResponse(offer);
         return new NurseOfferResponse(
                 base.id(),
@@ -597,7 +601,9 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 base.proposedTime(),
                 base.message(),
                 base.status(),
-                computeDistanceKm(offer.getServiceRequest(), offer.getNurse()),
+                computeDistanceKm(serviceRequest, offer.getNurse()),
+                serviceType == null ? null : serviceType.getName(),
+                serviceType == null ? null : serviceType.getEstimatedDurationMinutes(),
                 base.createdAt(),
                 base.updatedAt());
     }
@@ -701,6 +707,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 request.getLongitude(),
                 distanceKm,
                 priceEstimator.estimate(request.getServiceType().getBasePrice(), distanceKm),
+                request.getServiceType().getEstimatedDurationMinutes(),
                 request.getCreatedAt());
     }
 }

@@ -19,6 +19,7 @@ public record ServiceRequestHistoryResponse(
         String nurseName,
         String nurseProfileImageUrl,
         Double distanceKm,
+        Integer estimatedDurationMinutes,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

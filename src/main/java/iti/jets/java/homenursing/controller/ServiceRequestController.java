@@ -63,11 +63,12 @@ public class ServiceRequestController {
     private void pushToNearbyNurses(NearbyServiceRequestResponse response) {
         if (response.nearbyNurses() == null) return;
 
-        ServiceRequest request = serviceRequestRepository.findWithDetailsById(response.serviceRequestId()).orElse(null);
+ServiceRequest request = serviceRequestRepository.findWithDetailsById(response.serviceRequestId()).orElse(null);
         if (request == null || request.getServiceType() == null) return;
 
         ServiceType serviceType = request.getServiceType();
         String serviceName = serviceType.getName();
+        Integer estimatedDurationMinutes = serviceType.getEstimatedDurationMinutes();
 
         User patientUser = userRepository.findById(SecurityUtils.currentUserId()).orElse(null);
         String patientFirstName = patientUser != null ? patientUser.getFirstName() : null;
@@ -94,6 +95,7 @@ public class ServiceRequestController {
                     response.longitude(),
                     nearby.distanceKm(),
                     priceEstimator.estimate(serviceType.getBasePrice(), nearby.distanceKm()),
+                    estimatedDurationMinutes,
                     response.createdAt());
 
             String nurseUserId = nurse.getUser().getId().toString();

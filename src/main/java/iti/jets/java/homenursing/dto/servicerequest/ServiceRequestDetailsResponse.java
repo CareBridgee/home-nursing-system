@@ -31,7 +31,8 @@ public record ServiceRequestDetailsResponse(
     public record ServiceTypeSummary(
             UUID id,
             String name,
-            BigDecimal basePrice
+            BigDecimal basePrice,
+            Integer estimatedDurationMinutes
     ) {
     }
 

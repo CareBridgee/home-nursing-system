@@ -36,6 +36,7 @@ import iti.jets.java.homenursing.service.PriceEstimator;
 import iti.jets.java.homenursing.service.ProfileService;
 import iti.jets.java.homenursing.service.ServiceRequestService;
 import iti.jets.java.homenursing.service.TokenService;
+import iti.jets.java.homenursing.util.AfterCommitExecutor;
 import iti.jets.java.homenursing.util.HaversineUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +54,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -76,6 +78,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     private final TokenService tokenService;
     private final NotificationService notificationService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final AfterCommitExecutor afterCommitExecutor;
     private final PatientMedicalSummaryAssembler patientMedicalSummaryAssembler;
     private final AddressRepository addressRepository;
 
@@ -166,9 +169,41 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     @Override
     @Transactional
-    public void cancelRequest(UUID serviceRequestId) {
+    public void cancelRequest(UUID serviceRequestId, UUID userId) {
         ServiceRequest serviceRequest = serviceRequestRepository.findByIdAndIsDeletedFalse(serviceRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Service request not found: " + serviceRequestId));
+
+        boolean isOwner = serviceRequest.getProfile() != null
+                && serviceRequest.getProfile().getUser() != null
+                && serviceRequest.getProfile().getUser().getId().equals(userId);
+        boolean isAssignedNurse = serviceRequest.getNurse() != null
+                && serviceRequest.getNurse().getUser() != null
+                && serviceRequest.getNurse().getUser().getId().equals(userId);
+        if (!isOwner && !isAssignedNurse) {
+            throw new ResourceNotFoundException("Service request not found: " + serviceRequestId);
+        }
+
+        if (isOwner && serviceRequest.getNurse() != null && serviceRequest.getNurse().getUser() != null) {
+            UUID nurseUserId = serviceRequest.getNurse().getUser().getId();
+            notificationService.create(new NotificationRequest(
+                    nurseUserId,
+                    "Request Cancelled",
+                    "The service request has been cancelled.",
+                    NotificationType.BOOKING,
+                    "SERVICE_REQUEST",
+                    serviceRequestId));
+        }
+        if (isAssignedNurse && serviceRequest.getProfile() != null
+                && serviceRequest.getProfile().getUser() != null) {
+            UUID patientUserId = serviceRequest.getProfile().getUser().getId();
+            notificationService.create(new NotificationRequest(
+                    patientUserId,
+                    "Request Cancelled",
+                    "The service request has been cancelled.",
+                    NotificationType.BOOKING,
+                    "SERVICE_REQUEST",
+                    serviceRequestId));
+        }
 
 
         Set<ServiceRequestStatus> cancellableStatuses = Set.of(
@@ -189,6 +224,10 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
         tokenService.delete(visitCodeKey(serviceRequestId));
         tokenService.delete(visitCodeAttemptsKey(serviceRequestId));
+
+        afterCommitExecutor.execute(() ->
+                messagingTemplate.convertAndSend(RESERVATION_TOPIC_PREFIX + serviceRequestId,
+                        new ReservationEvent("REQUEST_CANCELLED", serviceRequestId, Map.of())));
     }
 
     @Override
@@ -296,8 +335,9 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         serviceRequest.setStatus(ServiceRequestStatus.COMPLETED);
         serviceRequestRepository.save(serviceRequest);
 
-        messagingTemplate.convertAndSend(RESERVATION_TOPIC_PREFIX + serviceRequestId,
-                new ReservationEvent("COMPLETED", serviceRequestId, null));
+        afterCommitExecutor.execute(() ->
+                messagingTemplate.convertAndSend(RESERVATION_TOPIC_PREFIX + serviceRequestId,
+                        new ReservationEvent("COMPLETED", serviceRequestId, null)));
 
         notificationService.create(new NotificationRequest(
                 serviceRequest.getProfile().getUser().getId(),

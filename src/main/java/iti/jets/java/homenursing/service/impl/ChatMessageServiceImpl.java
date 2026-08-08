@@ -14,6 +14,7 @@ import iti.jets.java.homenursing.repository.ServiceRequestRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
 import iti.jets.java.homenursing.service.ChatMessageService;
 import iti.jets.java.homenursing.service.NotificationService;
+import iti.jets.java.homenursing.util.AfterCommitExecutor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     private final ReservationParticipantService participantService;
     private final NotificationService notificationService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     @Override
     @Transactional
@@ -64,7 +66,8 @@ public class ChatMessageServiceImpl implements ChatMessageService {
 
         ChatMessageResponse response = toResponse(message, sender);
 
-        messagingTemplate.convertAndSend(CHAT_TOPIC + reservationId, response);
+        afterCommitExecutor.execute(() ->
+                messagingTemplate.convertAndSend(CHAT_TOPIC + reservationId, response));
 
         notifyOtherParticipants(serviceRequest, senderUserId, reservationId);
 

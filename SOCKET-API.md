@@ -12,6 +12,7 @@ The server uses **STOMP over WebSocket** for real-time communication.
 | User prefix | `/user` |
 | Auth | JWT Bearer token in CONNECT frame header |
 | Protocol versions | STOMP 1.0, 1.1, 1.2 |
+| Send rule | Clients may only `SEND` to `/app/**` destinations — others are rejected with `ERROR` |
 
 ---
 
@@ -31,10 +32,18 @@ heart-beat:10000,10000
 4. On success → `CONNECTED` response.
 5. If `role` is `NURSE`, the nurse is auto-added to the online set in Redis.
 6. On `DISCONNECT` (or close) → nurse removed from online + available sets.
+7. Presence is heartbeat-driven: `/app/heartbeat` (send every ~30 s) refreshes the online + availability timestamps; the server prunes entries stale for > 90 s (covers abrupt kills that never reach `DISCONNECT`).
+
+**Subscription authorization rules (server-enforced at `SUBSCRIBE`):**
+- `/user/...` — allowed only for your own user id; subscribing to someone else's `/user/{id}/...` → `ERROR` frame.
+- `/topic/reservation/{id}` and `/topic/chat/{id}` — must be a participant: the request owner, the assigned nurse, or a nurse with an **active `PENDING` offer** (offers that were rejected or withdrawn no longer grant access; access is enforced at subscribe time).
+- `SEND` frames are only allowed to `/app/**`; sending to `/topic`, `/queue` or `/user` is rejected with `ERROR`.
 
 ### Reconnection
 
 Detect close/error events, reconnect with a fresh access token, and re-subscribe to all active topics.
+
+**IMPORTANT:** any `ERROR` frame from the server is terminal — the server closes the WebSocket session right after sending it. Always reconnect on `ERROR`; never retry the offending frame on the same session.
 
 ---
 
@@ -43,6 +52,7 @@ Detect close/error events, reconnect with a fresh access token, and re-subscribe
 | Topic Pattern | When | Purpose | Access |
 |---|---|---|---|
 | `/user/queue/notifications` | Always while connected | Receive real-time notifications for the current user | User-scoped |
+| `/user/queue/errors` | Always while connected | Receive structured error feedback for failed socket operations (see Error Handling) | User-scoped |
 | `/user/queue/nearby-request` | Always while connected (nurse only) | Receive new matching service requests pushed in real-time | Nurse-scoped |
 | `/topic/chat/{reservationId}` | When entering a reservation chat view | Receive chat messages | Must be participant |
 | `/topic/reservation/{reservationId}` | When viewing a reservation | Receive all reservation & offer events | Must be participant |
@@ -69,7 +79,7 @@ All reservation-scoped events are pushed as a single JSON wrapper:
 | `OFFER_ACCEPTED` | `NurseOfferResponse` | Either party accepts → reservation assigned |
 | `OFFER_WITHDRAWN` | `{ "offerId": "uuid" }` | Nurse withdraws their offer |
 | `OFFER_REJECTED` | `{ "offerId": "uuid" }` | Patient rejects an offer |
-| `REQUEST_CANCELLED` | `{}` | Patient cancels the entire request |
+| `REQUEST_CANCELLED` | `{}` | Patient or assigned nurse cancels the entire request |
 | `COMPLETED` | `null` | Assigned nurse completes the visit via QR scan (REST-driven) |
 | `OFFERS_LIST` | `[NurseOfferResponse, ...]` | Response to `/app/reservation/offers/list` |
 
@@ -77,7 +87,7 @@ All reservation-scoped events are pushed as a single JSON wrapper:
 
 ## Commands to Send (SEND to `/app/*`)
 
-### Nurse Presence
+### Nurse Presence (nurse role required)
 
 | Destination | Payload | When |
 |---|---|---|
@@ -85,6 +95,8 @@ All reservation-scoped events are pushed as a single JSON wrapper:
 | `/app/reservation/availability` | `{ "available": true, "lat": 30.0, "lng": 31.0 }` | Toggle availability |
 | `/app/reservation/availability` | `{ "available": false }` | Go unavailable |
 | `/app/reservation/location` | `{ "lat": 30.0, "lng": 31.0 }` | Update current position |
+
+All three require `ROLE_NURSE` — non-nurses receive `ERROR`.
 
 ### Offer Management
 
@@ -97,12 +109,16 @@ All reservation-scoped events are pushed as a single JSON wrapper:
 | `/app/reservation/offer/withdraw` | `{ "offerId": "uuid" }` | Nurse | Withdraws own pending offer |
 | `/app/reservation/offer/reject` | `{ "offerId": "uuid" }` | Patient | Rejects an offer |
 
+Counter, reject and withdraw are all also available over REST (see REST Fallbacks).
+
 ### Request Management
 
 | Destination | Payload | Who | Effect |
 |---|---|---|---|
-| `/app/reservation/cancel` | `{ "serviceRequestId": "uuid" }` | Patient | Cancels request, rejects all pending offers |
+| `/app/reservation/cancel` | `{ "serviceRequestId": "uuid" }` | Patient or assigned nurse | Cancels request, rejects all pending offers |
 | `/app/reservation/offers/list` | `{ "serviceRequestId": "uuid" }` | Participant | Triggers server to push `OFFERS_LIST` on the reservation topic |
+
+Cancellation is also available via REST `PATCH /api/v1/service-requests/{id}/cancel`.
 
 ### Visit Completion (QR)
 
@@ -154,13 +170,33 @@ All reservation-scoped events are pushed as a single JSON wrapper:
 
 **`type` values:** `BOOKING`, `PAYMENT`, `SYSTEM`, `MESSAGE`, `REMINDER`
 
+### SocketErrorPayload — on `/user/queue/errors`
+
+Sent when a socket *operation* (SEND) fails at the handler level — validation, authorization, or business rule. The session stays open.
+
+```json
+{
+  "code": "BAD_REQUEST",
+  "message": "Only pending offers can be accepted",
+  "timestamp": "2026-07-29T12:00:00+02:00"
+}
+```
+
+**`code` values:** business-rule codes propagated from the server (`FORBIDDEN`, `BAD_REQUEST`, `RESOURCE_NOT_FOUND`, ...), plus `VALIDATION` for payload validation failures and `INTERNAL` for unexpected errors
+
 ### NurseOfferResponse — inside ReservationEvent data
 
 ```json
 {
   "id": "uuid",
   "serviceRequestId": "uuid",
-  "nurseId": "uuid",
+  "nurse": {
+    "id": "uuid",
+    "firstName": "John",
+    "lastName": "Doe",
+    "ratingAvg": 4.5,
+    "totalReviews": 12
+  },
   "proposedPrice": 100.00,
   "proposedDate": "2026-08-15",
   "proposedTime": "10:00",
@@ -275,13 +311,15 @@ Patient SENDs /app/reservation/offers/list   (on entering reservation screen)
 ### Cancellation Flow
 
 ```
-Patient SENDs /app/reservation/cancel
+Patient (or the assigned nurse) SENDs /app/reservation/cancel
   Body: { serviceRequestId }
   │
   ├── Server: request → CANCELLED, all pending offers → REJECTED
   ├── Pushes to /topic/reservation/{id}   { type: "REQUEST_CANCELLED" }
-  └── Notifies patient + assigned nurse via /user/queue/notifications
-      All other subscribed participants receive REQUEST_CANCELLED on the topic
+  └── Notifies the OTHER party (patient when the nurse cancels, nurse when the patient cancels)
+      via /user/queue/notifications — the actor is not notified
+      All subscribed participants receive REQUEST_CANCELLED on the topic
+      REST fallback: PATCH /api/v1/service-requests/{id}/cancel
 ```
 
 ### Chat Flow
@@ -327,6 +365,7 @@ On reconnect:
 | Screen / State | Subscribe To | Expected Payload |
 |---|---|---|
 | App launch (always) | `/user/queue/notifications` | `NotificationResponse` |
+| App launch (always) | `/user/queue/errors` | `SocketErrorPayload` — operation-level failures |
 | App launch (always) | `/user/queue/nearby-request` | `NearbyNurseServiceRequestResponse` — new matching requests pushed in real-time |
 | Viewing a reservation | `/topic/reservation/{reservationId}` | `ReservationEvent` — all offer events, cancellation |
 | Chat in a reservation | `/topic/chat/{reservationId}` | `ChatMessageResponse` |
@@ -336,6 +375,7 @@ On reconnect:
 | Screen / State | Subscribe To | Expected Payload |
 |---|---|---|
 | App launch (always) | `/user/queue/notifications` | `NotificationResponse` |
+| App launch (always) | `/user/queue/errors` | `SocketErrorPayload` — operation-level failures |
 | Viewing a reservation | `/topic/reservation/{reservationId}` | `ReservationEvent` — all offer events, cancellation |
 | Chat in a reservation | `/topic/chat/{reservationId}` | `ChatMessageResponse` |
 
@@ -344,15 +384,20 @@ On reconnect:
 ```
 CONNECT (JWT)
   ├── SUBSCRIBE /user/queue/notifications
+  ├── SUBSCRIBE /user/queue/errors
   └── SUBSCRIBE /user/queue/nearby-request
 
 [Nurse receives a new request push]
   RECEIVE /user/queue/nearby-request  →  NearbyNurseServiceRequestResponse
-  └── SUBSCRIBE /topic/reservation/{id}
 
 [Nurse submits offer]
   SEND /app/reservation/offer/create
   RECEIVE /topic/reservation/{id}  →  { type: "OFFER_CREATED", data: NurseOfferResponse }
+
+Note: as a non-participant (no active `PENDING` offer yet), subscribing to /topic/reservation/{id}
+before creating your offer returns an ERROR frame. Subscribe to the topic AFTER
+your first offer exists — until then, use REST GET /api/v1/nurse-offers?serviceRequestId=.
+A nurse whose offer was rejected or withdrawn loses topic access on the next subscribe.
 
 [Patient counters]
   RECEIVE /topic/reservation/{id}  →  { type: "OFFER_COUNTERED", data }
@@ -378,7 +423,8 @@ On disconnect/reconnect:
 
 ```
 CONNECT (JWT)
-  └── SUBSCRIBE /user/queue/notifications
+  ├── SUBSCRIBE /user/queue/notifications
+  └── SUBSCRIBE /user/queue/errors
 
 [Patient creates a service request via REST]
   POST /api/v1/service-requests
@@ -416,24 +462,78 @@ On reconnect:
 | Endpoint | Purpose |
 |---|---|
 | `GET /api/v1/service-requests/nearby` | Nurse fetches all open requests on first load |
+| `GET /api/v1/service-requests/{id}/preview` | Nurse previews an open request (service details + patient basic medical summary) before offering |
+| `GET /api/v1/service-requests/{id}/profile` | Assigned nurse loads the patient's full profile (contact, address, medical summary) after acceptance |
 | `GET /api/v1/service-requests/{id}/nearby-nurses` | Patient fetches currently-nearby nurses for their open request (on demand — e.g., when nurses go available) |
 | `GET /api/v1/nurse-offers?serviceRequestId=` | Patient fetches current offers on reconnect |
+| `PUT /api/v1/nurse-offers/{id}` | Nurse updates own offer terms (same as `/app/reservation/offer/update`) |
+| `PATCH /api/v1/nurse-offers/{id}/counter` | Patient proposes counter-terms (same as `/app/reservation/offer/counter`) |
+| `PATCH /api/v1/nurse-offers/{id}/reject` | Patient rejects an offer (same as `/app/reservation/offer/reject`) |
+| `PATCH /api/v1/nurse-offers/{id}/accept` | Accepts current terms → finalizes reservation |
+| `DELETE /api/v1/nurse-offers/{id}` | Nurse withdraws own pending offer (same as `/app/reservation/offer/withdraw`) |
+| `PATCH /api/v1/service-requests/{id}/cancel` | Patient or assigned nurse cancels the request (same as `/app/reservation/cancel`) |
 | `GET /api/v1/reservations/{id}/messages` | Fetch chat messages (`?after=ISO-DATE-TIME` optional — omit for full history) |
 | `POST /api/v1/reservations/{id}/messages` | Send a chat message via REST: body `{ "content": "..." }` — persists + broadcasts to `/topic/chat/{id}` + notifies the other participant |
 | `POST /api/v1/service-requests/{id}/visit-code` | Patient fetches (mints or reuses) the visit code to render as a QR |
 | `POST /api/v1/service-requests/{id}/complete` | Assigned nurse completes the visit: body `{ "visitCode": "..." }` — sets status `COMPLETED`, pushes `COMPLETED` event, notifies the patient |
+| `POST /api/v1/notifications` | Create a notification — only for the calling user id (self-only); body userId is ignored |
 | `GET /api/v1/notifications?after=` | Fetch missed notifications |
+
+> **Manual harness:** `ws-test.html` (repo root) is a browser-based playground for this protocol —
+> connect as nurse or patient with a pasted JWT, subscribe to all topics, send frames,
+> run the walkthroughs, and watch `/user/queue/errors` entries live.
 
 ---
 
 ## Error Handling
 
+There are **two distinct channels** — keep them apart:
+
+### 1. Frame-level rejections → `ERROR` frame, then the server closes the session
+
+A frame is rejected *before it reaches any handler* when it violates a connection-level rule:
+
+- `SEND` to a destination that is not `/app/**` (`/topic`, `/queue`, `/user`, ...)
+- `SUBSCRIBE` to another user's `/user/{id}/...`
+- `SUBSCRIBE` to `/topic/reservation/{id}` or `/topic/chat/{id}` without being a participant (request owner, the assigned nurse, or a nurse with an active `PENDING` offer)
+- `SEND` to a presence endpoint (`/app/heartbeat`, `/app/reservation/availability`, `/app/reservation/location`) without `ROLE_NURSE`
+- `CONNECT` with a missing / invalid / expired JWT
+
 | Scenario | What Happens | App Action |
 |---|---|---|
-| Invalid / expired JWT | `ERROR` on CONNECT | Refresh token or redirect to login |
-| Subscribe to unauthorized topic | `ERROR` (403, "Not a participant") | Alert user, do not retry |
+| Invalid / expired JWT on CONNECT | `ERROR` frame | Refresh token and reconnect |
+| Subscribe to unauthorized topic | `ERROR` frame | Alert user, do not retry |
+| Subscribe to another user's `/user/{id}/...` | `ERROR` frame | Alert user (likely a client bug), do not retry |
+| `SEND` to `/topic`, `/queue` or `/user` | `ERROR` frame | Fix client bug — the server never accepts client publishes to broker destinations |
+| Non-nurse uses presence endpoints | `ERROR` frame | Alert user |
+
+The `message` header of these `ERROR` frames is **always** the generic
+`Failed to send message to ExecutorSubscribableChannel[clientInboundChannel]` — the semantic reason
+(e.g. "Not a participant", "Only nurses...") is **only written to the server logs**, never sent to the
+client. **The server then closes the connection (close code 1002).** Treat any `ERROR` frame as
+terminal: reconnect with a fresh access token and re-subscribe (never retry the failing frame).
+
+### 2. Operation-level failures → `SocketErrorPayload` on `/user/queue/errors`
+
+The frame passed the connection rules but the operation itself failed (validation, authorization, or a
+business rule inside the handler). The server sends a structured error to the session's user queue —
+the session **stays open**.
+
+| Scenario | `code` | `message` example |
+|---|---|---|
+| Role/ownership check inside the operation | `FORBIDDEN` | `Only nurses can use presence endpoints` |
+| Invalid offer operation | `BAD_REQUEST` | `Only pending offers can be accepted` |
+| Missing entity (e.g. unknown offer id) | `RESOURCE_NOT_FOUND` | `Nurse offer not found: <id>` |
+| Payload failed `@Valid` validation | `VALIDATION` | `content: Message content is required` |
+| Unexpected server error | `INTERNAL` | `Unexpected server error` (details log-only) |
+
+App action: show feedback to the user and let them fix/retry the operation.
+
+### 3. Transport-level
+
+| Scenario | What Happens | App Action |
+|---|---|---|
 | Connection lost | WebSocket close | Offline indicator, auto-reconnect with backoff, re-subscribe, pull missed data via REST |
-| Invalid offer operation | `ERROR` (e.g., "Only pending offers can be accepted") | Show feedback to user |
 | Invalid / locked-out visit code | `400` from `POST .../complete` | Prompt the patient to regenerate the QR via `POST .../visit-code` |
 
 ---
@@ -443,7 +543,8 @@ On reconnect:
 | Redis Key | Type | Purpose |
 |---|---|---|
 | `ws:nurse:online` | Set | User IDs of connected nurses |
+| `ws:nurse:online:ts` | Hash | User ID → epoch timestamp of last activity (connect/heartbeat/location) — used for stale pruning |
 | `ws:nurse:available` | GeoSet | User IDs + lat/lng of available nurses |
-| `ws:nurse:available:ts` | Hash | User ID → epoch timestamp of last heartbeat |
+| `ws:nurse:available:ts` | Hash | User ID → epoch timestamp of last heartbeat/location update |
 
-Stale entries purged every 30s (entries older than 90s removed).
+Stale entries purged every 30s (entries older than 90s removed; members without a timestamp are treated as stale).

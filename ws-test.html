@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>STOMP WebSocket Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; padding: 20px; color: #333; }
+    h1 { font-size: 22px; margin-bottom: 16px; }
+    fieldset { border: 1px solid #ccc; border-radius: 6px; padding: 14px; margin-bottom: 12px; background: #fff; }
+    legend { font-weight: 600; padding: 0 6px; }
+    input, select, button { font-size: 14px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; }
+    input { width: 300px; }
+    input:focus { outline: none; border-color: #4a90d9; }
+    button { cursor: pointer; background: #4a90d9; color: #fff; border: none; margin-left: 4px; }
+    button:disabled { opacity: 0.4; cursor: default; }
+    button:not(:disabled):hover { background: #357abd; }
+    button.danger { background: #d9534f; }
+    button.danger:not(:disabled):hover { background: #c9302c; }
+    button.success { background: #5cb85c; }
+    button.success:not(:disabled):hover { background: #449d44; }
+    #status { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; margin-left: 10px; }
+    .connected { background: #d4edda; color: #155724; }
+    .disconnected { background: #f8d7da; color: #721c24; }
+    .error-badge { background: #fff3cd; color: #856404; }
+    .log-box { margin-top: 8px; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 8px; font-size: 13px; background: #fafafa; }
+    .log-entry { padding: 3px 0; border-bottom: 1px solid #eee; }
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry .time { color: #888; font-size: 11px; }
+    .log-entry .body { margin-left: 6px; }
+    .log-entry.incoming { color: #155724; }
+    .log-entry.outgoing { color: #004085; }
+    .log-entry.error { color: #721c24; font-weight: 600; }
+    .chat-bubble { padding: 6px 10px; margin: 4px 0; border-radius: 8px; max-width: 70%; clear: both; }
+    .chat-bubble.sent { background: #d4edda; float: right; }
+    .chat-bubble.received { background: #e2e3e5; float: left; }
+    .chat-bubble .meta { font-size: 11px; color: #888; }
+    #chatLog { max-height: 300px; }
+    .controls-row { margin: 6px 0; }
+    .label-sm { font-size: 12px; color: #666; margin-right: 4px; }
+  </style>
+</head>
+<body>
+
+<h1>STOMP WebSocket Test</h1>
+
+<fieldset>
+  <legend>Connection</legend>
+  <div class="controls-row">
+    <input type="text" id="jwtToken" placeholder="JWT Token" style="width:420px">
+    <select id="roleSelect">
+      <option value="USER">User</option>
+      <option value="NURSE">Nurse</option>
+    </select>
+    <button id="connectBtn">Connect</button>
+    <button id="disconnectBtn" class="danger" disabled>Disconnect</button>
+    <span id="status" class="disconnected">Disconnected</span>
+  </div>
+  <div class="controls-row">
+    <input type="text" id="reservationId" placeholder="Reservation ID (for chat)" style="width:300px">
+    <input type="text" id="notifRecipientId" placeholder="Recipient User ID (for test notification)" style="width:300px">
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Notifications</legend>
+  <button id="subNotifBtn" disabled>Subscribe to Notifications</button>
+  <button id="subscribeErrorsBtn" disabled>Subscribe to Errors</button>
+  <button id="testNotifBtn" class="success" disabled>Send Test Notification</button>
+  <div id="notifLog" class="log-box"></div>
+</fieldset>
+
+<fieldset>
+  <legend>Chat</legend>
+  <button id="subChatBtn" disabled>Subscribe to Chat</button>
+  <input type="text" id="chatInput" placeholder="Type a message" style="width:300px">
+  <button id="sendChatBtn" class="success" disabled>Send</button>
+  <button id="pullMissedBtn" disabled>Pull Missed</button>
+  <div id="chatLog" class="log-box"></div>
+</fieldset>
+
+<fieldset id="nurseControls" style="display:none">
+  <legend>Nurse Controls</legend>
+  <button id="goAvailableBtn" disabled>Go Available</button>
+  <button id="goUnavailableBtn" class="danger" disabled>Go Unavailable</button>
+  <button id="heartbeatBtn" disabled>Send Heartbeat</button>
+</fieldset>
+
+<fieldset id="reservationControls">
+  <legend>Reservation Flow (REST + Socket)</legend>
+  <details>
+    <summary>Test steps (manual E2E)</summary>
+    <ol class="label-sm">
+      <li>Login as a patient and a nurse (Postman/curl with dev OTP — no SMS needed) and paste both JWTs below.</li>
+      <li>Nurse: paste nurse JWT above, click Connect with role NURSE, then <b>Go Available</b> (writes Redis presence — stays fresh ~90s via heartbeat).</li>
+      <li>Fill Profile ID (patient's) + Service Type ID, then <b>1 · Create Request</b> → <b>2 · Nearby Nurses</b> (expect the nurse in the list).</li>
+      <li><b>3 · Create Offer</b> (nurse token) → <b>4 · Accept Offer</b>.</li>
+      <li><b>5 · Get Visit Code</b> (the code the UI would render as a QR) → <b>6 · Complete Visit</b> (nurse token).</li>
+      <li>Subscribe to the reservation topic to see OFFER_CREATED / OFFER_ACCEPTED / COMPLETED events live.</li>
+      <li>Negative checks: <b>Try Wrong Code</b> → expect 400; repeat step 6 twice → second one should 400.</li>
+    </ol>
+  </details>
+  <div class="controls-row">
+    <input type="text" id="patientToken" placeholder="Patient JWT" style="width:400px">
+    <input type="text" id="nurseToken" placeholder="Nurse JWT" style="width:400px">
+  </div>
+  <div class="controls-row">
+    <input type="text" id="profileId" placeholder="Profile ID" style="width:230px">
+    <input type="text" id="serviceTypeId" placeholder="Service Type ID" style="width:230px">
+    <input type="text" id="resLat" value="30.0444" style="width:90px">
+    <input type="text" id="resLng" value="31.2357" style="width:90px">
+  </div>
+  <div class="controls-row">
+    <button id="subResBtn" disabled>Subscribe to /topic/reservation/{id}</button>
+  </div>
+  <div class="controls-row">
+    <button id="step1Btn">1 · Create Request</button>
+    <button id="step2Btn">2 · Nearby Nurses</button>
+    <button id="step3Btn">3 · Create Offer</button>
+    <button id="step4Btn">4 · Accept Offer</button>
+    <button id="step5Btn">5 · Get Visit Code</button>
+    <button id="step6Btn">6 · Complete Visit</button>
+    <button id="wrongCodeBtn" class="danger">Try Wrong Code</button>
+    <button id="resetFlowBtn">Reset</button>
+  </div>
+  <div id="reservationLog" class="log-box"></div>
+</fieldset>
+
+<script>
+(function () {
+  // Change this once when testing a deployed instance (e.g. https://api.yourdomain.com)
+  const API_BASE = 'http://localhost:8080';
+  const WS_URL = API_BASE.replace('http', 'ws') + '/ws';
+  let ws = null;
+  let connected = false;
+  let subNotifId = null;
+  let subChatId = null;
+  let subErrorsId = null;
+  let subCounter = 0;
+
+  const els = {
+    jwtToken: document.getElementById('jwtToken'),
+    reservationId: document.getElementById('reservationId'),
+    roleSelect: document.getElementById('roleSelect'),
+    notifRecipientId: document.getElementById('notifRecipientId'),
+    status: document.getElementById('status'),
+    connectBtn: document.getElementById('connectBtn'),
+    disconnectBtn: document.getElementById('disconnectBtn'),
+    subNotifBtn: document.getElementById('subNotifBtn'),
+    subscribeErrorsBtn: document.getElementById('subscribeErrorsBtn'),
+    testNotifBtn: document.getElementById('testNotifBtn'),
+    subChatBtn: document.getElementById('subChatBtn'),
+    chatInput: document.getElementById('chatInput'),
+    sendChatBtn: document.getElementById('sendChatBtn'),
+    pullMissedBtn: document.getElementById('pullMissedBtn'),
+    goAvailableBtn: document.getElementById('goAvailableBtn'),
+    goUnavailableBtn: document.getElementById('goUnavailableBtn'),
+    heartbeatBtn: document.getElementById('heartbeatBtn'),
+    nurseControls: document.getElementById('nurseControls'),
+    notifLog: document.getElementById('notifLog'),
+    chatLog: document.getElementById('chatLog'),
+    patientToken: document.getElementById('patientToken'),
+    nurseToken: document.getElementById('nurseToken'),
+    profileId: document.getElementById('profileId'),
+    serviceTypeId: document.getElementById('serviceTypeId'),
+    resLat: document.getElementById('resLat'),
+    resLng: document.getElementById('resLng'),
+    subResBtn: document.getElementById('subResBtn'),
+    step1Btn: document.getElementById('step1Btn'),
+    step2Btn: document.getElementById('step2Btn'),
+    step3Btn: document.getElementById('step3Btn'),
+    step4Btn: document.getElementById('step4Btn'),
+    step5Btn: document.getElementById('step5Btn'),
+    step6Btn: document.getElementById('step6Btn'),
+    wrongCodeBtn: document.getElementById('wrongCodeBtn'),
+    resetFlowBtn: document.getElementById('resetFlowBtn'),
+    reservationLog: document.getElementById('reservationLog'),
+  };
+
+  function setStatus(text, cls) {
+    els.status.textContent = text;
+    els.status.className = cls;
+  }
+
+  function setConnected(enabled) {
+    connected = enabled;
+    els.connectBtn.disabled = enabled;
+    els.disconnectBtn.disabled = !enabled;
+    els.subNotifBtn.disabled = !enabled;
+    els.subscribeErrorsBtn.disabled = !enabled;
+    els.testNotifBtn.disabled = !enabled;
+    els.subChatBtn.disabled = !enabled;
+    els.sendChatBtn.disabled = !enabled;
+    els.pullMissedBtn.disabled = !enabled;
+    els.goAvailableBtn.disabled = !enabled;
+    els.goUnavailableBtn.disabled = !enabled;
+    els.heartbeatBtn.disabled = !enabled;
+    els.subResBtn.disabled = !enabled;
+    if (!enabled) {
+      subNotifId = null;
+      subChatId = null;
+      subErrorsId = null;
+    }
+  }
+
+  function log(el, text, cls) {
+    const d = document.createElement('div');
+    d.className = 'log-entry ' + (cls || '');
+    const now = new Date();
+    const ts = now.toLocaleTimeString();
+    d.innerHTML = '<span class="time">[' + ts + ']</span><span class="body">' + escapeHtml(text) + '</span>';
+    el.appendChild(d);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function logNotif(text, cls) { log(els.notifLog, text, cls); }
+  function logChat(text, cls) { log(els.chatLog, text, cls); }
+  function logRes(text, cls) { log(els.reservationLog, text, cls); }
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  function chatSenderLabel(m) {
+    return m.senderName || (m.senderUserId ? 'User ' + m.senderUserId.substring(0, 8) : 'unknown');
+  }
+
+  function showChatBubble(text, sender, cls) {
+    const d = document.createElement('div');
+    d.className = 'chat-bubble ' + cls;
+    const now = new Date();
+    const ts = now.toLocaleTimeString();
+    d.innerHTML = '<div>' + escapeHtml(text) + '</div><div class="meta">' + escapeHtml(sender) + ' at ' + ts + '</div>';
+    els.chatLog.appendChild(d);
+    els.chatLog.scrollTop = els.chatLog.scrollHeight;
+  }
+
+  function buildFrame(command, headers, body) {
+    let frame = command + '\n';
+    for (const [k, v] of Object.entries(headers || {})) {
+      frame += k + ':' + v + '\n';
+    }
+    frame += '\n';
+    if (body) frame += body;
+    frame += '\0';
+    return frame;
+  }
+
+  function parseFrame(raw) {
+    const idx = raw.indexOf('\0');
+    if (idx >= 0) raw = raw.substring(0, idx);
+    const lines = raw.split('\n');
+    const command = lines[0] || '';
+    const headers = {};
+    let bodyStart = -1;
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i] === '') { bodyStart = i + 1; break; }
+      const colonIdx = lines[i].indexOf(':');
+      if (colonIdx > 0) {
+        headers[lines[i].substring(0, colonIdx)] = lines[i].substring(colonIdx + 1);
+      }
+    }
+    let body = '';
+    if (bodyStart > 0 && bodyStart < lines.length) {
+      body = lines.slice(bodyStart).join('\n');
+    }
+    return { command, headers, body };
+  }
+
+  function sendFrame(command, headers, body) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      logNotif('Not connected', 'error');
+      return;
+    }
+    const frame = buildFrame(command, headers, body);
+    ws.send(frame);
+    logNotif('>>> ' + command + (body ? ' ' + body.substring(0, 80) : ''), 'outgoing');
+  }
+
+  function connect() {
+    const token = els.jwtToken.value.trim();
+    if (!token) { alert('Enter a JWT token first'); return; }
+
+    if (ws) {
+      try { ws.close(); } catch (_) {}
+      ws = null;
+    }
+
+    setStatus('Connecting...', 'error-badge');
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = function () {
+      logNotif('WebSocket opened', 'outgoing');
+      sendFrame('CONNECT', {
+        'Authorization': 'Bearer ' + token,
+        'accept-version': '1.2,1.1,1.0',
+        'heart-beat': '10000,10000'
+      });
+    };
+
+    ws.onmessage = function (evt) {
+      const frames = evt.data.split('\n\0');
+      for (const raw of frames) {
+        if (!raw.trim()) continue;
+        const f = parseFrame(raw);
+        handleFrame(f);
+      }
+    };
+
+    ws.onerror = function (err) {
+      logNotif('WebSocket error: ' + (err.message || 'unknown'), 'error');
+    };
+
+    ws.onclose = function () {
+      setStatus('Disconnected', 'disconnected');
+      setConnected(false);
+      logNotif('WebSocket closed', 'error');
+    };
+  }
+
+  function handleFrame(f) {
+    if (f.command === 'CONNECTED') {
+      setStatus('Connected', 'connected');
+      setConnected(true);
+      logNotif('<<< CONNECTED', 'incoming');
+      if (els.roleSelect.value === 'NURSE') {
+        els.nurseControls.style.display = '';
+      } else {
+        els.nurseControls.style.display = 'none';
+      }
+    } else if (f.command === 'MESSAGE') {
+      const dest = f.headers['destination'] || '';
+      const body = f.body || '';
+      if (dest.indexOf('/queue/errors') >= 0) {
+        try {
+          const err = JSON.parse(body);
+          logNotif('<< OP-ERROR [' + (err.code || '') + ']: ' + (err.message || body.substring(0, 120)), 'error');
+        } catch (_) {
+          logNotif('<< OP-ERROR: ' + body.substring(0, 120), 'error');
+        }
+      } else if (dest.indexOf('/queue/notifications') >= 0) {
+        try {
+          const notif = JSON.parse(body);
+          logNotif('<< NOTIFICATION: ' + (notif.title || '') + ' - ' + (notif.message || ''), 'incoming');
+        } catch (_) {
+          logNotif('<< NOTIFICATION: ' + body.substring(0, 120), 'incoming');
+        }
+      } else if (dest.indexOf('/topic/chat/') >= 0) {
+        try {
+          const msg = JSON.parse(body);
+          showChatBubble(msg.content || body, chatSenderLabel(msg), 'received');
+          logChat('<< CHAT: ' + (msg.content || body), 'incoming');
+        } catch (_) {
+          showChatBubble(body, 'unknown', 'received');
+          logChat('<< CHAT: ' + body.substring(0, 120), 'incoming');
+        }
+      } else if (dest.indexOf('/topic/reservation/') >= 0) {
+        try {
+          const evt = JSON.parse(body);
+          logRes('<< EVENT ' + evt.type + ': ' + (typeof evt.data === 'object' ? JSON.stringify(evt.data) : evt.data), 'incoming');
+        } catch (_) {
+          logRes('<< EVENT: ' + body.substring(0, 120), 'incoming');
+        }
+      } else {
+        logNotif('<< MESSAGE to ' + dest + ': ' + body.substring(0, 120), 'incoming');
+      }
+    } else if (f.command === 'ERROR') {
+      const msg = f.body || f.headers['message'] || 'Unknown error';
+      logNotif('<< ERROR: ' + escapeHtml(msg), 'error');
+      setStatus('ERROR', 'error-badge');
+    } else if (f.command === 'RECEIPT') {
+      logNotif('<< RECEIPT: ' + (f.headers['receipt-id'] || ''), 'incoming');
+    } else {
+      logNotif('<< ' + f.command + (f.body ? ' ' + f.body.substring(0, 80) : ''), 'incoming');
+    }
+  }
+
+  function disconnect() {
+    if (ws) {
+      sendFrame('DISCONNECT');
+      setTimeout(function () {
+        ws.close();
+        ws = null;
+        setStatus('Disconnected', 'disconnected');
+        setConnected(false);
+      }, 200);
+    } else {
+      setStatus('Disconnected', 'disconnected');
+      setConnected(false);
+    }
+  }
+
+  function subscribeNotif() {
+    subCounter++;
+    const id = 'sub-notif-' + subCounter;
+    subNotifId = id;
+    sendFrame('SUBSCRIBE', { id: id, destination: '/user/queue/notifications' });
+    logNotif('Subscribed to /user/queue/notifications (id=' + id + ')', 'outgoing');
+  }
+
+  function subscribeErrors() {
+    subCounter++;
+    const id = 'sub-errors-' + subCounter;
+    subErrorsId = id;
+    sendFrame('SUBSCRIBE', { id: id, destination: '/user/queue/errors' });
+    logNotif('Subscribed to /user/queue/errors (id=' + id + ')', 'outgoing');
+  }
+
+  function subscribeChat() {
+    const rid = els.reservationId.value.trim();
+    if (!rid) { alert('Enter a Reservation ID first'); return; }
+    subCounter++;
+    const id = 'sub-chat-' + subCounter;
+    subChatId = id;
+    sendFrame('SUBSCRIBE', { id: id, destination: '/topic/chat/' + rid });
+    logChat('Subscribed to /topic/chat/' + rid + ' (id=' + id + ')', 'outgoing');
+  }
+
+  function sendChat() {
+    const rid = els.reservationId.value.trim();
+    const text = els.chatInput.value.trim();
+    if (!rid) { alert('Enter a Reservation ID first'); return; }
+    if (!text) return;
+    const body = JSON.stringify({ content: text });
+    sendFrame('SEND', { destination: '/app/chat/' + rid + '/send', 'content-type': 'application/json' }, body);
+    showChatBubble(text, 'You', 'sent');
+    logChat('>>> CHAT sent: ' + text, 'outgoing');
+    els.chatInput.value = '';
+  }
+
+  function sendHeartbeat() {
+    sendFrame('SEND', { destination: '/app/heartbeat' });
+  }
+
+  function goAvailable() {
+    const body = JSON.stringify({ available: true, lat: 30.0444, lng: 31.2357 });
+    sendFrame('SEND', { destination: '/app/reservation/availability', 'content-type': 'application/json' }, body);
+    logNotif('>>> Marked available', 'outgoing');
+  }
+
+  function goUnavailable() {
+    const body = JSON.stringify({ available: false });
+    sendFrame('SEND', { destination: '/app/reservation/availability', 'content-type': 'application/json' }, body);
+    logNotif('>>> Marked unavailable', 'outgoing');
+  }
+
+  async function sendTestNotification() {
+    const token = els.jwtToken.value.trim();
+    const userId = els.notifRecipientId.value.trim();
+    if (!token) { alert('JWT token is required'); return; }
+    if (!userId) { alert('Enter a recipient User ID'); return; }
+    try {
+      const res = await fetch(API_BASE + '/api/v1/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ userId: userId, title: 'Test Notification', message: 'Hello from ws-test.html at ' + new Date().toLocaleTimeString(), type: 'SYSTEM' })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        logNotif('Test notification created: ' + data.id, 'incoming');
+      } else {
+        logNotif('Failed to create notification: ' + res.status, 'error');
+      }
+    } catch (e) {
+      logNotif('Fetch error: ' + e.message, 'error');
+    }
+  }
+
+  async function pullMissed() {
+    const token = els.jwtToken.value.trim();
+    const rid = els.reservationId.value.trim();
+    if (!rid) { alert('Enter a Reservation ID'); return; }
+    try {
+      const res = await fetch(API_BASE + '/api/v1/reservations/' + rid + '/messages?after=2000-01-01T00:00:00', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (res.ok) {
+        const msgs = await res.json();
+        logChat('<< Pulled ' + msgs.length + ' missed messages', 'incoming');
+        for (const m of msgs) {
+          showChatBubble(m.content || JSON.stringify(m), chatSenderLabel(m), 'received');
+        }
+      } else if (res.status === 403) {
+        logChat('<< 403 Forbidden - not a participant', 'error');
+      } else {
+        logChat('<< Pull failed: ' + res.status, 'error');
+      }
+    } catch (e) {
+      logChat('Fetch error: ' + e.message, 'error');
+    }
+  }
+
+  const flow = { requestId: null, offerId: null, visitCode: null };
+
+  async function req(label, path, token, method, body) {
+    try {
+      const res = await fetch(API_BASE + path, {
+        method: method || 'GET',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          ...(body ? { 'Content-Type': 'application/json' } : {})
+        },
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const text = await res.text();
+      let data = text;
+      try { data = JSON.parse(text); } catch (_) {}
+      if (res.ok) {
+        logRes('<< ' + label + ' OK (' + res.status + '): ' + (typeof data === 'string' ? data : JSON.stringify(data)), 'incoming');
+      } else {
+        const msg = typeof data === 'string' ? data : (data.message || JSON.stringify(data));
+        logRes('<< ' + label + ' FAILED (' + res.status + '): ' + msg, 'error');
+      }
+      return res.ok ? data : null;
+    } catch (e) {
+      logRes('<< ' + label + ' fetch error: ' + e.message, 'error');
+      return null;
+    }
+  }
+
+  async function stepCreateRequest() {
+    const token = els.patientToken.value.trim();
+    const profileId = els.profileId.value.trim();
+    const serviceTypeId = els.serviceTypeId.value.trim();
+    if (!token || !profileId || !serviceTypeId) { alert('Enter Patient JWT, Profile ID and Service Type ID'); return; }
+    const data = await req('Create Request', '/api/v1/service-requests', token, 'POST', {
+      profileId: profileId,
+      serviceTypeId: serviceTypeId,
+      latitude: parseFloat(els.resLat.value) || 30.0444,
+      longitude: parseFloat(els.resLng.value) || 31.2357
+    });
+    if (data && data.serviceRequestId) {
+      flow.requestId = data.serviceRequestId;
+      els.reservationId.value = data.serviceRequestId;
+      logRes('>> requestId saved: ' + flow.requestId, 'outgoing');
+    }
+  }
+
+  async function stepNearbyNurses() {
+    const token = els.patientToken.value.trim();
+    if (!flow.requestId) { alert('Create a request first (step 1)'); return; }
+    const data = await req('Nearby Nurses', '/api/v1/service-requests/' + flow.requestId + '/nearby-nurses', token);
+    if (data && data.length === 0) {
+      logRes('>> No nurses nearby — the nurse must be APPROVED, online and Go Available (heartbeat refreshes ~90s)', 'outgoing');
+    }
+  }
+
+  async function stepCreateOffer() {
+    const token = els.nurseToken.value.trim();
+    if (!flow.requestId) { alert('Create a request first (step 1)'); return; }
+    const data = await req('Create Offer', '/api/v1/nurse-offers', token, 'POST', {
+      serviceRequestId: flow.requestId,
+      proposedPrice: 200.00,
+      proposedDate: '2026-08-10',
+      proposedTime: '10:00',
+      message: 'Test offer from ws-test.html'
+    });
+    if (data && data.id) flow.offerId = data.id;
+  }
+
+  async function stepAcceptOffer() {
+    const token = els.patientToken.value.trim();
+    if (!flow.offerId) { alert('Create an offer first (step 3)'); return; }
+    await req('Accept Offer', '/api/v1/nurse-offers/' + flow.offerId + '/accept', token, 'PATCH');
+  }
+
+  async function stepGetVisitCode() {
+    const token = els.patientToken.value.trim();
+    if (!flow.requestId) { alert('Create a request first (step 1)'); return; }
+    const data = await req('Get Visit Code', '/api/v1/service-requests/' + flow.requestId + '/visit-code', token, 'POST');
+    if (data && data.code) {
+      flow.visitCode = data.code;
+      logRes('>> UI would render this code as a QR: ' + data.code, 'outgoing');
+    }
+  }
+
+  async function stepCompleteVisit() {
+    const token = els.nurseToken.value.trim();
+    if (!flow.requestId || !flow.visitCode) { alert('Get the visit code first (step 5)'); return; }
+    await req('Complete Visit', '/api/v1/service-requests/' + flow.requestId + '/complete', token, 'POST', { visitCode: flow.visitCode });
+  }
+
+  async function stepWrongCode() {
+    const token = els.nurseToken.value.trim();
+    if (!flow.requestId) { alert('Create a request first (step 1)'); return; }
+    logRes('>> Sending a wrong code (expected 400 — single attempt, does not lock out)...', 'outgoing');
+    await req('Wrong Code (negative test)', '/api/v1/service-requests/' + flow.requestId + '/complete', token, 'POST', { visitCode: 'XXXX0000' });
+  }
+
+  function resetFlow() {
+    flow.requestId = null;
+    flow.offerId = null;
+    flow.visitCode = null;
+    logRes('>> Flow state reset', 'outgoing');
+  }
+
+  function subscribeReservation() {
+    const rid = els.reservationId.value.trim();
+    if (!rid) { alert('Enter a Reservation ID first'); return; }
+    subCounter++;
+    const id = 'sub-res-' + subCounter;
+    sendFrame('SUBSCRIBE', { id: id, destination: '/topic/reservation/' + rid });
+    logRes('Subscribed to /topic/reservation/' + rid + ' (id=' + id + ')', 'outgoing');
+  }
+
+  els.connectBtn.addEventListener('click', connect);
+  els.disconnectBtn.addEventListener('click', disconnect);
+  els.subNotifBtn.addEventListener('click', subscribeNotif);
+  els.subscribeErrorsBtn.addEventListener('click', subscribeErrors);
+  els.testNotifBtn.addEventListener('click', sendTestNotification);
+  els.subChatBtn.addEventListener('click', subscribeChat);
+  els.sendChatBtn.addEventListener('click', sendChat);
+  els.pullMissedBtn.addEventListener('click', pullMissed);
+  els.heartbeatBtn.addEventListener('click', sendHeartbeat);
+  els.goAvailableBtn.addEventListener('click', goAvailable);
+  els.goUnavailableBtn.addEventListener('click', goUnavailable);
+  els.subResBtn.addEventListener('click', subscribeReservation);
+  els.step1Btn.addEventListener('click', stepCreateRequest);
+  els.step2Btn.addEventListener('click', stepNearbyNurses);
+  els.step3Btn.addEventListener('click', stepCreateOffer);
+  els.step4Btn.addEventListener('click', stepAcceptOffer);
+  els.step5Btn.addEventListener('click', stepGetVisitCode);
+  els.step6Btn.addEventListener('click', stepCompleteVisit);
+  els.wrongCodeBtn.addEventListener('click', stepWrongCode);
+  els.resetFlowBtn.addEventListener('click', resetFlow);
+
+  els.chatInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') sendChat();
+  });
+
+  logNotif('Page loaded. Get JWT tokens via Postman/curl (dev OTP), paste them above, and click Connect.', '');
+})();
+</script>
+</body>
+</html>

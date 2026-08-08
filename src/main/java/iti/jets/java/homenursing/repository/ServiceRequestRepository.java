@@ -47,11 +47,15 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
               AND s.isDeleted = false
               AND (
                     s.profile.user.id = :userId
-                 OR (s.nurse IS NOT NULL AND s.nurse.user.id = :userId)
+                 OR EXISTS (
+                      SELECT 1 FROM Nurse n
+                      WHERE n.id = s.nurse.id AND n.user.id = :userId
+                 )
                  OR EXISTS (
                       SELECT 1 FROM NurseOffer o
                       WHERE o.serviceRequest.id = :reservationId
                         AND o.isDeleted = false
+                        AND o.status = 'PENDING'
                         AND o.nurse.user.id = :userId
                  )
               )

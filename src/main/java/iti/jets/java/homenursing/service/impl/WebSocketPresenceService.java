@@ -18,6 +18,7 @@ import java.util.Set;
 public class WebSocketPresenceService {
 
     private static final String ONLINE_KEY = "ws:nurse:online";
+    private static final String ONLINE_TS_KEY = "ws:nurse:online:ts";
     private static final String AVAILABLE_GEO_KEY = "ws:nurse:available";
     private static final String AVAILABLE_TS_KEY = "ws:nurse:available:ts";
     private static final long STALE_AFTER_MS = 90_000;
@@ -29,15 +30,22 @@ public class WebSocketPresenceService {
     }
 
     public void markOnline(String userId) {
-        redisTemplate.opsForSet().add(ONLINE_KEY, userId);
+        touchOnline(userId);
     }
 
     public void markOffline(String userId) {
         redisTemplate.opsForSet().remove(ONLINE_KEY, userId);
+        redisTemplate.opsForHash().delete(ONLINE_TS_KEY, userId);
     }
 
-    public boolean isOnline(String userId) {
-        return Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(ONLINE_KEY, userId));
+    public void heartbeat(String userId) {
+        touchOnline(userId);
+        redisTemplate.opsForHash().put(AVAILABLE_TS_KEY, userId, String.valueOf(System.currentTimeMillis()));
+    }
+
+    private void touchOnline(String userId) {
+        redisTemplate.opsForSet().add(ONLINE_KEY, userId);
+        redisTemplate.opsForHash().put(ONLINE_TS_KEY, userId, String.valueOf(System.currentTimeMillis()));
     }
 
     public Set<String> getOnlineNurses() {
@@ -45,6 +53,7 @@ public class WebSocketPresenceService {
     }
 
     public void markAvailable(String userId, double lat, double lng) {
+        touchOnline(userId);
         redisTemplate.opsForGeo().add(AVAILABLE_GEO_KEY, new Point(lng, lat), userId);
         redisTemplate.opsForHash().put(AVAILABLE_TS_KEY, userId, String.valueOf(System.currentTimeMillis()));
     }
@@ -52,10 +61,6 @@ public class WebSocketPresenceService {
     public void markUnavailable(String userId) {
         redisTemplate.opsForGeo().remove(AVAILABLE_GEO_KEY, userId);
         redisTemplate.opsForHash().delete(AVAILABLE_TS_KEY, userId);
-    }
-
-    public void refreshAvailabilityTimestamp(String userId) {
-        redisTemplate.opsForHash().put(AVAILABLE_TS_KEY, userId, String.valueOf(System.currentTimeMillis()));
     }
 
     public Optional<Point> getAvailableLocation(String userId) {
@@ -77,17 +82,37 @@ public class WebSocketPresenceService {
     }
 
     @Scheduled(fixedRate = 30_000)
-    public void cleanupStaleAvailability() {
+    public void cleanupStalePresence() {
+        evictStale(AVAILABLE_TS_KEY, userId -> markUnavailable(userId));
+        evictStale(ONLINE_TS_KEY, userId -> markOffline(userId));
+
+        Set<String> onlineMembers = redisTemplate.opsForSet().members(ONLINE_KEY);
+        if (onlineMembers != null) {
+            for (String userId : onlineMembers) {
+                if (!redisTemplate.opsForHash().hasKey(ONLINE_TS_KEY, userId)) {
+                    markOffline(userId);
+                }
+            }
+        }
+    }
+
+    private void evictStale(String tsKey, java.util.function.Consumer<String> evictor) {
         long now = System.currentTimeMillis();
-        Set<Object> userIds = redisTemplate.opsForHash().keys(AVAILABLE_TS_KEY);
+        Set<Object> userIds = redisTemplate.opsForHash().keys(tsKey);
         if (userIds == null) return;
         for (Object rawId : userIds) {
             String userId = (String) rawId;
-            String tsStr = (String) redisTemplate.opsForHash().get(AVAILABLE_TS_KEY, userId);
+            String tsStr = (String) redisTemplate.opsForHash().get(tsKey, userId);
             if (tsStr == null) continue;
-            long ts = Long.parseLong(tsStr);
+            long ts;
+            try {
+                ts = Long.parseLong(tsStr);
+            } catch (NumberFormatException e) {
+                evictor.accept(userId);
+                continue;
+            }
             if (now - ts > STALE_AFTER_MS) {
-                markUnavailable(userId);
+                evictor.accept(userId);
             }
         }
     }

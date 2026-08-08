@@ -4,11 +4,13 @@ import iti.jets.java.homenursing.dto.notification.NotificationRequest;
 import iti.jets.java.homenursing.dto.notification.NotificationResponse;
 import iti.jets.java.homenursing.entity.Notification;
 import iti.jets.java.homenursing.entity.User;
+import iti.jets.java.homenursing.exception.BadRequestException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.NotificationMapper;
 import iti.jets.java.homenursing.repository.NotificationRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
 import iti.jets.java.homenursing.service.NotificationService;
+import iti.jets.java.homenursing.util.AfterCommitExecutor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,17 +27,21 @@ public class NotificationServiceImpl implements NotificationService {
     private final UserRepository userRepository;
     private final NotificationMapper notificationMapper;
     private final NotificationDispatcher notificationDispatcher;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     @Override
     @Transactional
     public NotificationResponse create(NotificationRequest request) {
+        if (request.userId() == null) {
+            throw new BadRequestException("userId is required");
+        }
         User user = userRepository.findById(request.userId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + request.userId()));
         Notification notification = notificationMapper.toEntity(request);
         notification.setUser(user);
         notification.setIsRead(false);
         Notification saved = notificationRepository.save(notification);
-        notificationDispatcher.dispatch(saved);
+        afterCommitExecutor.execute(() -> notificationDispatcher.dispatch(saved));
         return notificationMapper.toResponse(saved);
     }
 

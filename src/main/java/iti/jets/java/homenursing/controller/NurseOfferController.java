@@ -56,6 +56,18 @@ public class NurseOfferController {
         return ResponseEntity.ok(nurseOfferService.accept(id, SecurityUtils.currentUserId()));
     }
 
+    @PatchMapping("/{id}/counter")
+    public ResponseEntity<NurseOfferResponse> counter(@PathVariable UUID id,
+                                                      @Valid @RequestBody NurseOfferUpdateRequest request) {
+        return ResponseEntity.ok(nurseOfferService.counterOffer(id, SecurityUtils.currentUserId(), request));
+    }
+
+    @PatchMapping("/{id}/reject")
+    public ResponseEntity<Void> reject(@PathVariable UUID id) {
+        nurseOfferService.reject(id, SecurityUtils.currentUserId());
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<NurseOfferResponse> update(@PathVariable UUID id,
                                                      @Valid @RequestBody NurseOfferUpdateRequest request) {
@@ -64,7 +76,7 @@ public class NurseOfferController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        nurseOfferService.delete(id, SecurityUtils.currentUserId());
+        nurseOfferService.withdraw(id, SecurityUtils.currentUserId());
         return ResponseEntity.noContent().build();
     }
 }

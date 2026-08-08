@@ -21,7 +21,7 @@ public interface ServiceRequestService {
 
     List<NearbyNurse> getNearbyNursesForRequest(UUID serviceRequestId, UUID userId);
 
-    void cancelRequest(UUID serviceRequestId);
+    void cancelRequest(UUID serviceRequestId, UUID userId);
 
     VisitCodeResponse generateVisitCode(UUID serviceRequestId, UUID userId);
 

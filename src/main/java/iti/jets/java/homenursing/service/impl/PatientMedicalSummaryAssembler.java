@@ -54,6 +54,7 @@ public class PatientMedicalSummaryAssembler {
                 profile.getId(),
                 profile.getFirstName(),
                 profile.getLastName(),
+                profile.getUser() == null ? null : profile.getUser().getProfileImageUrl(),
                 profile.getDateOfBirth(),
                 profile.getGender(),
                 profile.getBloodType(),

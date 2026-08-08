@@ -11,6 +11,7 @@ public record PatientMedicalSummary(
         UUID profileId,
         String firstName,
         String lastName,
+        String profileImageUrl,
         LocalDate dateOfBirth,
         Gender gender,
         String bloodType,

@@ -434,7 +434,8 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     public ServiceRequestNursePreviewResponse getNursePreview(UUID serviceRequestId, UUID userId) {
         Nurse nurse = requireApprovedNurse(userId);
 
-        ServiceRequest request = serviceRequestRepository.findByIdAndIsDeletedFalse(serviceRequestId)
+        ServiceRequest request = serviceRequestRepository.findWithDetailsById(serviceRequestId)
+                .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted()))
                 .orElseThrow(() -> new ResourceNotFoundException("Service request not found: " + serviceRequestId));
 
         Set<ServiceRequestStatus> openStatuses = Set.of(

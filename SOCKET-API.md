@@ -96,7 +96,7 @@ All reservation-scoped events are pushed as a single JSON wrapper:
 | `/app/reservation/availability` | `{ "available": false }` | Go unavailable |
 | `/app/reservation/location` | `{ "lat": 30.0, "lng": 31.0 }` | Update current position |
 
-All three require `ROLE_NURSE` — non-nurses receive `ERROR`.
+All three require `ROLE_NURSE` **and an `APPROVED` verification status** — non-nurses receive `ERROR`; unreviewed (PENDING) nurses get a `FORBIDDEN` `SocketErrorPayload` on `/user/queue/errors`.
 
 ### Offer Management
 
@@ -316,8 +316,12 @@ Patient (or the assigned nurse) SENDs /app/reservation/cancel
   │
   ├── Server: request → CANCELLED, all pending offers → REJECTED
   ├── Pushes to /topic/reservation/{id}   { type: "REQUEST_CANCELLED" }
-  └── Notifies the OTHER party (patient when the nurse cancels, nurse when the patient cancels)
-      via /user/queue/notifications — the actor is not notified
+  └── Notifies via /user/queue/notifications:
+        ├── patient cancels with an assigned nurse → that nurse gets "Request Cancelled"
+        ├── patient cancels with NO assigned nurse → EVERY nurse holding a PENDING offer
+        │       gets "Request Cancelled" (their offers are auto-rejected)
+        └── nurse cancels → the patient gets "Request Cancelled"
+      The actor is never notified.
       All subscribed participants receive REQUEST_CANCELLED on the topic
       REST fallback: PATCH /api/v1/service-requests/{id}/cancel
 ```
@@ -522,6 +526,7 @@ the session **stays open**.
 | Scenario | `code` | `message` example |
 |---|---|---|
 | Role/ownership check inside the operation | `FORBIDDEN` | `Only nurses can use presence endpoints` |
+| Unapproved nurse uses presence endpoints (handler-level) | `FORBIDDEN` | `Only approved nurses can use presence endpoints` |
 | Invalid offer operation | `BAD_REQUEST` | `Only pending offers can be accepted` |
 | Missing entity (e.g. unknown offer id) | `RESOURCE_NOT_FOUND` | `Nurse offer not found: <id>` |
 | Payload failed `@Valid` validation | `VALIDATION` | `content: Message content is required` |

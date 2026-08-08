@@ -206,6 +206,21 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                     "SERVICE_REQUEST",
                     serviceRequestId));
         }
+        if (isOwner && serviceRequest.getNurse() == null) {
+            nurseOfferRepository.findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(serviceRequestId)
+                    .stream()
+                    .filter(offer -> offer.getStatus() == NurseOfferStatus.PENDING)
+                    .filter(offer -> offer.getNurse() != null && offer.getNurse().getUser() != null)
+                    .map(offer -> offer.getNurse().getUser().getId())
+                    .distinct()
+                    .forEach(nurseUserId -> notificationService.create(new NotificationRequest(
+                            nurseUserId,
+                            "Request Cancelled",
+                            "The service request has been cancelled.",
+                            NotificationType.BOOKING,
+                            "SERVICE_REQUEST",
+                            serviceRequestId)));
+        }
         if (isAssignedNurse && serviceRequest.getProfile() != null
                 && serviceRequest.getProfile().getUser() != null) {
             UUID patientUserId = serviceRequest.getProfile().getUser().getId();

@@ -10,6 +10,9 @@ import iti.jets.java.homenursing.dto.ws.LocationPayload;
 import iti.jets.java.homenursing.dto.ws.OfferActionPayload;
 import iti.jets.java.homenursing.dto.ws.OfferUpdatePayload;
 import iti.jets.java.homenursing.dto.ws.ServiceRequestIdPayload;
+import iti.jets.java.homenursing.entity.Nurse;
+import iti.jets.java.homenursing.entity.enums.VerificationStatus;
+import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.service.ChatMessageService;
 import iti.jets.java.homenursing.service.NurseOfferService;
 import iti.jets.java.homenursing.service.ServiceRequestService;
@@ -34,29 +37,32 @@ public class WebSocketController {
     private final NurseOfferService nurseOfferService;
     private final ServiceRequestService serviceRequestService;
     private final ChatMessageService chatMessageService;
+    private final NurseRepository nurseRepository;
 
     public WebSocketController(SimpMessagingTemplate messagingTemplate,
                                 WebSocketPresenceService presenceService,
                                 NurseOfferService nurseOfferService,
                                 ServiceRequestService serviceRequestService,
-                                ChatMessageService chatMessageService) {
+                                ChatMessageService chatMessageService,
+                                NurseRepository nurseRepository) {
         this.messagingTemplate = messagingTemplate;
         this.presenceService = presenceService;
         this.nurseOfferService = nurseOfferService;
         this.serviceRequestService = serviceRequestService;
         this.chatMessageService = chatMessageService;
+        this.nurseRepository = nurseRepository;
     }
 
     @MessageMapping("/heartbeat")
     public void heartbeat(Principal principal) {
-        requireNurse(principal);
+        requireApprovedNurse(principal);
         presenceService.heartbeat(principal.getName());
     }
 
     @MessageMapping("/reservation/availability")
     public void toggleAvailability(@Valid @Payload AvailabilityPayload payload,
                                     Principal principal) {
-        requireNurse(principal);
+        requireApprovedNurse(principal);
         String userId = principal.getName();
         if (Boolean.TRUE.equals(payload.available())) {
             presenceService.markAvailable(
@@ -71,7 +77,7 @@ public class WebSocketController {
     @MessageMapping("/reservation/location")
     public void updateLocation(@Valid @Payload LocationPayload payload,
                                 Principal principal) {
-        requireNurse(principal);
+        requireApprovedNurse(principal);
         String userId = principal.getName();
         presenceService.markAvailable(
                 userId,
@@ -151,6 +157,18 @@ public class WebSocketController {
                 && token.getAuthorities().stream()
                         .noneMatch(a -> a.getAuthority().equals("ROLE_NURSE"))) {
             throw new SecurityException("Only nurses can use presence endpoints");
+        }
+    }
+
+    private void requireApprovedNurse(Principal principal) {
+        requireNurse(principal);
+        UUID userId = UUID.fromString(principal.getName());
+        boolean approved = nurseRepository.findByUser_Id(userId)
+                .map(Nurse::getVerificationStatus)
+                .map(status -> status == VerificationStatus.APPROVED)
+                .orElse(false);
+        if (!approved) {
+            throw new SecurityException("Only approved nurses can use presence endpoints");
         }
     }
 

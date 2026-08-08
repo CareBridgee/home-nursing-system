@@ -1,0 +1,354 @@
+# AI Chat API — Mobile Client Guide
+
+This document describes the **AI booking assistant** REST API and — most
+importantly — **what each response type means and how the mobile UI should react**.
+
+The assistant's job is to help the patient choose a home-nursing service and collect a
+**reservation draft** (service type, optionally preferred date/time) conversationally.
+
+> **Accurate as of commit:** 2026-08 — all shapes and behaviors below were cross-checked
+> against the running server. If the backend changes, this file should be revisited.
+
+---
+
+## 1. Endpoints
+
+All endpoints require a `Bearer` access token (`Authorization: Bearer <accessToken>`).
+The `profileId` in every request must be the profile of the person receiving care and must
+belong to the logged-in user.
+
+> **Per-profile flow:** the chat (and the real booking) always run *on a profile* — the
+> profile of the patient. If the user is booking care for their mother, they first switch
+> to/create the mother's profile in the app, then chat from it. There is no "book for
+> someone else" mode inside the chat.
+
+| Method & Path | Purpose | Response |
+|---|---|---|
+| `POST /api/v1/chat` | Send one message, get the assistant's reply + state | JSON `ChatTurnResponse` (see §2) |
+| `POST /api/v1/chat/stream` | Same, but streaming (SSE) | `text/event-stream` of plain-text chunks (see §7) |
+| `POST /api/v1/chat/reset` | Clear conversation memory + **draft + urgency flag** for this profile | `204 No Content` |
+
+Request body (both chat endpoints):
+
+```json
+{
+  "profileId": "7d09cfc5-f9f3-443c-a764-afce050e9494",
+  "message": "What home nursing services do you offer?"
+}
+```
+
+Constraints: `profileId` required (UUID), `message` required and not blank, max **2000 characters**.
+
+---
+
+## 2. The response envelope — `ChatTurnResponse`
+
+Every non-streaming turn returns one JSON object:
+
+```json
+{
+  "messageType": "INPUT",
+  "reply": "Of course — which of our services fits best? ...",
+  "draft": { ... },
+  "urgency": null
+}
+```
+
+| Field | Type | Meaning |
+|---|---|---|
+| `messageType` | enum | **How the UI should treat this turn** — see §3. The single most important field. |
+| `reply` | string | The assistant's text. Display it as the assistant's bubble. |
+| `draft` | `ReservationDraft \| null` | Current snapshot of the booking draft (see §4). `null` on plain `TEXT` turns. |
+| `urgency` | `UrgencySignal \| null` | Medical-emergency signal. `null` normally — see §5. |
+
+---
+
+## 3. `messageType` — what the UI must do
+
+| Value | When the server sends it | What the mobile UI should do |
+|---|---|---|
+| `TEXT` | A plain informational answer; no draft progress and no question at the end | Show `reply` as a normal chat bubble. Nothing else. `draft` is `null`. |
+| `INPUT` | The assistant is **collecting input** — it asked a question (or already collected some draft fields) and expects the user's answer | Show `reply`. Optionally render the current `draft` chips (chosen service/date/time). The user types a normal answer — the AI keeps collecting. |
+| `CONFIRM` | `draft.complete == true` — meaning **a service type has been selected** (see §4 — date/time are optional and do NOT change this state) | Show `reply`, then prepare the booking summary from `draft`. **Exception:** if `preferredDate`/`preferredTime` are still `null` (the AI is still collecting optional fields), keep the chat active and only preview the summary — the hard "Confirm" button appears once the summary is final (see the guide below). |
+| `URGENT` | An emergency signal is active for this profile — the user described a medical emergency (chest pain, severe bleeding, breathing difficulty, loss of consciousness, …), or the flag is still set from an earlier turn (see §5) | Show `reply` **and** `urgency.advice` prominently (emergency-services message). **Disable the booking flow** and show an emergency banner. The banner stays up while `messageType == URGENT` — subsequent turns keep returning `URGENT` until it is cleared (see §5). |
+| `ERROR` | *(Reserved — not currently emitted by the server.)* | Treat like `TEXT`; if you ever receive it, show the message in an error style. |
+
+**Decision rule used by the server** (in priority order — so the UI can predict behavior):
+
+1. `urgency.urgent == true` → `URGENT`
+2. `draft.complete == true` → `CONFIRM`
+3. `draft` has any data **or** the reply ends with `?` → `INPUT`
+4. otherwise → `TEXT`
+
+**Important FE nuance:** `complete` flips to `true` as soon as the **service type** is chosen —
+before date/time. So a `CONFIRM` turn can still contain an open question ("What date works best?").
+Detect this via `draft.preferredDate == null && draft.preferredTime == null && reply.endsWith("?")`
+and keep collecting instead of hard-switching to a confirm screen.
+
+### State diagram
+
+```
+                ┌───────────────────────────────────────────────┐
+                ▼                                               │
+        TEXT ──► INPUT ──► CONFIRM (service type chosen) ──► booking (REST)
+                  ▲             │   ▲                             │
+                  └─────────────┘   └─ still asking date/time? ──┘
+                                        (keep chat active)
+
+        (any state) ── detects emergency ──► URGENT (sticky until cleared/reset)
+        (any state) ── POST /chat/reset ──► fresh state (memory + draft + urgency cleared)
+```
+
+---
+
+## 4. `ReservationDraft` — the booking state
+
+```json
+{
+  "serviceTypeId": "651f074b-131e-430e-bdf2-e8b187df0d34",
+  "serviceTypeName": "General Nursing",
+  "preferredDate": "2026-08-10",
+  "preferredTime": "10:00:00",
+  "serviceDescription": null,
+  "complete": true
+}
+```
+
+| Field | Type | Meaning |
+|---|---|---|
+| `serviceTypeId` | UUID \| null | Chosen service. The AI always picks the exact UUID shown by its services tool — the UI can trust it for the real booking request. The service type **can be changed mid-session** (the AI can overwrite it); the summary re-renders on every `CONFIRM` turn. |
+| `serviceTypeName` | string \| null | Human-readable service name for display. |
+| `preferredDate` | `yyyy-MM-dd` \| null | Preferred date (**optional**). |
+| `preferredTime` | `HH:mm:ss` \| null | Preferred time (**optional**) — the JSON value always includes seconds (e.g. `"10:00:00"`); the assistant collects it as `HH:mm` but the server echoes `HH:mm:ss`. Display the `HH:mm` part. |
+| `serviceDescription` | string \| null | **Reserved — always `null` in chat.** The assistant's tool is limited to `serviceTypeId` / `preferredDate` / `preferredTime`; nothing ever fills this field in the draft. The real booking request (§6) accepts an optional free-text `serviceDescription` of its own — you may pass one there if you want. |
+| `complete` | boolean | `true` **as soon as `serviceTypeId` is set** — date/time are NOT required. Never changes from `true` back to `false` within a session. |
+
+**Date/time semantics:** plain strings, no timezone conversion. Server does not know the device
+timezone — display them as-is (user-local values).
+
+**Server-side validation (dates/times):**
+- The chat **rejects** a `preferredDate` earlier than the server's today, and a
+  `preferredTime` that is already in the past when the chosen date is "today".
+- There is no HTTP error for this in chat: the tool reports `Rejected: <reason>`,
+  and the assistant simply **re-asks** for a valid value (normal `CONFIRM`/`INPUT` turn).
+- The booking endpoint (`POST /api/v1/service-requests`, §6) enforces the **same** rules and
+  returns `400 BAD_REQUEST` there.
+
+**Draft lifecycle (important):**
+- The draft is **per `profileId`** and survives across turns and reconnects.
+- Creating a booking (`POST /api/v1/service-requests`) does **NOT** clear it — the client must
+  call `/api/v1/chat/reset` after a successful booking.
+- Draft + urgency + conversation memory are stored **in the app's memory** (single running
+  instance). They are lost if the server restarts, and are per-instance if the backend is ever
+  scaled. For a mobile app this means: if the user's draft disappears after a long break, fall
+  back gracefully (start a fresh conversation). Persist the last `CONFIRM` draft locally if the
+  booking summary must survive app restarts.
+
+---
+
+## 5. `UrgencySignal` — emergency handling
+
+```json
+{
+  "urgent": true,
+  "level": "HOSPITALIZATION",
+  "advice": "If this is a medical emergency, please call emergency services (123) or go to the nearest hospital immediately. The platform is not a substitute for emergency medical care."
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `urgent` | `true` = an emergency signal is **active** for this profile |
+| `level` | Severity level the assistant recorded when the signal fired — **`HOSPITALIZATION` or `EMERGENCY`** (defaults to `HOSPITALIZATION`). Display as a label only. |
+| `advice` | Text to show to the user (emergency-services instruction), always the text above. |
+
+Behavior:
+- The signal is **sticky**: once triggered, **every subsequent turn returns `URGENT`**
+  (`urgency.urgent == true`) until it is cleared via `POST /api/v1/chat/reset` — or the
+  assistant internally calls its "clear urgency" tool when the user explicitly says the
+  condition is no longer urgent.
+- The turn **after** the user says "it's fine now" may still be `URGENT` (the model has to
+  decide to call the clear tool). Let the user continue chatting; the flag disappears on a
+  later turn.
+- Do **not** page/alarm the user again on every turn — show the banner once the first time it
+  appears, then keep it visible while subsequent turns are `URGENT`.
+- The signal is surfaced **only** in the chat response. The server sends **no** external
+  hospital/e911 notification (and the assistant is instructed not to claim otherwise).
+- `advice` is always present when `urgent == true`.
+
+---
+
+## 6. Completing the booking (after `CONFIRM`)
+
+The draft is **only** a chat-side summary. Creating the real reservation is a separate
+REST call; the **device GPS** (`latitude`/`longitude`) is supplied at that point, not in chat:
+
+```
+POST /api/v1/service-requests
+{
+  "profileId":     draft ...        // the receiving person's profile (same as chat)
+  "serviceTypeId": draft.serviceTypeId,
+  "preferredDate": draft.preferredDate,   // optional
+  "preferredTime": draft.preferredTime,   // optional
+  "serviceDescription": "...",            // optional free text (never taken from the draft)
+  "latitude": 30.0444,
+  "longitude": 31.2357
+}
+```
+
+- Past `preferredDate`/`preferredTime` → `400` with the standard error envelope (verified message:
+  `"Preferred date must not be in the past"`).
+- After a **successful** creation, call `POST /api/v1/chat/reset` so the next chat session starts
+  fresh. Do not reset if the booking call failed.
+
+---
+
+## 7. Streaming endpoint (`/chat/stream`)
+
+`text/event-stream` of **plain-text chunks** — NOT JSON. Concatenate the chunks to get the
+full `reply`; there is no envelope, no `messageType`/`draft` in the stream.
+
+```
+data:Of course
+data:! I can help
+...
+```
+
+- Use a normal SSE client; each `data:` line is a text fragment of the answer.
+- When the AI fails mid-stream, the last chunk is:
+  `data:AI_SERVICE_UNAVAILABLE: I'm sorry, I couldn't process that request right now...`
+  — detect the `AI_SERVICE_UNAVAILABLE:` prefix and render an error state instead of the text.
+- The stream does **not** include draft/urgency state. If you need a fresh snapshot, use the
+  draft from the **last non-streaming `/chat` response** (it remains valid until `/reset`) —
+  avoid firing an extra `/chat` call just to read the draft (it mutates memory and counts
+  against the rate limit).
+- Streaming calls count against the **same** rate-limit bucket as regular calls (see §8).
+
+---
+
+## 8. Errors & edge cases
+
+Two distinct error shapes exist — read the body per case:
+
+1. **Business/validation errors** → a standard envelope:
+   `{ "timestamp", "status", "error", "code", "message", "details" }`.
+2. **AI-path errors** → a minimal map `{ "error", "message" }` (from the chat
+   controller itself, not the global handler).
+
+| Situation | HTTP | Body |
+|---|---|---|
+| Missing / invalid / expired `Bearer` token | `403` | empty body (Spring Security default — this is the "re-authenticate" signal) |
+| Missing/invalid `profileId` or empty/blank `message` | `400` | envelope with `code: VALIDATION_FAILED` |
+| Malformed JSON body | `400` | envelope with `code: INVALID_REQUEST` |
+| `profileId` belongs to another user (or doesn't exist) | `404` | envelope with `code: RESOURCE_NOT_FOUND` (treated as not found) |
+| Past `preferredDate` / `preferredTime` (chat) | — | no HTTP error — the assistant re-asks (see §4) |
+| Past `preferredDate` / `preferredTime` (booking) | `400` | envelope with `code: BAD_REQUEST` |
+| Too many messages | `429` | envelope with `code: RATE_LIMIT_EXCEEDED` |
+| AI tool-call misuse / framework error | `400` | `{ "error": "AI_SERVICE_UNAVAILABLE", "message": "…" }` |
+| Gemini provider down / quota (incl. 429 from provider) | `503` | `{ "error": "AI_SERVICE_UNAVAILABLE", "message": "…" }` |
+
+- **Rate limit:** **20 calls per 5 minutes per user** — and it is a **shared bucket**:
+  `/chat` and `/chat/stream` both consume it (a streamed turn consumes 1).
+- The server retries provider failures internally (up to 3 attempts) and never exposes raw
+  provider errors to the client.
+
+**UI rules for errors:** show the `message` as a system/error bubble, keep the conversation
+open, and let the user retry. A `429` means wait a few minutes, not "blocked forever". An
+empty-body `403` (missing/invalid/expired token) is the re-authentication signal — refresh
+the access token and retry; never report it as an AI failure.
+
+---
+
+## 9. Example conversation (what the FE will receive)
+
+This shows the **real** state transitions (CONFIRM fires right after the service type is
+chosen — not after the date/time):
+
+```
+User:  "What services do you offer?"          [chatting as the patient — the mother's profile]
+→ messageType: INPUT   draft: empty (serviceTypeId=null, complete=false)
+
+User:  "I'd like general nursing"
+→ messageType: CONFIRM  draft: { serviceTypeId: "f3e…", serviceTypeName: "General Nursing",
+                                 preferredDate: null, preferredTime: null, complete: true }
+   UI: preview summary; keep chat open (date/time still missing — assistant will ask)
+
+User:  "Next Friday at 10 am"
+→ messageType: CONFIRM  draft: { ..., preferredDate: "2026-08-14", preferredTime: "10:00:00", complete: true }
+   UI: full summary + Confirm button → POST /api/v1/service-requests (with GPS)
+       → on success POST /api/v1/chat/reset
+
+User:  "Actually, wound care fits better"
+→ messageType: CONFIRM  draft: { serviceTypeId: <wound-care id>, serviceTypeName: "Wound Care", ... }
+   UI: re-render the summary with the new service (date/time preserved)
+
+User:  "Yesterday at 9"                       // invalid value test
+→ messageType: CONFIRM  draft unchanged (completed, date/time still null)
+   reply explains that past dates are not possible and asks for a valid one — keep chatting
+
+User:  "I have severe chest pain!"
+→ messageType: URGENT   urgency: { urgent: true, level: "HOSPITALIZATION", advice: "…call 123…" }
+   UI: emergency banner, booking disabled
+
+User:  "OK I'm fine now"
+→ (the urgent flag stays until the assistant clears it or the client calls /reset)
+   → turn may still be URGENT — do NOT re-alarm; keep the banner until cleared
+```
+
+---
+
+## 10. Memory & session behavior + FE pitfalls checklist
+
+- Conversation memory is **keyed by `profileId`** (a 20-message sliding window).
+- Draft state and the urgency flag persist per profile until `POST /api/v1/chat/reset`
+  (booking creation does **not** clear them).
+- All of this is **in-memory** (single server instance): lost on server restart and not shared
+  across server replicas. Within one running server, multiple devices of the same profile
+  share the same conversation/draft.
+
+**Pitfalls checklist (condensed rules for the UI):**
+- Show the emergency banner **once**, keep it up while turns are `URGENT` — never re-alarm.
+- `CONFIRM` while the reply still asks for date/time = preview, not the final confirm screen
+  (detect: `preferredDate == null && preferredTime == null && reply.endsWith("?")`).
+- Always call `/chat/reset` after a **successful** booking; never on failure.
+- Remember the **shared rate bucket**: streams cost 1 message each; two parallel
+  `/chat` + `/chat/stream` turns are 2/20.
+- `429` is temporary (wait a few minutes); `AI_SERVICE_UNAVAILABLE` is retryable too.
+- Offer a **"Start over"** affordance that calls `/chat/reset` — it's the only way to
+  clear a stale draft/urgency mid-session (and it also clears memory).
+- Cache the last `CONFIRM` draft locally — drafts are memory-only on the server and can get
+  reset by a restart or by another of the user's devices.
+- Rejected values (past dates) never produce an HTTP error — the chat keeps flowing and the
+  assistant just re-asks.
+
+---
+
+## 11. Quick curl smoke test (for FE/dev testing)
+
+```bash
+# 1. dev login (dev OTP endpoints — fill in a real registered phone)
+curl -s -X POST http://localhost:8080/api/v1/auth/dev/request-otp \
+  -H "Content-Type: application/json" -d '{"phoneNumber":"+2015112668520"}'
+# ...verify with the returned otp:
+curl -s -X POST http://localhost:8080/api/v1/auth/verify-otp \
+  -H "Content-Type: application/json" \
+  -d '{"phoneNumber":"+2015112668520","otp":"<otp>"}'
+# → accessToken
+
+# 2. pick the profile of the person receiving care (switch to it in the app first —
+#    e.g. the mother's profile; the chat/booking runs per-profile)
+curl -s -X GET http://localhost:8080/api/v1/profiles \
+  -H "Authorization: Bearer <accessToken>"      # → find the right profileId
+
+# 3. plain turn
+curl -s -X POST http://localhost:8080/api/v1/chat \
+  -H "Authorization: Bearer <accessToken>" \
+  -H "Content-Type: application/json" \
+  -d '{"profileId":"<profileId>","message":"What home nursing services do you offer?"}'
+
+# 4. streaming variant (same kind of message — chat belongs to the receiving profile)
+curl -s -N -X POST http://localhost:8080/api/v1/chat/stream \
+  -H "Authorization: Bearer <accessToken>" \
+  -H "Content-Type: application/json" \
+  -d '{"profileId":"<profileId>","message":"I want to book care for myself"}'
+```

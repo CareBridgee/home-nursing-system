@@ -13,6 +13,8 @@ public interface ChatDraftService {
 
     boolean isUrgent(UUID profileId);
 
+    String urgencyLevel(UUID profileId);
+
     void setUrgency(UUID profileId, boolean urgent, String level, String reason);
 
     void reset(UUID profileId);

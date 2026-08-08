@@ -52,6 +52,8 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +105,16 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         Profile profile = profileService.getProfile(request.profileId());
         ServiceType serviceType = serviceTypeRepository.findById(request.serviceTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Service type not found: " + request.serviceTypeId()));
+
+        if (request.preferredDate() != null && request.preferredDate().isBefore(LocalDate.now())) {
+            throw new BadRequestException("Preferred date must not be in the past");
+        }
+        if (request.preferredTime() != null) {
+            LocalDate date = request.preferredDate() != null ? request.preferredDate() : LocalDate.now();
+            if (date.equals(LocalDate.now()) && request.preferredTime().isBefore(LocalTime.now())) {
+                throw new BadRequestException("Preferred time must not be in the past");
+            }
+        }
 
         List<NearbyNurse> nearbyNurses = findNearbyNursesFor(serviceType, request.latitude(), request.longitude());
 

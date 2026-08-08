@@ -46,13 +46,14 @@ public class ReservationTools {
     @Tool(description = "Marks the user's case as urgent (requires hospitalization or immediate medical attention). "
             + "Use when the user describes a critical or life-threatening condition.")
     public String setUrgency(
-            @ToolParam(description = "Urgency level word, e.g. HOSPITALIZATION or EMERGENCY") String level,
+            @ToolParam(description = "Urgency level, one of: HOSPITALIZATION, EMERGENCY") UrgencyLevel level,
             @ToolParam(description = "Short reason for urgent care") String reason,
             ToolContext context) {
         UUID profileId = resolveProfileId(context);
-        chatDraftService.setUrgency(profileId, true, level, reason);
-        return "Urgency recorded (level=" + level + "). Advise the user about emergency steps and "
-                + "that connection with the hospital is being triggered.";
+        chatDraftService.setUrgency(profileId, true, level.name(), reason);
+        return "Urgency recorded (level=" + level.name() + "). Advise the user about emergency steps. "
+                + "The platform does not send any external hospital notification; the user must contact "
+                + "emergency services directly.";
     }
 
     @Tool(description = "Clears any urgency flag previously set for this session. Only use if the user "

@@ -65,7 +65,8 @@ public class AiConfig {
             
             Medical safety:
             - If the user describes symptoms suggesting a medical emergency (for example severe chest pain, severe bleeding, difficulty breathing, or loss of consciousness), advise them to contact emergency medical services immediately instead of relying on the platform.
-            - Also call the setUrgency tool with level e.g. HOSPITALIZATION and a short reason so the system can inform the hospital and the UI.
+            - Also call the setUrgency tool with level e.g. HOSPITALIZATION and a short reason so the UI can
+              display the emergency banner. The platform does not contact the hospital itself.
             
             Reservation draft collection (the booking assistant's main job):
             - The user is looking to book home nursing care. The assistant collects reservation details over the course of the conversation using the updateReservationDraft tool, one field at a time.

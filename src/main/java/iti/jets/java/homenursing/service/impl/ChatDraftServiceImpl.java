@@ -55,8 +55,21 @@ public class ChatDraftServiceImpl implements ChatDraftService {
         DraftState state = drafts.computeIfAbsent(profileId, k -> new DraftState());
         switch (field) {
             case "serviceTypeId" -> validateServiceType(state, value.trim());
-            case "preferredDate" -> state.preferredDate = LocalDate.parse(value.trim());
-            case "preferredTime" -> state.preferredTime = LocalTime.parse(value.trim());
+            case "preferredDate" -> {
+                LocalDate date = LocalDate.parse(value.trim());
+                if (date.isBefore(LocalDate.now())) {
+                    throw new IllegalArgumentException("preferredDate must not be a past date");
+                }
+                state.preferredDate = date;
+            }
+            case "preferredTime" -> {
+                LocalTime time = LocalTime.parse(value.trim());
+                LocalDate date = state.preferredDate != null ? state.preferredDate : LocalDate.now();
+                if (date.equals(LocalDate.now()) && time.isBefore(LocalTime.now())) {
+                    throw new IllegalArgumentException("preferredTime must not be in the past (today's time has already passed)");
+                }
+                state.preferredTime = time;
+            }
             case "serviceDescription" -> state.serviceDescription = value.trim();
             default -> throw new IllegalArgumentException("Unknown draft field: " + field);
         }
@@ -80,6 +93,12 @@ public class ChatDraftServiceImpl implements ChatDraftService {
     public boolean isUrgent(UUID profileId) {
         DraftState state = drafts.get(profileId);
         return state != null && state.urgent;
+    }
+
+    @Override
+    public String urgencyLevel(UUID profileId) {
+        DraftState state = drafts.get(profileId);
+        return state == null ? null : state.urgencyLevel;
     }
 
     @Override

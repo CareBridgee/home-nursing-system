@@ -130,7 +130,8 @@ public class ChatController {
         ReservationDraft draft = chatDraftService.getDraft(profileId);
 
         if (chatDraftService.isUrgent(profileId)) {
-            UrgencySignal urgency = new UrgencySignal(true, "HOSPITALIZATION", URGENCY_ADVICE);
+            String level = chatDraftService.urgencyLevel(profileId);
+            UrgencySignal urgency = new UrgencySignal(true, level == null ? "HOSPITALIZATION" : level, URGENCY_ADVICE);
             return new ChatTurnResponse(ChatMessageType.URGENT, reply, draft, urgency);
         }
         if (draft.complete()) {

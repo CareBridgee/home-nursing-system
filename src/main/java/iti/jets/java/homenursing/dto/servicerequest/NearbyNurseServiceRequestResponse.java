@@ -11,6 +11,9 @@ import java.util.UUID;
 public record NearbyNurseServiceRequestResponse(
         UUID serviceRequestId,
         UUID profileId,
+        String patientFirstName,
+        String patientLastName,
+        String patientProfileImageUrl,
         UUID serviceTypeId,
         String serviceName,
         String serviceDescription,

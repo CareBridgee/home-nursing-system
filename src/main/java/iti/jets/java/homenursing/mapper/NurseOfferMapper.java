@@ -21,9 +21,11 @@ public interface NurseOfferMapper {
 
     @Mapping(target = "serviceRequestId", source = "serviceRequest.id")
     @Mapping(target = "nurse", source = "nurse")
+    @Mapping(target = "distanceKm", ignore = true)
     NurseOfferResponse toResponse(NurseOffer offer);
 
     @Mapping(target = "firstName", source = "user.firstName")
     @Mapping(target = "lastName", source = "user.lastName")
+    @Mapping(target = "profileImageUrl", source = "user.profileImageUrl")
     NurseSummaryResponse toNurseSummary(Nurse nurse);
 }

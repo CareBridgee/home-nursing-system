@@ -18,6 +18,7 @@ public record NurseOfferResponse(
         LocalTime proposedTime,
         String message,
         NurseOfferStatus status,
+        Double distanceKm,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

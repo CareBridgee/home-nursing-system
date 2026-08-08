@@ -21,6 +21,7 @@ public class NurseResponse {
     private String firstName;
     private String lastName;
     private String phoneNumber;
+    private String profileImageUrl;
     private String nationalId;
     private String nationalIdFrontUrl;
     private String nationalIdBackUrl;

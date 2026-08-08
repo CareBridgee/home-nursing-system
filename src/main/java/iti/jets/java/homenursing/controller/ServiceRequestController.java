@@ -10,8 +10,10 @@ import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestHistoryRespons
 import iti.jets.java.homenursing.dto.servicerequest.VisitCodeResponse;
 import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.ServiceType;
+import iti.jets.java.homenursing.entity.User;
 import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.ServiceTypeRepository;
+import iti.jets.java.homenursing.repository.UserRepository;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.ServiceRequestService;
 import jakarta.validation.Valid;
@@ -39,6 +41,7 @@ public class ServiceRequestController {
     private final ServiceRequestService serviceRequestService;
     private final SimpMessagingTemplate messagingTemplate;
     private final NurseRepository nurseRepository;
+    private final UserRepository userRepository;
     private final ServiceTypeRepository serviceTypeRepository;
 
     @PostMapping
@@ -59,6 +62,11 @@ public class ServiceRequestController {
                 .map(ServiceType::getName)
                 .orElse(null);
 
+        User patientUser = userRepository.findById(SecurityUtils.currentUserId()).orElse(null);
+        String patientFirstName = patientUser != null ? patientUser.getFirstName() : null;
+        String patientLastName = patientUser != null ? patientUser.getLastName() : null;
+        String patientProfileImageUrl = patientUser != null ? patientUser.getProfileImageUrl() : null;
+
         for (NearbyNurse nearby : response.nearbyNurses()) {
             Nurse nurse = nurseRepository.findWithUserById(nearby.nurseId()).orElse(null);
             if (nurse == null) continue;
@@ -66,6 +74,9 @@ public class ServiceRequestController {
             NearbyNurseServiceRequestResponse pushPayload = new NearbyNurseServiceRequestResponse(
                     response.serviceRequestId(),
                     response.profileId(),
+                    patientFirstName,
+                    patientLastName,
+                    patientProfileImageUrl,
                     response.serviceTypeId(),
                     serviceName,
                     null,

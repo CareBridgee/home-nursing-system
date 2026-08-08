@@ -13,11 +13,13 @@ import iti.jets.java.homenursing.repository.ReviewRatingRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
 import iti.jets.java.homenursing.service.NurseRatingUpdater;
 import iti.jets.java.homenursing.service.UserService;
+import iti.jets.java.homenursing.service.CloudinaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -33,6 +35,7 @@ public class UserServiceImpl implements UserService {
     private final EmergencyContactRepository emergencyContactRepository;
     private final ReviewRatingRepository reviewRatingRepository;
     private final NurseRatingUpdater nurseRatingUpdater;
+    private final CloudinaryService cloudinaryService;
 
     @Override
     @Transactional(readOnly = true)
@@ -59,6 +62,7 @@ public class UserServiceImpl implements UserService {
         if (request.getDateOfBirth() != null) user.setDateOfBirth(request.getDateOfBirth());
         if (request.getGender() != null) user.setGender(request.getGender());
         if (request.getProfileImageUrl() != null) user.setProfileImageUrl(request.getProfileImageUrl());
+        uploadProfileImage(user, request.getProfileImage());
 
         User saved = userRepository.save(user);
         return userMapper.toResponse(saved);
@@ -108,5 +112,11 @@ public class UserServiceImpl implements UserService {
             throw new ResourceNotFoundException("User not found: " + userId);
         }
         return user;
+    }
+
+    private void uploadProfileImage(User user, MultipartFile profileImage) {
+        if (profileImage != null && !profileImage.isEmpty()) {
+            user.setProfileImageUrl(cloudinaryService.upload(profileImage));
+        }
     }
 }

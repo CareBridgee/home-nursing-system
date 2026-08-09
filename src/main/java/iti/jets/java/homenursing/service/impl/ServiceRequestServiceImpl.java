@@ -99,6 +99,13 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     private static final String VISIT_CODE_ATTEMPTS_PREFIX = "visitcode_attempts:";
     private static final String RESERVATION_TOPIC_PREFIX = "/topic/reservation/";
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final Set<ServiceRequestStatus> ACTIVE_SERVICE_REQUEST_STATUSES = Set.of(
+            ServiceRequestStatus.PENDING,
+            ServiceRequestStatus.SEARCHING,
+            ServiceRequestStatus.BOOKING,
+            ServiceRequestStatus.NEGOTIATING,
+            ServiceRequestStatus.ACCEPTED,
+            ServiceRequestStatus.IN_PROGRESS);
 
     @Override
     @Transactional
@@ -115,6 +122,10 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
             if (date.equals(LocalDate.now()) && request.preferredTime().isBefore(LocalTime.now())) {
                 throw new BadRequestException("Preferred time must not be in the past");
             }
+        }
+        if (serviceRequestRepository.existsByProfile_IdAndIsDeletedFalseAndStatusIn(
+                profile.getId(), ACTIVE_SERVICE_REQUEST_STATUSES)) {
+            throw new BadRequestException("This profile already has an active service request");
         }
 
         List<NearbyNurse> nearbyNurses = findNearbyNursesFor(serviceType, request.latitude(), request.longitude());

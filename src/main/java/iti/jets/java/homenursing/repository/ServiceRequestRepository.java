@@ -20,6 +20,8 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
 
     List<ServiceRequest> findByProfile_IdAndIsDeletedFalseOrderByCreatedAtDesc(UUID profileId);
 
+    boolean existsByProfile_IdAndIsDeletedFalseAndStatusIn(UUID profileId, Collection<ServiceRequestStatus> statuses);
+
     @EntityGraph(attributePaths = {"serviceType", "nurse.user"})
     List<ServiceRequest> findByProfile_User_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(
             UUID userId, Collection<ServiceRequestStatus> statuses);

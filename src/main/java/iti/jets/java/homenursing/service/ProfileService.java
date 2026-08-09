@@ -20,6 +20,10 @@ public interface ProfileService {
 
     Profile getOwnedProfileEntity(UUID profileId, UUID userId);
 
+    ProfileResponse getAccessibleProfile(UUID profileId, UUID userId);
+
+    Profile getAccessibleProfileEntity(UUID profileId, UUID userId);
+
     ProfileResponse createFamilyProfile(UUID userId, ProfileRequest request);
 
     ProfileResponse updateProfile(UUID profileId, UUID userId, ProfileRequest request);

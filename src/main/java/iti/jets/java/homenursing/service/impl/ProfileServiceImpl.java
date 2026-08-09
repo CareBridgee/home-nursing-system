@@ -4,10 +4,12 @@ import iti.jets.java.homenursing.dto.ProfileRequest;
 import iti.jets.java.homenursing.dto.ProfileResponse;
 import iti.jets.java.homenursing.entity.Profile;
 import iti.jets.java.homenursing.entity.User;
+import iti.jets.java.homenursing.entity.enums.ServiceRequestStatus;
 import iti.jets.java.homenursing.exception.BadRequestException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.ProfileMapper;
 import iti.jets.java.homenursing.repository.ProfileRepository;
+import iti.jets.java.homenursing.repository.ServiceRequestRepository;
 import iti.jets.java.homenursing.service.CloudinaryService;
 import iti.jets.java.homenursing.service.ProfileService;
 import iti.jets.java.homenursing.util.ProfileImageUtil;
@@ -17,13 +19,21 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ProfileServiceImpl implements ProfileService {
 
+    private static final Set<ServiceRequestStatus> ASSIGNED_NURSE_PROFILE_ACCESS_STATUSES = Set.of(
+            ServiceRequestStatus.BOOKING,
+            ServiceRequestStatus.ACCEPTED,
+            ServiceRequestStatus.IN_PROGRESS,
+            ServiceRequestStatus.COMPLETED);
+
     private final ProfileRepository profileRepository;
+    private final ServiceRequestRepository serviceRequestRepository;
     private final ProfileMapper profileMapper;
     private final CloudinaryService cloudinaryService;
 
@@ -75,6 +85,18 @@ public class ProfileServiceImpl implements ProfileService {
     @Transactional(readOnly = true)
     public Profile getOwnedProfileEntity(UUID profileId, UUID userId) {
         return loadOwnedProfile(profileId, userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProfileResponse getAccessibleProfile(UUID profileId, UUID userId) {
+        return toResponse(loadAccessibleProfile(profileId, userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Profile getAccessibleProfileEntity(UUID profileId, UUID userId) {
+        return loadAccessibleProfile(profileId, userId);
     }
 
     @Override
@@ -130,9 +152,29 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     private Profile loadOwnedProfile(UUID profileId, UUID userId) {
+        Profile profile = loadExistingProfile(profileId);
+        if (!profile.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Profile not found: " + profileId);
+        }
+        return profile;
+    }
+
+    private Profile loadAccessibleProfile(UUID profileId, UUID userId) {
+        Profile profile = loadExistingProfile(profileId);
+        if (profile.getUser().getId().equals(userId)) {
+            return profile;
+        }
+        if (serviceRequestRepository.existsByProfile_IdAndNurse_User_IdAndIsDeletedFalseAndStatusIn(
+                profileId, userId, ASSIGNED_NURSE_PROFILE_ACCESS_STATUSES)) {
+            return profile;
+        }
+        throw new ResourceNotFoundException("Profile not found: " + profileId);
+    }
+
+    private Profile loadExistingProfile(UUID profileId) {
         Profile profile = profileRepository.findById(profileId)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found: " + profileId));
-        if (!profile.getUser().getId().equals(userId) || Boolean.TRUE.equals(profile.getIsDeleted())) {
+        if (Boolean.TRUE.equals(profile.getIsDeleted())) {
             throw new ResourceNotFoundException("Profile not found: " + profileId);
         }
         return profile;

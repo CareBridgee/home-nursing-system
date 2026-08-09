@@ -37,6 +37,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -54,6 +55,7 @@ public class NurseOfferServiceImpl implements NurseOfferService {
     private final AfterCommitExecutor afterCommitExecutor;
 
     private static final String RESERVATION_TOPIC_PREFIX = "/topic/reservation/";
+    private static final Set<ServiceRequestStatus> ACTIVE_VISIT_STATUSES = Set.of(ServiceRequestStatus.ACCEPTED, ServiceRequestStatus.IN_PROGRESS);
 
     @Value("${nearby.nurses.radius-km:10}")
     private double nearbyNursesRadiusKm;
@@ -71,6 +73,9 @@ public class NurseOfferServiceImpl implements NurseOfferService {
         }
         if (nurse.getVerificationStatus() != VerificationStatus.APPROVED) {
             throw new BadRequestException("Nurse is not eligible to create offers");
+        }
+        if (serviceRequestRepository.existsByNurse_IdAndIsDeletedFalseAndStatusIn(nurse.getId(), ACTIVE_VISIT_STATUSES)) {
+            throw new BadRequestException("Cannot create an offer while you have an active visit");
         }
         boolean providesRequestedService = nurseServiceRepository
                 .findByNurse_IdAndServiceType_Id(nurse.getId(), serviceRequest.getServiceType().getId())

@@ -1,6 +1,7 @@
 package iti.jets.java.homenursing.repository;
 
 import iti.jets.java.homenursing.entity.NurseOffer;
+import iti.jets.java.homenursing.entity.enums.NurseOfferStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -15,5 +16,6 @@ public interface NurseOfferRepository extends JpaRepository<NurseOffer, UUID> {
 
     Optional<NurseOffer> findByIdAndIsDeletedFalse(UUID id);
 
-    boolean existsByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalse(UUID serviceRequestId, UUID userId);
+    boolean existsByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalseAndStatus(
+            UUID serviceRequestId, UUID userId, NurseOfferStatus status);
 }

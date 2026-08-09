@@ -84,8 +84,8 @@ public class NurseOfferServiceImpl implements NurseOfferService {
         if (!providesRequestedService) {
             throw new BadRequestException("Nurse does not provide the requested service");
         }
-        if (nurseOfferRepository.existsByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalse(
-                serviceRequest.getId(), userId)) {
+        if (nurseOfferRepository.existsByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalseAndStatus(
+                serviceRequest.getId(), userId, NurseOfferStatus.PENDING)) {
             throw new BadRequestException("Nurse has already submitted an offer for this service request");
         }
 

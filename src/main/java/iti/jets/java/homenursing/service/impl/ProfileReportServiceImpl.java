@@ -1,16 +1,8 @@
 package iti.jets.java.homenursing.service.impl;
 
 import iti.jets.java.homenursing.dto.*;
-import iti.jets.java.homenursing.mapper.MedicalHistoryMapper;
-import iti.jets.java.homenursing.mapper.ProfileAllergyMapper;
-import iti.jets.java.homenursing.mapper.ProfileMedicalConditionMapper;
-import iti.jets.java.homenursing.mapper.ProfileMedicationMapper;
-import iti.jets.java.homenursing.repository.MedicalHistoryRepository;
-import iti.jets.java.homenursing.repository.ProfileAllergyRepository;
-import iti.jets.java.homenursing.repository.ProfileMedicalConditionRepository;
-import iti.jets.java.homenursing.repository.ProfileMedicationRepository;
-import iti.jets.java.homenursing.service.ProfileReportService;
-import iti.jets.java.homenursing.service.ProfileService;
+import iti.jets.java.homenursing.entity.Profile;
+import iti.jets.java.homenursing.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
@@ -39,33 +31,22 @@ public class ProfileReportServiceImpl implements ProfileReportService {
 
     private final ChatClient reportChatClient;
     private final ProfileService profileService;
-    private final MedicalHistoryRepository medicalHistoryRepository;
-    private final MedicalHistoryMapper medicalHistoryMapper;
-    private final ProfileMedicalConditionRepository profileMedicalConditionRepository;
-    private final ProfileMedicalConditionMapper profileMedicalConditionMapper;
-    private final ProfileAllergyRepository profileAllergyRepository;
-    private final ProfileAllergyMapper profileAllergyMapper;
-    private final ProfileMedicationRepository profileMedicationRepository;
-    private final ProfileMedicationMapper profileMedicationMapper;
+    private final MedicalHistoryService medicalHistoryService;
+    private final ProfileMedicalConditionService profileMedicalConditionService;
+    private final ProfileAllergyService profileAllergyService;
+    private final ProfileMedicationService profileMedicationService;
 
     @Override
     @Transactional(readOnly = true)
-    public String generateReport(UUID profileId, UUID userId) {
-        ProfileResponse profile = profileService.getAccessibleProfile(profileId, userId);
-        List<MedicalHistoryResponse> history = medicalHistoryRepository.findByProfileIdOrderByCreatedAtDesc(profileId)
-                .stream()
-                .map(medicalHistoryMapper::toResponse)
-                .toList();
-        List<ProfileMedicalConditionResponse> conditions = profileMedicalConditionRepository.findByProfileId(profileId)
-                .stream()
-                .map(profileMedicalConditionMapper::toResponse)
-                .toList();
-        List<ProfileAllergyResponse> allergies = profileAllergyRepository.findByProfileId(profileId).stream()
-                .map(profileAllergyMapper::toResponse)
-                .toList();
-        List<ProfileMedicationResponse> medications = profileMedicationRepository.findByProfileId(profileId).stream()
-                .map(profileMedicationMapper::toResponse)
-                .toList();
+    public String generateReport(UUID profileId) {
+        // Existence check only — throws ResourceNotFoundException if the profile
+        // doesn't exist or is soft-deleted. No ownership/assignment check.
+        Profile profile = profileService.getProfile(profileId);
+
+        List<MedicalHistoryResponse> history = medicalHistoryService.listByProfile(profileId);
+        List<ProfileMedicalConditionResponse> conditions = profileMedicalConditionService.listByProfile(profileId);
+        List<ProfileAllergyResponse> allergies = profileAllergyService.listByProfile(profileId);
+        List<ProfileMedicationResponse> medications = profileMedicationService.listByProfile(profileId);
 
         String context = buildContext(profile, history, conditions, allergies, medications);
 
@@ -76,13 +57,24 @@ public class ProfileReportServiceImpl implements ProfileReportService {
                 .content();
     }
 
-    private String buildContext(ProfileResponse profile,
+    private String buildContext(Profile profile,
                                 List<MedicalHistoryResponse> history,
                                 List<ProfileMedicalConditionResponse> conditions,
                                 List<ProfileAllergyResponse> allergies,
                                 List<ProfileMedicationResponse> medications) {
         StringBuilder sb = new StringBuilder();
-        sb.append("PATIENT PROFILE:\n").append(profile).append("\n\n");
+        sb.append("PATIENT PROFILE:\n");
+        sb.append("Name: ").append(profile.getFirstName()).append(" ").append(profile.getLastName()).append("\n");
+        sb.append("Date of Birth: ").append(profile.getDateOfBirth()).append("\n");
+        sb.append("Gender: ").append(profile.getGender()).append("\n");
+        sb.append("Blood Type: ").append(profile.getBloodType()).append("\n");
+        sb.append("Height: ").append(profile.getHeight()).append("\n");
+        sb.append("Weight: ").append(profile.getWeight()).append("\n");
+        sb.append("Mobility Status: ").append(profile.getMobilityStatus()).append("\n");
+        sb.append("Mobility Notes: ").append(profile.getMobilityNotes()).append("\n");
+        sb.append("Previous Surgeries: ").append(profile.getPreviousSurgeries()).append("\n");
+        sb.append("Previous Hospitalizations: ").append(profile.getPreviousHospitalizations()).append("\n\n");
+
         sb.append("MEDICAL HISTORY:\n");
         history.forEach(h -> sb.append("- ").append(h).append("\n"));
         sb.append("\nMEDICAL CONDITIONS:\n");

@@ -17,4 +17,6 @@ public interface MedicalHistoryService {
     MedicalHistoryResponse update(UUID id, UUID userId, MedicalHistoryRequest request);
 
     void delete(UUID id, UUID userId);
+
+    List<MedicalHistoryResponse> listByProfile(UUID profileId);
 }

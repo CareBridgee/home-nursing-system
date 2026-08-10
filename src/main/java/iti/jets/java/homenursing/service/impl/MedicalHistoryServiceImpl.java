@@ -36,6 +36,16 @@ public class MedicalHistoryServiceImpl implements MedicalHistoryService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<MedicalHistoryResponse> listByProfile(UUID profileId) {
+        profileService.getProfile(profileId); // existence check only, no ownership
+        return medicalHistoryRepository.findByProfileIdOrderByCreatedAtDesc(profileId)
+                .stream()
+                .map(medicalHistoryMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public MedicalHistoryResponse getById(UUID id, UUID userId) {
         MedicalHistory medicalHistory = loadOwned(id, userId);
         return medicalHistoryMapper.toResponse(medicalHistory);

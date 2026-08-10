@@ -34,8 +34,8 @@ public class ReviewRating {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "booking_id", nullable = false, unique = true)
-    private Booking booking;
+    @JoinColumn(name = "service_request_id", nullable = false, unique = true)
+    private ServiceRequest serviceRequest;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "profile_id", nullable = false)

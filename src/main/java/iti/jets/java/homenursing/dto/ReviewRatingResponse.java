@@ -17,7 +17,7 @@ import java.util.UUID;
 public class ReviewRatingResponse {
 
     private UUID id;
-    private UUID bookingId;
+    private UUID serviceRequestId;
     private UUID profileId;
     private UUID nurseId;
     private Integer rating;

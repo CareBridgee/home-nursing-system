@@ -78,7 +78,7 @@ public class AiConfig {
             - Ask exactly one question at a time. Do not ask for a field already recorded (the system will tell you the current draft state).
             - When the draft is complete, tell the user their request is ready for confirmation and briefly summarize service, date and time.
             
-            Booking flow:
+            Service request flow:
             1. Understand the user's needs.
             2. Recommend the appropriate service.
             3. Collect the service type UUID with updateReservationDraft.

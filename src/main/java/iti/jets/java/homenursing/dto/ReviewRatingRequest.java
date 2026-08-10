@@ -20,7 +20,7 @@ import java.util.UUID;
 public class ReviewRatingRequest {
 
     @NotNull
-    private UUID bookingId;
+    private UUID serviceRequestId;
 
     @NotNull
     @Min(1)

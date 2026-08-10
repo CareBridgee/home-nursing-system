@@ -2,15 +2,15 @@ package iti.jets.java.homenursing.service.impl;
 
 import iti.jets.java.homenursing.dto.ReviewRatingRequest;
 import iti.jets.java.homenursing.dto.ReviewRatingResponse;
-import iti.jets.java.homenursing.entity.Booking;
 import iti.jets.java.homenursing.entity.ReviewRating;
+import iti.jets.java.homenursing.entity.ServiceRequest;
 import iti.jets.java.homenursing.entity.User;
-import iti.jets.java.homenursing.entity.enums.BookingStatus;
+import iti.jets.java.homenursing.entity.enums.ServiceRequestStatus;
 import iti.jets.java.homenursing.exception.BadRequestException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.ReviewRatingMapper;
-import iti.jets.java.homenursing.repository.BookingRepository;
 import iti.jets.java.homenursing.repository.ReviewRatingRepository;
+import iti.jets.java.homenursing.repository.ServiceRequestRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
 import iti.jets.java.homenursing.service.NurseRatingUpdater;
 import iti.jets.java.homenursing.service.ReviewRatingService;
@@ -29,7 +29,7 @@ public class ReviewRatingServiceImpl implements ReviewRatingService {
 
     private final ReviewRatingRepository reviewRatingRepository;
     private final ReviewRatingMapper reviewRatingMapper;
-    private final BookingRepository bookingRepository;
+    private final ServiceRequestRepository serviceRequestRepository;
     private final UserRepository userRepository;
     private final NurseRatingUpdater nurseRatingUpdater;
 
@@ -52,25 +52,27 @@ public class ReviewRatingServiceImpl implements ReviewRatingService {
     @Override
     @Transactional
     public ReviewRatingResponse create(UUID userId, ReviewRatingRequest request) {
-        Booking booking = bookingRepository.findById(request.getBookingId())
-                .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + request.getBookingId()));
+        ServiceRequest serviceRequest = serviceRequestRepository
+                .findByIdAndIsDeletedFalse(request.getServiceRequestId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Service request not found: " + request.getServiceRequestId()));
 
-        if (!booking.getProfile().getUser().getId().equals(userId)) {
-            throw new BadRequestException("You can only review bookings you own");
+        if (!serviceRequest.getProfile().getUser().getId().equals(userId)) {
+            throw new BadRequestException("You can only review requests you own");
         }
 
-        if (booking.getStatus() != BookingStatus.COMPLETED) {
-            throw new BadRequestException("You can only review completed bookings");
+        if (serviceRequest.getStatus() != ServiceRequestStatus.COMPLETED) {
+            throw new BadRequestException("You can only review completed requests");
         }
 
-        if (reviewRatingRepository.existsByBookingId(booking.getId())) {
-            throw new BadRequestException("A review already exists for this booking");
+        if (reviewRatingRepository.existsByServiceRequestId(serviceRequest.getId())) {
+            throw new BadRequestException("A review already exists for this request");
         }
 
         ReviewRating review = reviewRatingMapper.toEntity(request);
-        review.setBooking(booking);
-        review.setProfile(booking.getProfile());
-        review.setNurse(booking.getNurse());
+        review.setServiceRequest(serviceRequest);
+        review.setProfile(serviceRequest.getProfile());
+        review.setNurse(serviceRequest.getNurse());
 
         ReviewRating saved = reviewRatingRepository.save(review);
         nurseRatingUpdater.onReviewCreated(saved.getNurse(), saved.getRating());
@@ -98,8 +100,8 @@ public class ReviewRatingServiceImpl implements ReviewRatingService {
     @Transactional
     public void delete(UUID id, UUID userId) {
         ReviewRating review = loadOwned(id, userId);
-        nurseRatingUpdater.onReviewDeleted(review.getNurse(), review.getRating());
         reviewRatingRepository.delete(review);
+        nurseRatingUpdater.onReviewDeleted(review.getNurse(), review.getRating());
     }
 
     private ReviewRating loadOwned(UUID id, UUID userId) {

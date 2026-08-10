@@ -17,7 +17,7 @@ public interface ReviewRatingRepository extends JpaRepository<ReviewRating, UUID
 
     Page<ReviewRating> findByNurseId(UUID nurseId, Pageable pageable);
 
-    Optional<ReviewRating> findByBookingId(UUID bookingId);
+    Optional<ReviewRating> findByServiceRequestId(UUID serviceRequestId);
 
-    boolean existsByBookingId(UUID bookingId);
+    boolean existsByServiceRequestId(UUID serviceRequestId);
 }

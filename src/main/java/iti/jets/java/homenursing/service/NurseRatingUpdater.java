@@ -1,12 +1,17 @@
 package iti.jets.java.homenursing.service;
 
 import iti.jets.java.homenursing.entity.Nurse;
+import iti.jets.java.homenursing.entity.ReviewRating;
 import iti.jets.java.homenursing.repository.NurseRepository;
+import iti.jets.java.homenursing.repository.ReviewRatingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -16,65 +21,34 @@ public class NurseRatingUpdater {
     private static final RoundingMode ROUNDING = RoundingMode.HALF_UP;
 
     private final NurseRepository nurseRepository;
+    private final ReviewRatingRepository reviewRatingRepository;
 
     public void onReviewCreated(Nurse nurse, int rating) {
-        int count = defaultCount(nurse.getTotalReviews());
-        BigDecimal avg = defaultAvg(nurse.getRatingAvg());
-
-        int newCount = count + 1;
-        BigDecimal newAvg = avg.multiply(BigDecimal.valueOf(count))
-                .add(BigDecimal.valueOf(rating))
-                .divide(BigDecimal.valueOf(newCount), SCALE, ROUNDING);
-
-        nurse.setTotalReviews(newCount);
-        nurse.setRatingAvg(newAvg);
-        nurseRepository.save(nurse);
+        recalculate(nurse.getId());
     }
 
     public void onReviewUpdated(Nurse nurse, int oldRating, int newRating) {
-        if (oldRating == newRating) {
-            return;
-        }
-
-        int count = defaultCount(nurse.getTotalReviews());
-        if (count == 0) {
-            return;
-        }
-
-        BigDecimal avg = defaultAvg(nurse.getRatingAvg());
-        BigDecimal newAvg = avg.multiply(BigDecimal.valueOf(count))
-                .subtract(BigDecimal.valueOf(oldRating))
-                .add(BigDecimal.valueOf(newRating))
-                .divide(BigDecimal.valueOf(count), SCALE, ROUNDING);
-
-        nurse.setRatingAvg(newAvg);
-        nurseRepository.save(nurse);
+        recalculate(nurse.getId());
     }
 
     public void onReviewDeleted(Nurse nurse, int rating) {
-        int count = defaultCount(nurse.getTotalReviews());
-        if (count <= 0) {
-            return;
-        }
+        recalculate(nurse.getId());
+    }
 
-        int newCount = count - 1;
-        BigDecimal avg = defaultAvg(nurse.getRatingAvg());
-        BigDecimal newAvg = newCount == 0
+    private void recalculate(UUID nurseId) {
+        List<ReviewRating> reviews = reviewRatingRepository.findByNurseId(nurseId, Pageable.unpaged()).getContent();
+        int count = reviews.size();
+        BigDecimal avg = count == 0
                 ? BigDecimal.ZERO.setScale(SCALE, ROUNDING)
-                : avg.multiply(BigDecimal.valueOf(count))
-                        .subtract(BigDecimal.valueOf(rating))
-                        .divide(BigDecimal.valueOf(newCount), SCALE, ROUNDING);
+                : BigDecimal.valueOf(reviews.stream()
+                        .map(ReviewRating::getRating)
+                        .reduce(0, Integer::sum))
+                        .divide(BigDecimal.valueOf(count), SCALE, ROUNDING);
 
-        nurse.setTotalReviews(newCount);
-        nurse.setRatingAvg(newAvg);
-        nurseRepository.save(nurse);
-    }
-
-    private int defaultCount(Integer count) {
-        return count != null ? count : 0;
-    }
-
-    private BigDecimal defaultAvg(BigDecimal avg) {
-        return avg != null ? avg : BigDecimal.ZERO;
+        nurseRepository.findById(nurseId).ifPresent(nurse -> {
+            nurse.setTotalReviews(count);
+            nurse.setRatingAvg(avg);
+            nurseRepository.save(nurse);
+        });
     }
 }

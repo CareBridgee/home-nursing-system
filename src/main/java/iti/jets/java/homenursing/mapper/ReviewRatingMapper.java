@@ -12,12 +12,12 @@ public interface ReviewRatingMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "booking", ignore = true)
+    @Mapping(target = "serviceRequest", ignore = true)
     @Mapping(target = "profile", ignore = true)
     @Mapping(target = "nurse", ignore = true)
     ReviewRating toEntity(ReviewRatingRequest request);
 
-    @Mapping(target = "bookingId", source = "booking.id")
+    @Mapping(target = "serviceRequestId", source = "serviceRequest.id")
     @Mapping(target = "profileId", source = "profile.id")
     @Mapping(target = "nurseId", source = "nurse.id")
     ReviewRatingResponse toResponse(ReviewRating reviewRating);

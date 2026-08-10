@@ -496,64 +496,6 @@ CREATE TABLE service_requests (
 );
 
 -- ==========================================================
--- BOOKINGS
--- ==========================================================
-
-CREATE TABLE bookings (
-id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-service_request_id UUID NOT NULL,
-
-profile_id UUID NOT NULL,
-nurse_id UUID NOT NULL,
-
-scheduled_date DATE ,
-
-scheduled_start_time TIME,
-scheduled_end_time TIME ,
-
-status VARCHAR(50)
-              DEFAULT 'PENDING'
-CHECK (
-  status IN (
-             'PENDING',
-             'ACCEPTED',
-             'REJECTED',
-             'NEGOTIATING',
-             'CONFIRMED',
-             'IN_PROGRESS',
-             'COMPLETED',
-             'CANCELLED',
-             'NO_SHOW'
-      )
-  ),
-
-price NUMERIC(10,2),
-negotiated_price NUMERIC(10,2),
-
-notes TEXT,
-
-is_deleted BOOLEAN DEFAULT FALSE,
-
-created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
-updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
-
-CONSTRAINT fk_bookings_service_request
-FOREIGN KEY (service_request_id)
-  REFERENCES service_requests(id)
-  ON DELETE CASCADE,
-
-CONSTRAINT fk_bookings_profile
-FOREIGN KEY (profile_id)
-  REFERENCES profiles(id)
-  ON DELETE CASCADE,
-
-CONSTRAINT fk_bookings_nurse
-FOREIGN KEY (nurse_id)
-  REFERENCES nurses(id)
-);
-
--- ==========================================================
 -- NURSE OFFERS
 -- ==========================================================
 
@@ -600,46 +542,8 @@ CONSTRAINT fk_nurse_offers_nurse
 -- CARECONNECT DATABASE
 -- PostgreSQL Database Schema
 -- Part 4 of 6
--- Receipts, Reviews & Notifications
+-- Reviews & Notifications
 -- ==========================================================
-
--- ==========================================================
--- SERVICE RECEIPTS
--- ==========================================================
-
-CREATE TABLE service_receipts (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-      booking_id UUID NOT NULL,
-
-      total_amount NUMERIC(10,2) NOT NULL,
-
-      payment_status VARCHAR(50)
-                          DEFAULT 'PENDING'
-          CHECK (
-              payment_status IN (
-                                 'PENDING',
-                                 'PAID',
-                                 'REFUNDED',
-                                 'FAILED'
-                  )
-              ),
-
-      payment_method VARCHAR(50),
-      payment_date TIMESTAMPTZ,
-
-      service_details TEXT,
-
-      is_deleted BOOLEAN DEFAULT FALSE,
-
-      created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
-
-      CONSTRAINT fk_service_receipts_booking
-          FOREIGN KEY (booking_id)
-              REFERENCES bookings(id)
-              ON DELETE CASCADE
-);
 
 -- ==========================================================
 -- REVIEWS & RATINGS
@@ -648,7 +552,7 @@ CREATE TABLE service_receipts (
 CREATE TABLE reviews_ratings (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-     booking_id UUID NOT NULL UNIQUE,
+     service_request_id UUID NOT NULL UNIQUE,
      profile_id UUID NOT NULL,
      nurse_id UUID NOT NULL,
 
@@ -662,9 +566,9 @@ CREATE TABLE reviews_ratings (
      created_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
      updated_at TIMESTAMPTZ NULL DEFAULT CURRENT_TIMESTAMP,
 
-     CONSTRAINT fk_reviews_booking
-         FOREIGN KEY (booking_id)
-             REFERENCES bookings(id)
+     CONSTRAINT fk_reviews_service_request
+         FOREIGN KEY (service_request_id)
+             REFERENCES service_requests(id)
              ON DELETE CASCADE,
 
      CONSTRAINT fk_reviews_profile
@@ -747,57 +651,6 @@ FROM nurses n
 WHERE
     n.verification_status = 'APPROVED'
   AND u.is_deleted = FALSE;
-
--- ==========================================================
--- ACTIVE BOOKINGS
--- ==========================================================
-
-CREATE VIEW v_active_bookings AS
-SELECT
-    b.id,
-
-    b.service_request_id,
-    b.profile_id,
-    b.nurse_id,
-
-    patient.first_name AS patient_first_name,
-    patient.last_name AS patient_last_name,
-
-    nurse_user.first_name AS nurse_first_name,
-    nurse_user.last_name AS nurse_last_name,
-
-    b.scheduled_date,
-    b.scheduled_start_time,
-    b.scheduled_end_time,
-
-    b.status,
-    b.price,
-    b.negotiated_price,
-
-    b.created_at
-
-FROM bookings b
-
-         JOIN profiles p
-              ON p.id = b.profile_id
-
-         JOIN users patient
-              ON patient.id = p.user_id
-
-         JOIN nurses n
-              ON n.id = b.nurse_id
-
-         JOIN users nurse_user
-              ON nurse_user.id = n.user_id
-
-WHERE
-    b.is_deleted = FALSE
-  AND b.status NOT IN (
-                       'COMPLETED',
-                       'CANCELLED',
-                       'NO_SHOW'
-    );
-
 
 -- ==========================================================
 -- FUNCTIONS
@@ -890,18 +743,8 @@ CREATE TRIGGER trg_service_requests_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER trg_bookings_updated_at
-    BEFORE UPDATE ON bookings
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
 CREATE TRIGGER trg_nurse_offers_updated_at
     BEFORE UPDATE ON nurse_offers
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER trg_service_receipts_updated_at
-    BEFORE UPDATE ON service_receipts
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
@@ -1023,18 +866,6 @@ CREATE INDEX idx_service_requests_status
 
 CREATE INDEX idx_service_requests_nurse
     ON service_requests(nurse_id);
-
-CREATE INDEX idx_bookings_profile
-    ON bookings(profile_id);
-
-CREATE INDEX idx_bookings_nurse
-    ON bookings(nurse_id);
-
-CREATE INDEX idx_bookings_status
-    ON bookings(status);
-
-CREATE INDEX idx_bookings_date
-    ON bookings(scheduled_date);
 
 CREATE INDEX idx_nurse_offers_request
     ON nurse_offers(service_request_id);

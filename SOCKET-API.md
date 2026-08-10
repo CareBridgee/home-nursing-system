@@ -50,7 +50,8 @@ Detect close/error events, reconnect with a fresh access token, and re-subscribe
 
 When a **patient's** session ends or a **patient** unsubscribes from any destination, the server cancels that patient's open unassigned service requests (`PENDING`/`SEARCHING`/`BOOKING`/`NEGOTIATING`, no nurse assigned). Each cancellation follows the [Cancellation Flow](#cancellation-flow) (offers auto-rejected, `REQUEST_CANCELLED` pushed, nurses notified).
 
-- Triggered by: `DISCONNECT`/socket close, and any `UNSUBSCRIBE` frame while connected.
+- Triggered by: `DISCONNECT`/socket close, and **any** `UNSUBSCRIBE` frame while connected — including unsubscribes from `/user/queue/notifications`, `/user/queue/errors` or `/user/queue/nearby-request`. Navigation away from a screen that unsubscribes cancels the open request too.
+- **Consequence for nurses:** the nearby-request push (and any earlier `GET /api/v1/service-requests/nearby` result) is a one-time snapshot. A request that was `SEARCHING` when pushed may already be cancelled/accepted by the time you open it — the server then rejects the offer with a cause-specific message (`This service request was cancelled by the patient` / `This service request was already accepted by another nurse` / `This service request already has a nurse assigned`). Re-fetch `GET /api/v1/service-requests/nearby` before offering, and treat these rejections as the request being gone.
 - Cancelled requests are *unassigned only* — once a nurse is assigned (`ACCEPTED`), the visit survives disconnects of both parties (completing requires the nurse + QR code, per [Visit Completion](#visit-completion-qr)).
 - Nurses are unaffected: nurse disconnect only flips presence state.
 
@@ -87,7 +88,7 @@ All reservation-scoped events are pushed as a single JSON wrapper:
 | `OFFER_COUNTERED` | `NurseOfferResponse` | Patient proposes counter-terms |
 | `OFFER_ACCEPTED` | `NurseOfferResponse` | Either party accepts → reservation assigned |
 | `OFFER_WITHDRAWN` | `{ "offerId": "uuid" }` | Nurse withdraws their offer |
-| `OFFER_REJECTED` | `{ "offerId": "uuid" }` | Patient rejects an offer |
+| `OFFER_REJECTED` | `{ "offerId": "uuid" }` | Patient rejects an offer — or the offer is auto-rejected when the patient accepts another one |
 | `REQUEST_CANCELLED` | `{}` | Patient or assigned nurse cancels the entire request |
 | `COMPLETED` | `null` | Assigned nurse completes the visit via QR scan (REST-driven) |
 | `OFFERS_LIST` | `[NurseOfferResponse, ...]` | Response to `/app/reservation/offers/list` |
@@ -105,7 +106,9 @@ All reservation-scoped events are pushed as a single JSON wrapper:
 | `/app/reservation/availability` | `{ "available": false }` | Go unavailable |
 | `/app/reservation/location` | `{ "lat": 30.0, "lng": 31.0 }` | Update current position |
 
-All three require `ROLE_NURSE` **and an `APPROVED` verification status** — non-nurses receive `ERROR`; unreviewed (PENDING) nurses get a `FORBIDDEN` `SocketErrorPayload` on `/user/queue/errors`.
+All three require `ROLE_NURSE` **and an `APPROVED` verification status** — non-nurses receive `ERROR`; unreviewed (UNDER_REVIEW) nurses get a `FORBIDDEN` `SocketErrorPayload` on `/user/queue/errors`.
+
+`availability` with `"available": true` requires `lat` + `lng` — otherwise the payload fails validation and a `VALIDATION` `SocketErrorPayload` lands on `/user/queue/errors` (e.g. `lat: lat and lng are required when going available`). Availability/location writes also flip the nurse's geo-location used by the nearby matching (Redis GeoSet `ws:nurse:available`); the server prunes unavailable/offline nurses from that set.
 
 ### Offer Management
 
@@ -125,7 +128,7 @@ Counter, reject and withdraw are all also available over REST (see REST Fallback
 | Destination | Payload | Who | Effect |
 |---|---|---|---|
 | `/app/reservation/cancel` | `{ "serviceRequestId": "uuid" }` | Patient or assigned nurse | Cancels request, rejects all pending offers |
-| `/app/reservation/offers/list` | `{ "serviceRequestId": "uuid" }` | Participant | Triggers server to push `OFFERS_LIST` on the reservation topic |
+| `/app/reservation/offers/list` | `{ "serviceRequestId": "uuid" }` | Request owner or assigned nurse | Triggers server to push `OFFERS_LIST` on the reservation topic |
 
 Cancellation is also available via REST `PATCH /api/v1/service-requests/{id}/cancel`.
 
@@ -187,7 +190,7 @@ Sent when a socket *operation* (SEND) fails at the handler level — validation,
 {
   "code": "BAD_REQUEST",
   "message": "Only pending offers can be accepted",
-  "timestamp": "2026-07-29T12:00:00+02:00"
+  "timestamp": "2026-07-29T10:00:00Z"
 }
 ```
 
@@ -203,6 +206,7 @@ Sent when a socket *operation* (SEND) fails at the handler level — validation,
     "id": "uuid",
     "firstName": "John",
     "lastName": "Doe",
+    "profileImageUrl": "https://example.com/avatars/john.png",
     "ratingAvg": 4.5,
     "totalReviews": 12
   },
@@ -211,6 +215,9 @@ Sent when a socket *operation* (SEND) fails at the handler level — validation,
   "proposedTime": "10:00",
   "message": "optional note",
   "status": "PENDING",
+  "distanceKm": 2.5,
+  "serviceTypeName": "Physical Therapy",
+  "estimatedDurationMinutes": 60,
   "createdAt": "2026-07-29T12:00:00",
   "updatedAt": "2026-07-29T12:00:00"
 }
@@ -224,6 +231,9 @@ Sent when a socket *operation* (SEND) fails at the handler level — validation,
 {
   "serviceRequestId": "uuid",
   "profileId": "uuid",
+  "patientFirstName": "Jane",
+  "patientLastName": "Doe",
+  "patientProfileImageUrl": "https://example.com/avatars/jane.png",
   "serviceTypeId": "uuid",
   "serviceName": "Physical Therapy",
   "serviceDescription": null,
@@ -233,7 +243,8 @@ Sent when a socket *operation* (SEND) fails at the handler level — validation,
   "latitude": 30.0444,
   "longitude": 31.2357,
   "distanceKm": 2.5,
-  "estimatedPrice": null,
+  "estimatedPrice": 150.00,
+  "estimatedDurationMinutes": 60,
   "createdAt": "2026-07-29T12:00:00"
 }
 ```
@@ -249,8 +260,9 @@ Sent when a socket *operation* (SEND) fails at the handler level — validation,
 Patient POST /api/v1/service-requests
   Body: { profileId, serviceTypeId, latitude, longitude, ... }
   ├── Response 201: {
-  │     serviceRequestId, status: "SEARCHING",
-  │     nearbyNurses: [{ nurseId, lat, lng, distanceKm }, ...]
+  │     serviceRequestId, profileId, serviceTypeId,
+  │     status: "SEARCHING", latitude, longitude, createdAt,
+  │     nearbyNurses: [{ nurseId, latitude, longitude, distanceKm }, ...]
   │   }
   │
   └── Server then pushes to each nearby nurse:
@@ -295,6 +307,8 @@ Nurse SENDs /app/reservation/offer/accept   (or Patient sends)
   │           request → ACCEPTED, nurse assigned
   │           all other pending offers → REJECTED
   ├── Pushes to /topic/reservation/{id}   { type: "OFFER_ACCEPTED", data }
+  ├── For each auto-rejected offer, also pushes
+  │     { type: "OFFER_REJECTED", data: { offerId } }  and notifies that nurse
   └── Notifies both parties
 
 Nurse SENDs /app/reservation/offer/withdraw
@@ -346,6 +360,8 @@ Also triggered automatically when a patient's session ends or the patient unsubs
 | One active visit per nurse | `ACCEPTED`/`IN_PROGRESS` | offer create (REST + socket) |
 | Offer create eligibility | — | nurse must be `APPROVED`, attached to the request's service type, request must be `SEARCHING` and unassigned |
 | Withdraw / update / accept / counter / reject | — | offer must still be `PENDING` |
+
+**Status lifecycle:** created as `SEARCHING` and stays `SEARCHING` while offers are made (the enum also defines `PENDING`/`NEGOTIATING`/`BOOKING`, but no current code path sets them); `ACCEPTED` once an offer is accepted (nurse assigned); `COMPLETED` after the QR check-in; `CANCELLED` via the cancellation flow (allowed from any of `PENDING`/`SEARCHING`/`NEGOTIATING`/`BOOKING`/`ACCEPTED`).
 
 ### Chat Flow
 
@@ -430,7 +446,7 @@ A nurse whose offer was rejected or withdrawn loses topic access on the next sub
 [Nurse accepts the counter]
   SEND /app/reservation/offer/accept
   RECEIVE /topic/reservation/{id}  →  { type: "OFFER_ACCEPTED", data }
-  RECEIVE /user/queue/notifications  →  "Offer accepted. Reservation confirmed!"
+  RECEIVE /user/queue/notifications  →  "Reservation confirmed — your offer was accepted."
 
 [Nurse enters chat]
   SUBSCRIBE /topic/chat/{id}
@@ -486,11 +502,11 @@ On reconnect:
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/v1/service-requests/nearby` | Nurse fetches all open requests on first load |
+| `GET /api/v1/service-requests/nearby` | Nurse fetches all open requests on first load (nurse must be online + available — location set via the availability endpoint — else `400`) |
 | `GET /api/v1/service-requests/{id}/preview` | Nurse previews an open request (service details + patient basic medical summary) before offering |
 | `GET /api/v1/service-requests/{id}/profile` | Assigned nurse loads the patient's full profile (contact, address, medical summary) after acceptance |
 | `GET /api/v1/service-requests/current` | Patient or nurse fetches their current active visit (rich DTO incl. the other party's summary); `404` when none |
-| `GET /api/v1/profiles/report/{profileId}/report` | Assigned nurse fetches the patient's medical report; `404` for non-assigned nurses |
+| `GET /api/v1/profiles/report/{profileId}/report` | Profile owner or the assigned nurse fetches the AI-generated medical report (`{ "profileId", "report" }`); `404` for anyone else |
 | `GET /api/v1/service-requests/{id}/nearby-nurses` | Patient fetches currently-nearby nurses for their open request (on demand — e.g., when nurses go available) |
 | `GET /api/v1/nurse-offers?serviceRequestId=` | Patient fetches current offers on reconnect |
 | `PUT /api/v1/nurse-offers/{id}` | Nurse updates own offer terms (same as `/app/reservation/offer/update`) |
@@ -535,10 +551,11 @@ A frame is rejected *before it reaches any handler* when it violates a connectio
 | Non-nurse uses presence endpoints | `ERROR` frame | Alert user |
 
 The `message` header of these `ERROR` frames is **always** the generic
-`Failed to send message to ExecutorSubscribableChannel[clientInboundChannel]` — the semantic reason
-(e.g. "Not a participant", "Only nurses...") is **only written to the server logs**, never sent to the
-client. **The server then closes the connection (close code 1002).** Treat any `ERROR` frame as
-terminal: reconnect with a fresh access token and re-subscribe (never retry the failing frame).
+`Failed to send message to ExecutorSubscribableChannel[clientInboundChannel]` (empty frame body) — the
+semantic reason (e.g. "Not a participant", "Only nurses...") is **only written to the server logs**,
+never sent to the client. **The server then closes the connection (close code 1002).** Treat any
+`ERROR` frame as terminal: reconnect with a fresh access token and re-subscribe (never retry the
+failing frame).
 
 ### 2. Operation-level failures → `SocketErrorPayload` on `/user/queue/errors`
 

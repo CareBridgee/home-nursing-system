@@ -13,4 +13,6 @@ public interface ProfileAllergyService {
     ProfileAllergyResponse addToProfile(UUID profileId, UUID userId, ProfileAllergyRequest request);
 
     void removeFromProfile(UUID profileId, UUID userId, UUID allergyId);
+
+    List<ProfileAllergyResponse> listByProfile(UUID profileId);
 }

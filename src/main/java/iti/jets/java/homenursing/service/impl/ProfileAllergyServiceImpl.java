@@ -103,4 +103,13 @@ public class ProfileAllergyServiceImpl implements ProfileAllergyService {
         }
         return name;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProfileAllergyResponse> listByProfile(UUID profileId) {
+        profileService.getProfile(profileId); // existence check only, no ownership
+        return profileAllergyRepository.findByProfileId(profileId).stream()
+                .map(profileAllergyMapper::toResponse)
+                .toList();
+    }
 }

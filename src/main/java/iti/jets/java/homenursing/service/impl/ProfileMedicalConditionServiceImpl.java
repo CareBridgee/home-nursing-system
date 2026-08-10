@@ -103,4 +103,13 @@ public class ProfileMedicalConditionServiceImpl implements ProfileMedicalConditi
         }
         return name;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProfileMedicalConditionResponse> listByProfile(UUID profileId) {
+        profileService.getProfile(profileId); // existence check only, no ownership
+        return profileMedicalConditionRepository.findByProfileId(profileId).stream()
+                .map(profileMedicalConditionMapper::toResponse)
+                .toList();
+    }
 }

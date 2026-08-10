@@ -13,4 +13,6 @@ public interface ProfileMedicalConditionService {
     ProfileMedicalConditionResponse addToProfile(UUID profileId, UUID userId, ProfileMedicalConditionRequest request);
 
     void removeFromProfile(UUID profileId, UUID userId, UUID medicalConditionId);
+
+    List<ProfileMedicalConditionResponse> listByProfile(UUID profileId);
 }

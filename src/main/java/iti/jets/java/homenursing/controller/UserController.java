@@ -1,10 +1,13 @@
 package iti.jets.java.homenursing.controller;
 
+import iti.jets.java.homenursing.annotation.SortableFields;
 import iti.jets.java.homenursing.dto.UserResponse;
 import iti.jets.java.homenursing.dto.UserUpdateRequest;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.UserService;
+import iti.jets.java.homenursing.util.SortSanitizer;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -51,7 +54,8 @@ public class UserController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<UserResponse>> listUsers(Pageable pageable) {
+    @SortableFields(SortSanitizer.USER_SORTABLE)
+    public ResponseEntity<Page<UserResponse>> listUsers(@ParameterObject Pageable pageable) {
         return ResponseEntity.ok(userService.listUsers(pageable));
     }
 }

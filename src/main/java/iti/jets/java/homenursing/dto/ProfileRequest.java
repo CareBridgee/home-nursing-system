@@ -1,5 +1,6 @@
 package iti.jets.java.homenursing.dto;
 
+import iti.jets.java.homenursing.annotation.AllowedValues;
 import iti.jets.java.homenursing.entity.enums.Gender;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,9 +24,11 @@ public class ProfileRequest {
     private String lastName;
     private LocalDate dateOfBirth;
     private Gender gender;
+    @AllowedValues({"A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"})
     private String bloodType;
     private BigDecimal height;
     private BigDecimal weight;
+    @AllowedValues({"INDEPENDENT", "PARTIAL_ASSISTANCE", "TOTAL_ASSISTANCE", "WHEELCHAIR", "BEDRIDDEN"})
     private String mobilityStatus;
     private String mobilityNotes;
     private String previousSurgeries;

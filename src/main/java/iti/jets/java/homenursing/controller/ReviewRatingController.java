@@ -1,10 +1,13 @@
 package iti.jets.java.homenursing.controller;
 
+import iti.jets.java.homenursing.annotation.SortableFields;
 import iti.jets.java.homenursing.dto.ReviewRatingRequest;
 import iti.jets.java.homenursing.dto.ReviewRatingResponse;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.ReviewRatingService;
+import iti.jets.java.homenursing.util.SortSanitizer;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -25,8 +28,9 @@ public class ReviewRatingController {
     }
 
     @GetMapping("/nurses/{nurseId}/reviews")
+    @SortableFields(SortSanitizer.REVIEW_RATING_SORTABLE)
     public ResponseEntity<Page<ReviewRatingResponse>> listByNurse(
-            @PathVariable UUID nurseId, Pageable pageable) {
+            @PathVariable UUID nurseId, @ParameterObject Pageable pageable) {
         return ResponseEntity.ok(reviewRatingService.listByNurse(nurseId, pageable));
     }
 

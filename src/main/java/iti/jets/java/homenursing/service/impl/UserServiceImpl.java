@@ -14,6 +14,7 @@ import iti.jets.java.homenursing.repository.UserRepository;
 import iti.jets.java.homenursing.service.NurseRatingUpdater;
 import iti.jets.java.homenursing.service.UserService;
 import iti.jets.java.homenursing.service.CloudinaryService;
+import iti.jets.java.homenursing.util.SortSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -102,7 +103,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public Page<UserResponse> listUsers(Pageable pageable) {
-        return userRepository.findAll(pageable)
+        return userRepository.findAll(SortSanitizer.sanitize(pageable, SortSanitizer.asSet(SortSanitizer.USER_SORTABLE)))
                 .map(userMapper::toResponse);
     }
 

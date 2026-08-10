@@ -14,6 +14,7 @@ import iti.jets.java.homenursing.repository.ReviewRatingRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
 import iti.jets.java.homenursing.service.NurseRatingUpdater;
 import iti.jets.java.homenursing.service.ReviewRatingService;
+import iti.jets.java.homenursing.util.SortSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -35,7 +36,8 @@ public class ReviewRatingServiceImpl implements ReviewRatingService {
     @Override
     @Transactional(readOnly = true)
     public Page<ReviewRatingResponse> listByNurse(UUID nurseId, Pageable pageable) {
-        return reviewRatingRepository.findByNurseId(nurseId, pageable)
+        return reviewRatingRepository.findByNurseId(
+                        nurseId, SortSanitizer.sanitize(pageable, SortSanitizer.asSet(SortSanitizer.REVIEW_RATING_SORTABLE)))
                 .map(reviewRatingMapper::toResponse);
     }
 

@@ -39,6 +39,8 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
 
     boolean existsByNurse_IdAndIsDeletedFalseAndStatusIn(UUID nurseId, Collection<ServiceRequestStatus> statuses);
 
+    boolean existsByProfile_IdAndNurse_User_IdAndIsDeletedFalse(UUID profileId, UUID userId);
+
     boolean existsByProfile_IdAndNurse_User_IdAndIsDeletedFalseAndStatusIn(
             UUID profileId, UUID userId, Collection<ServiceRequestStatus> statuses);
 

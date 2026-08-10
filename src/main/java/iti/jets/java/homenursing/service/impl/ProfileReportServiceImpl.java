@@ -2,6 +2,9 @@ package iti.jets.java.homenursing.service.impl;
 
 import iti.jets.java.homenursing.dto.*;
 import iti.jets.java.homenursing.entity.Profile;
+import iti.jets.java.homenursing.exception.ResourceNotFoundException;
+import iti.jets.java.homenursing.repository.ServiceRequestRepository;
+import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
@@ -35,13 +38,13 @@ public class ProfileReportServiceImpl implements ProfileReportService {
     private final ProfileMedicalConditionService profileMedicalConditionService;
     private final ProfileAllergyService profileAllergyService;
     private final ProfileMedicationService profileMedicationService;
+    private final ServiceRequestRepository serviceRequestRepository;
 
     @Override
     @Transactional(readOnly = true)
     public String generateReport(UUID profileId) {
-        // Existence check only — throws ResourceNotFoundException if the profile
-        // doesn't exist or is soft-deleted. No ownership/assignment check.
         Profile profile = profileService.getProfile(profileId);
+        requireAccess(profile);
 
         List<MedicalHistoryResponse> history = medicalHistoryService.listByProfile(profileId);
         List<ProfileMedicalConditionResponse> conditions = profileMedicalConditionService.listByProfile(profileId);
@@ -55,6 +58,18 @@ public class ProfileReportServiceImpl implements ProfileReportService {
                 .user(context)
                 .call()
                 .content();
+    }
+
+    private void requireAccess(Profile profile) {
+        UUID userId = SecurityUtils.currentUserId();
+        if (profile.getUser().getId().equals(userId)) {
+            return;
+        }
+        boolean assigned = serviceRequestRepository.existsByProfile_IdAndNurse_User_IdAndIsDeletedFalse(
+                profile.getId(), userId);
+        if (!assigned) {
+            throw new ResourceNotFoundException("Profile not found: " + profile.getId());
+        }
     }
 
     private String buildContext(Profile profile,

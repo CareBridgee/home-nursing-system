@@ -4,6 +4,7 @@ import iti.jets.java.homenursing.dto.ApiError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -147,6 +148,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 ApiError.from(HttpStatus.INTERNAL_SERVER_ERROR, "DATA_INTEGRITY_VIOLATION",
                         "Data integrity violation", null));
+    }
+
+    @ExceptionHandler(InvalidDataAccessApiUsageException.class)
+    public ResponseEntity<ApiError> handleInvalidDataAccess(InvalidDataAccessApiUsageException ex) {
+        return ResponseEntity.badRequest().body(
+                ApiError.from(HttpStatus.BAD_REQUEST, "INVALID_QUERY_PARAMETER",
+                        ex.getMessage(), null));
     }
 
     @ExceptionHandler(Exception.class)

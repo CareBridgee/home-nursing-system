@@ -32,7 +32,8 @@ heart-beat:10000,10000
 4. On success → `CONNECTED` response.
 5. If `role` is `NURSE`, the nurse is auto-added to the online set in Redis.
 6. On `DISCONNECT` (or close) → nurse removed from online + available sets.
-7. Presence is heartbeat-driven: `/app/heartbeat` (send every ~30 s) refreshes the online + availability timestamps; the server prunes entries stale for > 90 s (covers abrupt kills that never reach `DISCONNECT`).
+7. If `role` is `PATIENT` → the server auto-cancels the patient's **open unassigned** requests (see [Session Lifecycle — Auto-Cancellation](#session-lifecycle--auto-cancellation)).
+8. Presence is heartbeat-driven: `/app/heartbeat` (send every ~30 s) refreshes the online + availability timestamps; the server prunes entries stale for > 90 s (covers abrupt kills that never reach `DISCONNECT`).
 
 **Subscription authorization rules (server-enforced at `SUBSCRIBE`):**
 - `/user/...` — allowed only for your own user id; subscribing to someone else's `/user/{id}/...` → `ERROR` frame.
@@ -44,6 +45,14 @@ heart-beat:10000,10000
 Detect close/error events, reconnect with a fresh access token, and re-subscribe to all active topics.
 
 **IMPORTANT:** any `ERROR` frame from the server is terminal — the server closes the WebSocket session right after sending it. Always reconnect on `ERROR`; never retry the offending frame on the same session.
+
+### Session Lifecycle — Auto-Cancellation
+
+When a **patient's** session ends or a **patient** unsubscribes from any destination, the server cancels that patient's open unassigned service requests (`PENDING`/`SEARCHING`/`BOOKING`/`NEGOTIATING`, no nurse assigned). Each cancellation follows the [Cancellation Flow](#cancellation-flow) (offers auto-rejected, `REQUEST_CANCELLED` pushed, nurses notified).
+
+- Triggered by: `DISCONNECT`/socket close, and any `UNSUBSCRIBE` frame while connected.
+- Cancelled requests are *unassigned only* — once a nurse is assigned (`ACCEPTED`), the visit survives disconnects of both parties (completing requires the nurse + QR code, per [Visit Completion](#visit-completion-qr)).
+- Nurses are unaffected: nurse disconnect only flips presence state.
 
 ---
 
@@ -324,7 +333,19 @@ Patient (or the assigned nurse) SENDs /app/reservation/cancel
       The actor is never notified.
       All subscribed participants receive REQUEST_CANCELLED on the topic
       REST fallback: PATCH /api/v1/service-requests/{id}/cancel
+
+Also triggered automatically when a patient's session ends or the patient unsubscribes
+(open unassigned requests only — see Session Lifecycle — Auto-Cancellation).
 ```
+
+### Business Rules (enforced server-side)
+
+| Rule | Statuses | Enforced at |
+|---|---|---|
+| One active service request per profile | `PENDING`/`SEARCHING`/`BOOKING`/`NEGOTIATING`/`ACCEPTED`/`IN_PROGRESS` | `POST /api/v1/service-requests` |
+| One active visit per nurse | `ACCEPTED`/`IN_PROGRESS` | offer create (REST + socket) |
+| Offer create eligibility | — | nurse must be `APPROVED`, attached to the request's service type, request must be `SEARCHING` and unassigned |
+| Withdraw / update / accept / counter / reject | — | offer must still be `PENDING` |
 
 ### Chat Flow
 
@@ -468,6 +489,8 @@ On reconnect:
 | `GET /api/v1/service-requests/nearby` | Nurse fetches all open requests on first load |
 | `GET /api/v1/service-requests/{id}/preview` | Nurse previews an open request (service details + patient basic medical summary) before offering |
 | `GET /api/v1/service-requests/{id}/profile` | Assigned nurse loads the patient's full profile (contact, address, medical summary) after acceptance |
+| `GET /api/v1/service-requests/current` | Patient or nurse fetches their current active visit (rich DTO incl. the other party's summary); `404` when none |
+| `GET /api/v1/profiles/report/{profileId}/report` | Assigned nurse fetches the patient's medical report; `404` for non-assigned nurses |
 | `GET /api/v1/service-requests/{id}/nearby-nurses` | Patient fetches currently-nearby nurses for their open request (on demand — e.g., when nurses go available) |
 | `GET /api/v1/nurse-offers?serviceRequestId=` | Patient fetches current offers on reconnect |
 | `PUT /api/v1/nurse-offers/{id}` | Nurse updates own offer terms (same as `/app/reservation/offer/update`) |

@@ -107,6 +107,11 @@ ServiceRequest request = serviceRequestRepository.findWithDetailsById(response.s
         return ResponseEntity.ok(serviceRequestService.listNearbyForNurse(SecurityUtils.currentUserId()));
     }
 
+    @GetMapping("/current")
+    public ResponseEntity<ServiceRequestDetailsResponse> getCurrentVisit() {
+        return ResponseEntity.ok(serviceRequestService.getCurrentVisit(SecurityUtils.currentUserId()));
+    }
+
     @GetMapping("/{serviceRequestId}/nearby-nurses")
     public ResponseEntity<List<NearbyNurse>> getNearbyNursesForRequest(@PathVariable UUID serviceRequestId) {
         return ResponseEntity.ok(serviceRequestService.getNearbyNursesForRequest(serviceRequestId, SecurityUtils.currentUserId()));

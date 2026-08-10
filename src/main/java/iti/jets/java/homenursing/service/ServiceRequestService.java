@@ -23,11 +23,15 @@ public interface ServiceRequestService {
 
     void cancelRequest(UUID serviceRequestId, UUID userId);
 
+    void cancelOpenRequestsForUser(UUID userId);
+
     VisitCodeResponse generateVisitCode(UUID serviceRequestId, UUID userId);
 
     void completeRequest(UUID serviceRequestId, String visitCode, UUID userId);
 
     ServiceRequestDetailsResponse getDetails(UUID serviceRequestId, UUID userId);
+
+    ServiceRequestDetailsResponse getCurrentVisit(UUID userId);
 
     ServiceRequestNursePreviewResponse getNursePreview(UUID serviceRequestId, UUID userId);
 

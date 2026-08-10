@@ -58,6 +58,7 @@ import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -104,6 +105,14 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
             ServiceRequestStatus.SEARCHING,
             ServiceRequestStatus.BOOKING,
             ServiceRequestStatus.NEGOTIATING,
+            ServiceRequestStatus.ACCEPTED,
+            ServiceRequestStatus.IN_PROGRESS);
+    private static final Set<ServiceRequestStatus> OPEN_UNASSIGNED_STATUSES = Set.of(
+            ServiceRequestStatus.PENDING,
+            ServiceRequestStatus.SEARCHING,
+            ServiceRequestStatus.BOOKING,
+            ServiceRequestStatus.NEGOTIATING);
+    private static final Set<ServiceRequestStatus> VISIT_STATUSES = Set.of(
             ServiceRequestStatus.ACCEPTED,
             ServiceRequestStatus.IN_PROGRESS);
 
@@ -295,6 +304,17 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     @Override
     @Transactional
+    public void cancelOpenRequestsForUser(UUID userId) {
+        List<ServiceRequest> openRequests = serviceRequestRepository
+                .findByProfile_User_IdAndIsDeletedFalseAndStatusInAndNurseNullOrderByCreatedAtDesc(
+                        userId, OPEN_UNASSIGNED_STATUSES);
+        for (ServiceRequest openRequest : openRequests) {
+            cancelRequest(openRequest.getId(), userId);
+        }
+    }
+
+    @Override
+    @Transactional
     public VisitCodeResponse generateVisitCode(UUID serviceRequestId, UUID userId) {
         ServiceRequest serviceRequest = serviceRequestRepository.findByIdAndIsDeletedFalse(serviceRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Service request not found: " + serviceRequestId));
@@ -398,8 +418,27 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
             throw new ResourceNotFoundException("Service request not found: " + serviceRequestId);
         }
 
+        return toDetails(serviceRequest, userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ServiceRequestDetailsResponse getCurrentVisit(UUID userId) {
+        Optional<ServiceRequest> current = nurseRepository.findByUser_Id(userId)
+                .flatMap(nurse -> serviceRequestRepository
+                        .findFirstByNurse_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(nurse.getId(), VISIT_STATUSES));
+        if (current.isEmpty()) {
+            current = serviceRequestRepository
+                    .findFirstByProfile_User_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(userId, VISIT_STATUSES);
+        }
+        ServiceRequest serviceRequest = current
+                .orElseThrow(() -> new ResourceNotFoundException("No current visit found"));
+        return toDetails(serviceRequest, userId);
+    }
+
+    private ServiceRequestDetailsResponse toDetails(ServiceRequest serviceRequest, UUID userId) {
         List<NurseOfferResponse> offers = nurseOfferRepository
-                .findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(serviceRequestId)
+                .findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(serviceRequest.getId())
                 .stream()
                 .map(this::toOfferResponseWithDistance)
                 .toList();

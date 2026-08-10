@@ -20,8 +20,7 @@ public class ProfileReportController {
 
     @GetMapping("/{profileId}/report")
     public ReportResponse generateReport(@PathVariable UUID profileId) {
-        UUID userId = SecurityUtils.currentUserId();
-        String report = profileReportService.generateReport(profileId, userId);
+        String report = profileReportService.generateReport(profileId);
         return new ReportResponse(profileId, report);
     }
 }

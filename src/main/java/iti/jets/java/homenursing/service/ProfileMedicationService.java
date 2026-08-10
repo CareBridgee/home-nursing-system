@@ -13,4 +13,6 @@ public interface ProfileMedicationService {
     ProfileMedicationResponse addToProfile(UUID profileId, UUID userId, ProfileMedicationRequest request);
 
     void removeFromProfile(UUID profileId, UUID userId, UUID medicationId);
+
+    List<ProfileMedicationResponse> listByProfile(UUID profileId);
 }

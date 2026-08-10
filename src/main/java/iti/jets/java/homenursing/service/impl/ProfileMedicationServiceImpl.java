@@ -102,4 +102,13 @@ public class ProfileMedicationServiceImpl implements ProfileMedicationService {
         }
         return name;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProfileMedicationResponse> listByProfile(UUID profileId) {
+        profileService.getProfile(profileId); // existence check only, no ownership
+        return profileMedicationRepository.findByProfileId(profileId).stream()
+                .map(profileMedicationMapper::toResponse)
+                .toList();
+    }
 }

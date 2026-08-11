@@ -23,12 +23,12 @@ public class ReservationTools {
     }
 
     @Tool(description = """
-            Records reservation details the user provides in natural language, one field at a time.
-            Allowed fields: serviceTypeId (a UUID from listServiceTypes), preferredDate (yyyy-MM-dd),
-            preferredTime (HH:mm). Use this whenever the user provides any of those.
+            Records the service the user chooses for their reservation.
+            Allowed field: serviceTypeId (the exact UUID from listServiceTypes).
+            Use this whenever the user picks a service.
             """)
     public String updateReservationDraft(
-            @ToolParam(description = "One of: serviceTypeId, preferredDate, preferredTime") String field,
+            @ToolParam(description = "Only: serviceTypeId") String field,
             @ToolParam(description = "The value for the given field") String value,
             ToolContext context) {
         UUID profileId = resolveProfileId(context);
@@ -77,8 +77,7 @@ public class ReservationTools {
 
     private static String summarize(ReservationDraft draft, String heading) {
         return heading + " serviceTypeId=" + nullSafe(draft.serviceTypeId())
-                + ", preferredDate=" + (draft.preferredDate() == null ? "not set" : draft.preferredDate())
-                + ", preferredTime=" + (draft.preferredTime() == null ? "not set" : draft.preferredTime())
+                + ", serviceTypeName=" + nullSafe(draft.serviceTypeName())
                 + ", complete=" + draft.complete();
     }
 

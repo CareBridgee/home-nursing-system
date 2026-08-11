@@ -200,8 +200,6 @@ public class ChatController {
         }
         return "Current reservation draft state (do not repeat these back; only collect what is missing): "
                 + "serviceTypeId=" + (draft.serviceTypeId() == null ? "not set" : draft.serviceTypeId())
-                + ", preferredDate=" + (draft.preferredDate() == null ? "not set" : draft.preferredDate())
-                + ", preferredTime=" + (draft.preferredTime() == null ? "not set" : draft.preferredTime())
                 + ", complete=" + draft.complete();
     }
 

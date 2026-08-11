@@ -4,7 +4,7 @@ This document describes the **AI booking assistant** REST API and — most
 importantly — **what each response type means and how the mobile UI should react**.
 
 The assistant's job is to help the patient choose a home-nursing service and collect a
-**reservation draft** (service type, optionally preferred date/time) conversationally.
+**reservation draft** (the chosen service type) conversationally.
 
 > **Accurate as of commit:** 2026-08 — all shapes and behaviors below were cross-checked
 > against the running server. If the backend changes, this file should be revisited.
@@ -68,8 +68,8 @@ Every non-streaming turn returns one JSON object:
 | Value | When the server sends it | What the mobile UI should do |
 |---|---|---|
 | `TEXT` | A plain informational answer; no draft progress and no question at the end | Show `reply` as a normal chat bubble. Nothing else. `draft` is `null`. |
-| `INPUT` | The assistant is **collecting input** — it asked a question (or already collected some draft fields) and expects the user's answer | Show `reply`. Optionally render the current `draft` chips (chosen service/date/time). The user types a normal answer — the AI keeps collecting. |
-| `CONFIRM` | `draft.complete == true` — meaning **a service type has been selected** (see §4 — date/time are optional and do NOT change this state) | Show `reply`, then prepare the booking summary from `draft`. **Exception:** if `preferredDate`/`preferredTime` are still `null` (the AI is still collecting optional fields), keep the chat active and only preview the summary — the hard "Confirm" button appears once the summary is final (see the guide below). |
+| `INPUT` | The assistant is **collecting input** — it asked a question (or already collected some draft fields) and expects the user's answer | Show `reply`. Optionally render the current `draft` chips (chosen service). The user types a normal answer — the AI keeps collecting. |
+| `CONFIRM` | `draft.complete == true` — meaning **a service type has been selected** (the only draft field) | Show `reply`, then prepare the final booking summary from `draft` and show the hard "Confirm" button. The assistant does **not** collect dates/times in chat. |
 | `URGENT` | An emergency signal is active for this profile — the user described a medical emergency (chest pain, severe bleeding, breathing difficulty, loss of consciousness, …), or the flag is still set from an earlier turn (see §5) | Show `reply` **and** `urgency.advice` prominently (emergency-services message). **Disable the booking flow** and show an emergency banner. The banner stays up while `messageType == URGENT` — subsequent turns keep returning `URGENT` until it is cleared (see §5). |
 | `ERROR` | *(Reserved — not currently emitted by the server.)* | Treat like `TEXT`; if you ever receive it, show the message in an error style. |
 
@@ -80,20 +80,16 @@ Every non-streaming turn returns one JSON object:
 3. `draft` has any data **or** the reply ends with `?` → `INPUT`
 4. otherwise → `TEXT`
 
-**Important FE nuance:** `complete` flips to `true` as soon as the **service type** is chosen —
-before date/time. So a `CONFIRM` turn can still contain an open question ("What date works best?").
-Detect this via `draft.preferredDate == null && draft.preferredTime == null && reply.endsWith("?")`
-and keep collecting instead of hard-switching to a confirm screen.
+`complete` flips to `true` as soon as the **service type** is chosen. The chat does **not**
+collect preferred dates/times anymore — a `CONFIRM` turn is always final and shows the
+Confirm button immediately.
 
 ### State diagram
 
 ```
-                ┌───────────────────────────────────────────────┐
-                ▼                                               │
-        TEXT ──► INPUT ──► CONFIRM (service type chosen) ──► booking (REST)
-                  ▲             │   ▲                             │
-                  └─────────────┘   └─ still asking date/time? ──┘
-                                        (keep chat active)
+                ┌──────────────────────────────────────┐
+                ▼                                      │
+        TEXT ──► INPUT ──► CONFIRM (service chosen) ──► booking (REST)
 
         (any state) ── detects emergency ──► URGENT (sticky until cleared/reset)
         (any state) ── POST /chat/reset ──► fresh state (memory + draft + urgency cleared)
@@ -107,9 +103,7 @@ and keep collecting instead of hard-switching to a confirm screen.
 {
   "serviceTypeId": "651f074b-131e-430e-bdf2-e8b187df0d34",
   "serviceTypeName": "General Nursing",
-  "preferredDate": "2026-08-10",
-  "preferredTime": "10:00:00",
-  "serviceDescription": null,
+  "serviceDescription": "Patient: 66-year-old male, blood type O+. Conditions: Diabetes. Allergies: Penicillin. Medications: Metformin. Requested service: General Nursing.",
   "complete": true
 }
 ```
@@ -118,21 +112,12 @@ and keep collecting instead of hard-switching to a confirm screen.
 |---|---|---|
 | `serviceTypeId` | UUID \| null | Chosen service. The AI always picks the exact UUID shown by its services tool — the UI can trust it for the real booking request. The service type **can be changed mid-session** (the AI can overwrite it); the summary re-renders on every `CONFIRM` turn. |
 | `serviceTypeName` | string \| null | Human-readable service name for display. |
-| `preferredDate` | `yyyy-MM-dd` \| null | Preferred date (**optional**). |
-| `preferredTime` | `HH:mm:ss` \| null | Preferred time (**optional**) — the JSON value always includes seconds (e.g. `"10:00:00"`); the assistant collects it as `HH:mm` but the server echoes `HH:mm:ss`. Display the `HH:mm` part. |
-| `serviceDescription` | string \| null | **Reserved — always `null` in chat.** The assistant's tool is limited to `serviceTypeId` / `preferredDate` / `preferredTime`; nothing ever fills this field in the draft. The real booking request (§6) accepts an optional free-text `serviceDescription` of its own — you may pass one there if you want. |
-| `complete` | boolean | `true` **as soon as `serviceTypeId` is set** — date/time are NOT required. Never changes from `true` back to `false` within a session. |
+| `serviceDescription` | string \| null | A **short medical brief** of the patient profile (age, gender, blood type, medical conditions, allergies, medications) plus the requested service, generated server-side when the service is chosen. Pass it to the booking request (§6) — the nurse sees it as the request's description. `null` until a service is chosen. |
+| `complete` | boolean | `true` **as soon as `serviceTypeId` is set**. Never changes from `true` back to `false` within a session. |
 
-**Date/time semantics:** plain strings, no timezone conversion. Server does not know the device
-timezone — display them as-is (user-local values).
-
-**Server-side validation (dates/times):**
-- The chat **rejects** a `preferredDate` earlier than the server's today, and a
-  `preferredTime` that is already in the past when the chosen date is "today".
-- There is no HTTP error for this in chat: the tool reports `Rejected: <reason>`,
-  and the assistant simply **re-asks** for a valid value (normal `CONFIRM`/`INPUT` turn).
-- The booking endpoint (`POST /api/v1/service-requests`, §6) enforces the **same** rules and
-  returns `400 BAD_REQUEST` there.
+**No date/time in chat:** the assistant does not collect preferred dates or times. The
+`ReservationDraft` has no date fields. Clients that want to schedule may still pass optional
+`preferredDate`/`preferredTime` to the booking endpoint themselves (§6).
 
 **Draft lifecycle (important):**
 - The draft is **per `profileId`** and survives across turns and reconnects.
@@ -186,17 +171,19 @@ REST call; the **device GPS** (`latitude`/`longitude`) is supplied at that point
 ```
 POST /api/v1/service-requests
 {
-  "profileId":     draft ...        // the receiving person's profile (same as chat)
+  "profileId":     draft ...                 // the receiving person's profile (same as chat)
   "serviceTypeId": draft.serviceTypeId,
-  "preferredDate": draft.preferredDate,   // optional
-  "preferredTime": draft.preferredTime,   // optional
-  "serviceDescription": "...",            // optional free text (never taken from the draft)
+  "preferredDate": null,                     // optional — NOT collected in chat; pass your own if your UI schedules
+  "preferredTime": null,                     // optional — same as above
+  "serviceDescription": draft.serviceDescription,   // the medical brief from the draft (recommended)
   "latitude": 30.0444,
   "longitude": 31.2357
 }
 ```
 
-- Past `preferredDate`/`preferredTime` → `400` with the standard error envelope (verified message:
+- `serviceDescription` is optional in the request — if omitted/blank, the server **auto-fills**
+  it with the same medical brief (profile + requested service), so nurses always see it.
+- Past `preferredDate`/`preferredTime` (when you do pass them) → `400` with the standard error envelope (verified message:
   `"Preferred date must not be in the past"`).
 - After a **successful** creation, call `POST /api/v1/chat/reset` so the next chat session starts
   fresh. Do not reset if the booking call failed.
@@ -241,7 +228,6 @@ Two distinct error shapes exist — read the body per case:
 | Missing/invalid `profileId` or empty/blank `message` | `400` | envelope with `code: VALIDATION_FAILED` |
 | Malformed JSON body | `400` | envelope with `code: INVALID_REQUEST` |
 | `profileId` belongs to another user (or doesn't exist) | `404` | envelope with `code: RESOURCE_NOT_FOUND` (treated as not found) |
-| Past `preferredDate` / `preferredTime` (chat) | — | no HTTP error — the assistant re-asks (see §4) |
 | Past `preferredDate` / `preferredTime` (booking) | `400` | envelope with `code: BAD_REQUEST` |
 | Too many messages | `429` | envelope with `code: RATE_LIMIT_EXCEEDED` |
 | AI tool-call misuse / framework error | `400` | `{ "error": "AI_SERVICE_UNAVAILABLE", "message": "…" }` |
@@ -261,8 +247,8 @@ the access token and retry; never report it as an AI failure.
 
 ## 9. Example conversation (what the FE will receive)
 
-This shows the **real** state transitions (CONFIRM fires right after the service type is
-chosen — not after the date/time):
+This shows the **real** state transitions (CONFIRM fires as soon as the service type is chosen —
+the chat never asks for dates/times):
 
 ```
 User:  "What services do you offer?"          [chatting as the patient — the mother's profile]
@@ -270,21 +256,19 @@ User:  "What services do you offer?"          [chatting as the patient — the m
 
 User:  "I'd like general nursing"
 → messageType: CONFIRM  draft: { serviceTypeId: "f3e…", serviceTypeName: "General Nursing",
-                                 preferredDate: null, preferredTime: null, complete: true }
-   UI: preview summary; keep chat open (date/time still missing — assistant will ask)
-
-User:  "Next Friday at 10 am"
-→ messageType: CONFIRM  draft: { ..., preferredDate: "2026-08-14", preferredTime: "10:00:00", complete: true }
+                                 serviceDescription: "Patient: 66-year-old female, blood type A+. Conditions: …
+                                   Requested service: General Nursing.", complete: true }
    UI: full summary + Confirm button → POST /api/v1/service-requests (with GPS)
        → on success POST /api/v1/chat/reset
 
 User:  "Actually, wound care fits better"
-→ messageType: CONFIRM  draft: { serviceTypeId: <wound-care id>, serviceTypeName: "Wound Care", ... }
-   UI: re-render the summary with the new service (date/time preserved)
+→ messageType: CONFIRM  draft: { serviceTypeId: <wound-care id>, serviceTypeName: "Wound Care",
+                                 serviceDescription: <rebuilt brief>, complete: true }
+   UI: re-render the summary with the new service
 
-User:  "Yesterday at 9"                       // invalid value test
-→ messageType: CONFIRM  draft unchanged (completed, date/time still null)
-   reply explains that past dates are not possible and asks for a valid one — keep chatting
+User:  "What is the id of that service?"      // identifier probing
+→ the assistant must NOT reveal UUIDs — it politely explains identifiers are internal
+   and offers the plain service list instead
 
 User:  "I have severe chest pain!"
 → messageType: URGENT   urgency: { urgent: true, level: "HOSPITALIZATION", advice: "…call 123…" }
@@ -308,8 +292,8 @@ User:  "OK I'm fine now"
 
 **Pitfalls checklist (condensed rules for the UI):**
 - Show the emergency banner **once**, keep it up while turns are `URGENT` — never re-alarm.
-- `CONFIRM` while the reply still asks for date/time = preview, not the final confirm screen
-  (detect: `preferredDate == null && preferredTime == null && reply.endsWith("?")`).
+- `CONFIRM` = final: the service is chosen and the draft carries the medical `serviceDescription`
+  — show the Confirm button immediately (no date/time collection in chat).
 - Always call `/chat/reset` after a **successful** booking; never on failure.
 - Remember the **shared rate bucket**: streams cost 1 message each; two parallel
   `/chat` + `/chat/stream` turns are 2/20.
@@ -318,8 +302,8 @@ User:  "OK I'm fine now"
   clear a stale draft/urgency mid-session (and it also clears memory).
 - Cache the last `CONFIRM` draft locally — drafts are memory-only on the server and can get
   reset by a restart or by another of the user's devices.
-- Rejected values (past dates) never produce an HTTP error — the chat keeps flowing and the
-  assistant just re-asks.
+- Service UUIDs are internal: the assistant never reveals them; if the user asks for ids/codes,
+  the reply is a polite refusal plus the plain service list.
 
 ---
 

@@ -84,6 +84,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     private final SimpMessagingTemplate messagingTemplate;
     private final AfterCommitExecutor afterCommitExecutor;
     private final PatientMedicalSummaryAssembler patientMedicalSummaryAssembler;
+    private final ServiceBriefBuilder serviceBriefBuilder;
     private final AddressRepository addressRepository;
 
     @Value("${nearby.nurses.radius-km:10}")
@@ -139,10 +140,15 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
         List<NearbyNurse> nearbyNurses = findNearbyNursesFor(serviceType, request.latitude(), request.longitude());
 
+        String serviceDescription = request.serviceDescription();
+        if (serviceDescription == null || serviceDescription.isBlank()) {
+            serviceDescription = serviceBriefBuilder.build(profile.getId(), serviceType.getName());
+        }
+
         ServiceRequest serviceRequest = ServiceRequest.builder()
                 .profile(profile)
                 .serviceType(serviceType)
-                .serviceDescription(request.serviceDescription())
+                .serviceDescription(serviceDescription)
                 .latitude(request.latitude())
                 .longitude(request.longitude())
                 .status(ServiceRequestStatus.SEARCHING)

@@ -8,8 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -22,8 +20,6 @@ public class ChatDraftServiceImpl implements ChatDraftService {
     private static final class DraftState {
         UUID serviceTypeId;
         String serviceTypeName;
-        LocalDate preferredDate;
-        LocalTime preferredTime;
         String serviceDescription;
         boolean urgent;
         String urgencyLevel;
@@ -33,9 +29,12 @@ public class ChatDraftServiceImpl implements ChatDraftService {
     private final ConcurrentMap<UUID, DraftState> drafts = new ConcurrentHashMap<>();
 
     private final ServiceTypeRepository serviceTypeRepository;
+    private final ServiceBriefBuilder serviceBriefBuilder;
 
-    public ChatDraftServiceImpl(ServiceTypeRepository serviceTypeRepository) {
+    public ChatDraftServiceImpl(ServiceTypeRepository serviceTypeRepository,
+                                ServiceBriefBuilder serviceBriefBuilder) {
         this.serviceTypeRepository = serviceTypeRepository;
+        this.serviceBriefBuilder = serviceBriefBuilder;
     }
 
     @Override
@@ -54,23 +53,10 @@ public class ChatDraftServiceImpl implements ChatDraftService {
         }
         DraftState state = drafts.computeIfAbsent(profileId, k -> new DraftState());
         switch (field) {
-            case "serviceTypeId" -> validateServiceType(state, value.trim());
-            case "preferredDate" -> {
-                LocalDate date = LocalDate.parse(value.trim());
-                if (date.isBefore(LocalDate.now())) {
-                    throw new IllegalArgumentException("preferredDate must not be a past date");
-                }
-                state.preferredDate = date;
+            case "serviceTypeId" -> {
+                validateServiceType(state, value.trim());
+                state.serviceDescription = serviceBriefBuilder.build(profileId, state.serviceTypeName);
             }
-            case "preferredTime" -> {
-                LocalTime time = LocalTime.parse(value.trim());
-                LocalDate date = state.preferredDate != null ? state.preferredDate : LocalDate.now();
-                if (date.equals(LocalDate.now()) && time.isBefore(LocalTime.now())) {
-                    throw new IllegalArgumentException("preferredTime must not be in the past (today's time has already passed)");
-                }
-                state.preferredTime = time;
-            }
-            case "serviceDescription" -> state.serviceDescription = value.trim();
             default -> throw new IllegalArgumentException("Unknown draft field: " + field);
         }
         log.debug("Draft updated for profile {} field {}: {}", profileId, field, value);
@@ -119,8 +105,6 @@ public class ChatDraftServiceImpl implements ChatDraftService {
         return new ReservationDraft(
                 state.serviceTypeId,
                 state.serviceTypeName,
-                state.preferredDate,
-                state.preferredTime,
                 state.serviceDescription,
                 isComplete(state));
     }

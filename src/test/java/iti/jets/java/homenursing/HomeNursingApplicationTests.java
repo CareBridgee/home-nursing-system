@@ -1,12 +1,11 @@
 package iti.jets.java.homenursing;
 
+import iti.jets.java.homenursing.testutil.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class HomeNursingApplicationTests {
+class HomeNursingApplicationTests extends BaseIntegrationTest {
 
-//    @Test
+    @Test
     void contextLoads() {
     }
 

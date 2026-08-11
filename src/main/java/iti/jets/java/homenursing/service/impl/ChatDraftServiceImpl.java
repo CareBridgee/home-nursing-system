@@ -4,6 +4,7 @@ import iti.jets.java.homenursing.dto.chat.ReservationDraft;
 import iti.jets.java.homenursing.entity.ServiceType;
 import iti.jets.java.homenursing.repository.ServiceTypeRepository;
 import iti.jets.java.homenursing.service.ChatDraftService;
+import iti.jets.java.homenursing.util.ServiceBriefBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

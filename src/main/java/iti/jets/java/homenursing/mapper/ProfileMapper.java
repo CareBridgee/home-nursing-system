@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.mapper;
 
-import iti.jets.java.homenursing.dto.ProfileRequest;
-import iti.jets.java.homenursing.dto.ProfileResponse;
+import iti.jets.java.homenursing.dto.profile.ProfileRequest;
+import iti.jets.java.homenursing.dto.profile.ProfileResponse;
 import iti.jets.java.homenursing.entity.Profile;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

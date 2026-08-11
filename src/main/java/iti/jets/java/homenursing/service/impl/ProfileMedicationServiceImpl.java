@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service.impl;
 
-import iti.jets.java.homenursing.dto.ProfileMedicationRequest;
-import iti.jets.java.homenursing.dto.ProfileMedicationResponse;
+import iti.jets.java.homenursing.dto.profile.ProfileMedicationRequest;
+import iti.jets.java.homenursing.dto.profile.ProfileMedicationResponse;
 import iti.jets.java.homenursing.entity.Medication;
 import iti.jets.java.homenursing.entity.Profile;
 import iti.jets.java.homenursing.entity.ProfileMedication;
@@ -12,6 +12,7 @@ import iti.jets.java.homenursing.repository.MedicationRepository;
 import iti.jets.java.homenursing.repository.ProfileMedicationRepository;
 import iti.jets.java.homenursing.service.ProfileMedicationService;
 import iti.jets.java.homenursing.service.ProfileService;
+import iti.jets.java.homenursing.util.CatalogEntryCreator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;

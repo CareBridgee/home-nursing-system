@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.mapper;
 
-import iti.jets.java.homenursing.dto.MedicalConditionRequest;
-import iti.jets.java.homenursing.dto.MedicalConditionResponse;
+import iti.jets.java.homenursing.dto.catalog.MedicalConditionRequest;
+import iti.jets.java.homenursing.dto.catalog.MedicalConditionResponse;
 import iti.jets.java.homenursing.entity.MedicalCondition;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

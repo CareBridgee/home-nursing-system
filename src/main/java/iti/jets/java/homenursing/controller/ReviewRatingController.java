@@ -1,8 +1,8 @@
 package iti.jets.java.homenursing.controller;
 
 import iti.jets.java.homenursing.annotation.SortableFields;
-import iti.jets.java.homenursing.dto.ReviewRatingRequest;
-import iti.jets.java.homenursing.dto.ReviewRatingResponse;
+import iti.jets.java.homenursing.dto.review.ReviewRatingRequest;
+import iti.jets.java.homenursing.dto.review.ReviewRatingResponse;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.ReviewRatingService;
 import iti.jets.java.homenursing.util.SortSanitizer;

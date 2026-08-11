@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service;
 
-import iti.jets.java.homenursing.dto.ProfileAllergyRequest;
-import iti.jets.java.homenursing.dto.ProfileAllergyResponse;
+import iti.jets.java.homenursing.dto.profile.ProfileAllergyRequest;
+import iti.jets.java.homenursing.dto.profile.ProfileAllergyResponse;
 
 import java.util.List;
 import java.util.UUID;

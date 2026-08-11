@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.controller.admin;
 
-import iti.jets.java.homenursing.dto.AllergyRequest;
-import iti.jets.java.homenursing.dto.AllergyResponse;
+import iti.jets.java.homenursing.dto.catalog.AllergyRequest;
+import iti.jets.java.homenursing.dto.catalog.AllergyResponse;
 import iti.jets.java.homenursing.service.AllergyService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

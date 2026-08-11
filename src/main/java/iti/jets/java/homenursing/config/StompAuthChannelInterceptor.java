@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.config;
 
 import iti.jets.java.homenursing.service.TokenService;
-import iti.jets.java.homenursing.service.impl.ReservationParticipantService;
+import iti.jets.java.homenursing.util.ReservationParticipantHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -26,12 +26,12 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
     private static final Pattern CHAT_TOPIC = Pattern.compile("^/topic/chat/([0-9a-f-]+)$");
 
     private final TokenService tokenService;
-    private final ReservationParticipantService participantService;
+    private final ReservationParticipantHelper participantHelper;
 
     public StompAuthChannelInterceptor(TokenService tokenService,
-                                       ReservationParticipantService participantService) {
+                                       ReservationParticipantHelper participantHelper) {
         this.tokenService = tokenService;
-        this.participantService = participantService;
+        this.participantHelper = participantHelper;
     }
 
     @Override
@@ -153,7 +153,7 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             return;
         }
 
-        if (!participantService.isParticipant(reservationId, userId)) {
+        if (!participantHelper.isParticipant(reservationId, userId)) {
             log.warn("WS SUBSCRIBE rejected: session={}, user={}, destination={}, reason=not a participant",
                     accessor.getSessionId(), userId, destination);
             throw new SecurityException("Not a participant of this reservation");

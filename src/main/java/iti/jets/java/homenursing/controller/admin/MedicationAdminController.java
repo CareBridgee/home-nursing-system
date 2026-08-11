@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.controller.admin;
 
-import iti.jets.java.homenursing.dto.MedicationRequest;
-import iti.jets.java.homenursing.dto.MedicationResponse;
+import iti.jets.java.homenursing.dto.catalog.MedicationRequest;
+import iti.jets.java.homenursing.dto.catalog.MedicationResponse;
 import iti.jets.java.homenursing.service.MedicationService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

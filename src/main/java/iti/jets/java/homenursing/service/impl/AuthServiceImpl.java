@@ -1,11 +1,11 @@
 package iti.jets.java.homenursing.service.impl;
 
 
-import iti.jets.java.homenursing.dto.DevOtpResponse;
-import iti.jets.java.homenursing.dto.NurseTokenPair;
-import iti.jets.java.homenursing.dto.NurseUserResponse;
-import iti.jets.java.homenursing.dto.TokenPair;
-import iti.jets.java.homenursing.dto.UserResponse;
+import iti.jets.java.homenursing.dto.auth.DevOtpResponse;
+import iti.jets.java.homenursing.dto.auth.NurseTokenPair;
+import iti.jets.java.homenursing.dto.nurse.NurseUserResponse;
+import iti.jets.java.homenursing.dto.auth.TokenPair;
+import iti.jets.java.homenursing.dto.user.UserResponse;
 import iti.jets.java.homenursing.dto.nurse.NurseAuthResponse;
 import iti.jets.java.homenursing.entity.Nurse;
 import iti.jets.java.homenursing.entity.User;

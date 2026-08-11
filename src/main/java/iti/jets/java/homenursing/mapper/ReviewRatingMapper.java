@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.mapper;
 
-import iti.jets.java.homenursing.dto.ReviewRatingRequest;
-import iti.jets.java.homenursing.dto.ReviewRatingResponse;
+import iti.jets.java.homenursing.dto.review.ReviewRatingRequest;
+import iti.jets.java.homenursing.dto.review.ReviewRatingResponse;
 import iti.jets.java.homenursing.entity.ReviewRating;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

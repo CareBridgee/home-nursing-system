@@ -1,6 +1,6 @@
 package iti.jets.java.homenursing.controller;
 
-import iti.jets.java.homenursing.dto.ChatMessageResponse;
+import iti.jets.java.homenursing.dto.chat.ChatMessageResponse;
 import iti.jets.java.homenursing.dto.chat.SendMessageRequest;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.ChatMessageService;

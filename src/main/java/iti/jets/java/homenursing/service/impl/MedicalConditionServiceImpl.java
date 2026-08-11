@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service.impl;
 
-import iti.jets.java.homenursing.dto.MedicalConditionRequest;
-import iti.jets.java.homenursing.dto.MedicalConditionResponse;
+import iti.jets.java.homenursing.dto.catalog.MedicalConditionRequest;
+import iti.jets.java.homenursing.dto.catalog.MedicalConditionResponse;
 import iti.jets.java.homenursing.entity.MedicalCondition;
 import iti.jets.java.homenursing.entity.enums.CatalogSource;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;

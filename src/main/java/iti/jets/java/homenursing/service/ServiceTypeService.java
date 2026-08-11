@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service;
 
-import iti.jets.java.homenursing.dto.ServiceTypeRequest;
-import iti.jets.java.homenursing.dto.ServiceTypeResponse;
+import iti.jets.java.homenursing.dto.catalog.ServiceTypeRequest;
+import iti.jets.java.homenursing.dto.catalog.ServiceTypeResponse;
 
 import java.util.List;
 import java.util.UUID;

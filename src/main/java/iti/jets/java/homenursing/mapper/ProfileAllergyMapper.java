@@ -1,6 +1,6 @@
 package iti.jets.java.homenursing.mapper;
 
-import iti.jets.java.homenursing.dto.ProfileAllergyResponse;
+import iti.jets.java.homenursing.dto.profile.ProfileAllergyResponse;
 import iti.jets.java.homenursing.entity.ProfileAllergy;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

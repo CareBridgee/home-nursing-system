@@ -1,6 +1,6 @@
 package iti.jets.java.homenursing.service;
 
-import iti.jets.java.homenursing.dto.ChatMessageResponse;
+import iti.jets.java.homenursing.dto.chat.ChatMessageResponse;
 
 import java.time.LocalDateTime;
 import java.util.List;

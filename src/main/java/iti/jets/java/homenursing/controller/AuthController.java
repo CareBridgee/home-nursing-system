@@ -1,12 +1,12 @@
 package iti.jets.java.homenursing.controller;
 
-import iti.jets.java.homenursing.dto.DevOtpResponse;
-import iti.jets.java.homenursing.dto.LoginRequest;
-import iti.jets.java.homenursing.dto.RefreshRequest;
-import iti.jets.java.homenursing.dto.NurseTokenPair;
-import iti.jets.java.homenursing.dto.TokenPair;
-import iti.jets.java.homenursing.dto.UserResponse;
-import iti.jets.java.homenursing.dto.VerifyOtpRequest;
+import iti.jets.java.homenursing.dto.auth.DevOtpResponse;
+import iti.jets.java.homenursing.dto.auth.LoginRequest;
+import iti.jets.java.homenursing.dto.auth.RefreshRequest;
+import iti.jets.java.homenursing.dto.auth.NurseTokenPair;
+import iti.jets.java.homenursing.dto.auth.TokenPair;
+import iti.jets.java.homenursing.dto.user.UserResponse;
+import iti.jets.java.homenursing.dto.auth.VerifyOtpRequest;
 import iti.jets.java.homenursing.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service;
 
-import iti.jets.java.homenursing.dto.ProfileMedicationRequest;
-import iti.jets.java.homenursing.dto.ProfileMedicationResponse;
+import iti.jets.java.homenursing.dto.profile.ProfileMedicationRequest;
+import iti.jets.java.homenursing.dto.profile.ProfileMedicationResponse;
 
 import java.util.List;
 import java.util.UUID;

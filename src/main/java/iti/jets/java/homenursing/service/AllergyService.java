@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service;
 
-import iti.jets.java.homenursing.dto.AllergyRequest;
-import iti.jets.java.homenursing.dto.AllergyResponse;
+import iti.jets.java.homenursing.dto.catalog.AllergyRequest;
+import iti.jets.java.homenursing.dto.catalog.AllergyResponse;
 import iti.jets.java.homenursing.entity.enums.CatalogSource;
 
 import java.util.List;

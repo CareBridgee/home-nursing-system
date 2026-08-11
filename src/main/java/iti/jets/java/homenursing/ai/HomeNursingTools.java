@@ -1,6 +1,6 @@
 package iti.jets.java.homenursing.ai;
 
-import iti.jets.java.homenursing.dto.ServiceTypeResponse;
+import iti.jets.java.homenursing.dto.catalog.ServiceTypeResponse;
 import iti.jets.java.homenursing.service.ServiceTypeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

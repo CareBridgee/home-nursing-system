@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.controller;
 
-import iti.jets.java.homenursing.dto.MedicalHistoryRequest;
-import iti.jets.java.homenursing.dto.MedicalHistoryResponse;
+import iti.jets.java.homenursing.dto.profile.MedicalHistoryRequest;
+import iti.jets.java.homenursing.dto.profile.MedicalHistoryResponse;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.MedicalHistoryService;
 import jakarta.validation.Valid;

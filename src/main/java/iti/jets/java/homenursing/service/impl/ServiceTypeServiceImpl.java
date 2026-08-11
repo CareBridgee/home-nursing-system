@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service.impl;
 
-import iti.jets.java.homenursing.dto.ServiceTypeRequest;
-import iti.jets.java.homenursing.dto.ServiceTypeResponse;
+import iti.jets.java.homenursing.dto.catalog.ServiceTypeRequest;
+import iti.jets.java.homenursing.dto.catalog.ServiceTypeResponse;
 import iti.jets.java.homenursing.entity.ServiceType;
 import iti.jets.java.homenursing.exception.BadRequestException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;

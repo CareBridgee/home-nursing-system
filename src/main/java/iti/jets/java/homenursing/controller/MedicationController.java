@@ -1,6 +1,6 @@
 package iti.jets.java.homenursing.controller;
 
-import iti.jets.java.homenursing.dto.MedicationResponse;
+import iti.jets.java.homenursing.dto.catalog.MedicationResponse;
 import iti.jets.java.homenursing.entity.enums.CatalogSource;
 import iti.jets.java.homenursing.service.MedicationService;
 import org.springframework.http.ResponseEntity;

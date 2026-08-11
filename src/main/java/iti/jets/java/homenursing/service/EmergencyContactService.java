@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service;
 
-import iti.jets.java.homenursing.dto.EmergencyContactRequest;
-import iti.jets.java.homenursing.dto.EmergencyContactResponse;
+import iti.jets.java.homenursing.dto.profile.EmergencyContactRequest;
+import iti.jets.java.homenursing.dto.profile.EmergencyContactResponse;
 
 import java.util.List;
 import java.util.UUID;

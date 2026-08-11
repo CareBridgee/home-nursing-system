@@ -17,7 +17,7 @@ import iti.jets.java.homenursing.entity.ServiceType;
 import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.ServiceRequestRepository;
 import iti.jets.java.homenursing.security.SecurityUtils;
-import iti.jets.java.homenursing.service.PriceEstimator;
+import iti.jets.java.homenursing.util.PriceEstimator;
 import iti.jets.java.homenursing.service.ServiceRequestService;
 import iti.jets.java.homenursing.util.ProfileImageUtil;
 import jakarta.validation.Valid;

@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.controller;
 
-import iti.jets.java.homenursing.dto.EmergencyContactRequest;
-import iti.jets.java.homenursing.dto.EmergencyContactResponse;
+import iti.jets.java.homenursing.dto.profile.EmergencyContactRequest;
+import iti.jets.java.homenursing.dto.profile.EmergencyContactResponse;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.EmergencyContactService;
 import jakarta.validation.Valid;

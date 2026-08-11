@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.controller;
 
-import iti.jets.java.homenursing.dto.ProfileAllergyRequest;
-import iti.jets.java.homenursing.dto.ProfileAllergyResponse;
+import iti.jets.java.homenursing.dto.profile.ProfileAllergyRequest;
+import iti.jets.java.homenursing.dto.profile.ProfileAllergyResponse;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.ProfileAllergyService;
 import jakarta.validation.Valid;

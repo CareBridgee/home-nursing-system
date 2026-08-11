@@ -1,6 +1,6 @@
 package iti.jets.java.homenursing.service.impl;
 
-import iti.jets.java.homenursing.dto.ChatMessageResponse;
+import iti.jets.java.homenursing.dto.chat.ChatMessageResponse;
 import iti.jets.java.homenursing.dto.notification.NotificationRequest;
 import iti.jets.java.homenursing.entity.ChatMessage;
 import iti.jets.java.homenursing.entity.ServiceRequest;
@@ -15,6 +15,7 @@ import iti.jets.java.homenursing.repository.UserRepository;
 import iti.jets.java.homenursing.service.ChatMessageService;
 import iti.jets.java.homenursing.service.NotificationService;
 import iti.jets.java.homenursing.util.AfterCommitExecutor;
+import iti.jets.java.homenursing.util.ReservationParticipantHelper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -37,7 +38,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     private final ChatMessageRepository chatMessageRepository;
     private final ServiceRequestRepository serviceRequestRepository;
     private final UserRepository userRepository;
-    private final ReservationParticipantService participantService;
+    private final ReservationParticipantHelper participantHelper;
     private final NotificationService notificationService;
     private final SimpMessagingTemplate messagingTemplate;
     private final AfterCommitExecutor afterCommitExecutor;
@@ -45,7 +46,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     @Override
     @Transactional
     public ChatMessageResponse sendMessage(UUID reservationId, UUID senderUserId, String content) {
-        if (!participantService.isParticipant(reservationId, senderUserId)) {
+        if (!participantHelper.isParticipant(reservationId, senderUserId)) {
             throw new ForbiddenException("Not a participant of this reservation");
         }
         if (content == null || content.isBlank()) {
@@ -77,7 +78,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     @Override
     @Transactional(readOnly = true)
     public List<ChatMessageResponse> getMessages(UUID reservationId, UUID userId, LocalDateTime after) {
-        if (!participantService.isParticipant(reservationId, userId)) {
+        if (!participantHelper.isParticipant(reservationId, userId)) {
             throw new ForbiddenException("Not a participant of this reservation");
         }
 

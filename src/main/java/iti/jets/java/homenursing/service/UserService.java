@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service;
 
-import iti.jets.java.homenursing.dto.UserResponse;
-import iti.jets.java.homenursing.dto.UserUpdateRequest;
+import iti.jets.java.homenursing.dto.user.UserResponse;
+import iti.jets.java.homenursing.dto.user.UserUpdateRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.mapper;
 
-import iti.jets.java.homenursing.dto.ServiceTypeRequest;
-import iti.jets.java.homenursing.dto.ServiceTypeResponse;
+import iti.jets.java.homenursing.dto.catalog.ServiceTypeRequest;
+import iti.jets.java.homenursing.dto.catalog.ServiceTypeResponse;
 import iti.jets.java.homenursing.entity.ServiceType;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

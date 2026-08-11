@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.controller;
 
-import iti.jets.java.homenursing.dto.AddressRequest;
-import iti.jets.java.homenursing.dto.AddressResponse;
+import iti.jets.java.homenursing.dto.profile.AddressRequest;
+import iti.jets.java.homenursing.dto.profile.AddressResponse;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.AddressService;
 import jakarta.validation.Valid;

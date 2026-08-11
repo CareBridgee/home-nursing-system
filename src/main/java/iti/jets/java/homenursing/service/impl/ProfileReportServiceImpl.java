@@ -1,6 +1,9 @@
 package iti.jets.java.homenursing.service.impl;
 
-import iti.jets.java.homenursing.dto.*;
+import iti.jets.java.homenursing.dto.profile.MedicalHistoryResponse;
+import iti.jets.java.homenursing.dto.profile.ProfileAllergyResponse;
+import iti.jets.java.homenursing.dto.profile.ProfileMedicalConditionResponse;
+import iti.jets.java.homenursing.dto.profile.ProfileMedicationResponse;
 import iti.jets.java.homenursing.entity.Profile;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.repository.ServiceRequestRepository;

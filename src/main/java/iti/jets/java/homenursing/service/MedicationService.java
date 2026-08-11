@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service;
 
-import iti.jets.java.homenursing.dto.MedicationRequest;
-import iti.jets.java.homenursing.dto.MedicationResponse;
+import iti.jets.java.homenursing.dto.catalog.MedicationRequest;
+import iti.jets.java.homenursing.dto.catalog.MedicationResponse;
 import iti.jets.java.homenursing.entity.enums.CatalogSource;
 
 import java.util.List;

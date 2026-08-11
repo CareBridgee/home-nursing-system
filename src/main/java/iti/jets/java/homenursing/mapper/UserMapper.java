@@ -1,9 +1,9 @@
 package iti.jets.java.homenursing.mapper;
 
-import iti.jets.java.homenursing.dto.UserRequest;
-import iti.jets.java.homenursing.dto.UserResponse;
+import iti.jets.java.homenursing.dto.user.UserRequest;
+import iti.jets.java.homenursing.dto.user.UserResponse;
 import iti.jets.java.homenursing.entity.User;
-import iti.jets.java.homenursing.service.ProfileCompletionChecker;
+import iti.jets.java.homenursing.util.ProfileCompletionChecker;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

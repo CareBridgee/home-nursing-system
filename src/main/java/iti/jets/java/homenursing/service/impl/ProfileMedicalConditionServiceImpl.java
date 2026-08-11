@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service.impl;
 
-import iti.jets.java.homenursing.dto.ProfileMedicalConditionRequest;
-import iti.jets.java.homenursing.dto.ProfileMedicalConditionResponse;
+import iti.jets.java.homenursing.dto.profile.ProfileMedicalConditionRequest;
+import iti.jets.java.homenursing.dto.profile.ProfileMedicalConditionResponse;
 import iti.jets.java.homenursing.entity.MedicalCondition;
 import iti.jets.java.homenursing.entity.Profile;
 import iti.jets.java.homenursing.entity.ProfileMedicalCondition;
@@ -12,6 +12,7 @@ import iti.jets.java.homenursing.repository.MedicalConditionRepository;
 import iti.jets.java.homenursing.repository.ProfileMedicalConditionRepository;
 import iti.jets.java.homenursing.service.ProfileMedicalConditionService;
 import iti.jets.java.homenursing.service.ProfileService;
+import iti.jets.java.homenursing.util.CatalogEntryCreator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;

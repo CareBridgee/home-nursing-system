@@ -11,6 +11,7 @@ import iti.jets.java.homenursing.repository.NotificationRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
 import iti.jets.java.homenursing.service.NotificationService;
 import iti.jets.java.homenursing.util.AfterCommitExecutor;
+import iti.jets.java.homenursing.util.NotificationDispatcher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

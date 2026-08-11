@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service;
 
-import iti.jets.java.homenursing.dto.ReviewRatingRequest;
-import iti.jets.java.homenursing.dto.ReviewRatingResponse;
+import iti.jets.java.homenursing.dto.review.ReviewRatingRequest;
+import iti.jets.java.homenursing.dto.review.ReviewRatingResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

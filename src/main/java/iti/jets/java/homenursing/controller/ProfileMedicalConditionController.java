@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.controller;
 
-import iti.jets.java.homenursing.dto.ProfileMedicalConditionRequest;
-import iti.jets.java.homenursing.dto.ProfileMedicalConditionResponse;
+import iti.jets.java.homenursing.dto.profile.ProfileMedicalConditionRequest;
+import iti.jets.java.homenursing.dto.profile.ProfileMedicalConditionResponse;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.ProfileMedicalConditionService;
 import jakarta.validation.Valid;

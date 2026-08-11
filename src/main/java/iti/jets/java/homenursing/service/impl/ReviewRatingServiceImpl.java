@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service.impl;
 
-import iti.jets.java.homenursing.dto.ReviewRatingRequest;
-import iti.jets.java.homenursing.dto.ReviewRatingResponse;
+import iti.jets.java.homenursing.dto.review.ReviewRatingRequest;
+import iti.jets.java.homenursing.dto.review.ReviewRatingResponse;
 import iti.jets.java.homenursing.entity.ReviewRating;
 import iti.jets.java.homenursing.entity.ServiceRequest;
 import iti.jets.java.homenursing.entity.User;
@@ -12,8 +12,8 @@ import iti.jets.java.homenursing.mapper.ReviewRatingMapper;
 import iti.jets.java.homenursing.repository.ReviewRatingRepository;
 import iti.jets.java.homenursing.repository.ServiceRequestRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
-import iti.jets.java.homenursing.service.NurseRatingUpdater;
 import iti.jets.java.homenursing.service.ReviewRatingService;
+import iti.jets.java.homenursing.util.NurseRatingUpdater;
 import iti.jets.java.homenursing.util.SortSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

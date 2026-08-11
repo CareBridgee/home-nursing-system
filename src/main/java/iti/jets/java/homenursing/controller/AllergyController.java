@@ -1,6 +1,6 @@
 package iti.jets.java.homenursing.controller;
 
-import iti.jets.java.homenursing.dto.AllergyResponse;
+import iti.jets.java.homenursing.dto.catalog.AllergyResponse;
 import iti.jets.java.homenursing.entity.enums.CatalogSource;
 import iti.jets.java.homenursing.service.AllergyService;
 import org.springframework.http.ResponseEntity;

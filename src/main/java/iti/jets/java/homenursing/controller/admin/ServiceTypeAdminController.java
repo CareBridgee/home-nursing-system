@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.controller.admin;
 
-import iti.jets.java.homenursing.dto.ServiceTypeRequest;
-import iti.jets.java.homenursing.dto.ServiceTypeResponse;
+import iti.jets.java.homenursing.dto.catalog.ServiceTypeRequest;
+import iti.jets.java.homenursing.dto.catalog.ServiceTypeResponse;
 import iti.jets.java.homenursing.service.ServiceTypeService;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;

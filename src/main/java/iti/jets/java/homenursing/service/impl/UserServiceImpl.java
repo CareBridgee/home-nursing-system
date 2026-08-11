@@ -1,7 +1,7 @@
 package iti.jets.java.homenursing.service.impl;
 
-import iti.jets.java.homenursing.dto.UserResponse;
-import iti.jets.java.homenursing.dto.UserUpdateRequest;
+import iti.jets.java.homenursing.dto.user.UserResponse;
+import iti.jets.java.homenursing.dto.user.UserUpdateRequest;
 import iti.jets.java.homenursing.entity.User;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.UserMapper;
@@ -11,9 +11,9 @@ import iti.jets.java.homenursing.repository.MedicalHistoryRepository;
 import iti.jets.java.homenursing.repository.ProfileRepository;
 import iti.jets.java.homenursing.repository.ReviewRatingRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
-import iti.jets.java.homenursing.service.NurseRatingUpdater;
-import iti.jets.java.homenursing.service.UserService;
 import iti.jets.java.homenursing.service.CloudinaryService;
+import iti.jets.java.homenursing.service.UserService;
+import iti.jets.java.homenursing.util.NurseRatingUpdater;
 import iti.jets.java.homenursing.util.SortSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

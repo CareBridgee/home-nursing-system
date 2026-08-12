@@ -204,6 +204,9 @@ public class AuthServiceImpl implements AuthService {
         String phone = normalizePhoneNumber(phoneNumber);
         User user = userRepository.findByPhoneNumberWithProfiles(phone)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (Boolean.TRUE.equals(user.getIsDeleted())) {
+            throw new ResourceNotFoundException("User not found");
+        }
         return userMapper.toResponse(user);
     }
 

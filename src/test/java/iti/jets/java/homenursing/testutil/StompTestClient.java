@@ -1,17 +1,23 @@
 package iti.jets.java.homenursing.testutil;
 
-import org.springframework.messaging.converter.StringMessageConverter;
+import org.springframework.lang.Nullable;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.converter.AbstractMessageConverter;
+import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.http.MediaType;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.io.Closeable;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,14 +59,15 @@ public class StompTestClient implements Closeable {
     public StompTestClient(String wsUrl, String bearer) {
         this.wsUrl = wsUrl;
         this.bearer = bearer;
-        stomp.setMessageConverter(new StringMessageConverter());
+        stomp.setMessageConverter(new CompositeMessageConverter(List.of(new JsonStringConverter())));
     }
 
     /** Connects; throws if CONNECTED is not received within the budget. */
     public StompTestClient connect(Duration timeout) {
         StompHeaders headers = new StompHeaders();
         if (bearer != null) {
-            headers.add("Authorization", "Bearer " + bearer);
+            String value = bearer.trim().startsWith("Bearer ") ? bearer.trim() : "Bearer " + bearer.trim();
+            headers.add("Authorization", value);
         }
         StompSessionHandlerAdapter handler = new StompSessionHandlerAdapter() {
             @Override
@@ -101,7 +108,7 @@ public class StompTestClient implements Closeable {
         return sub.id;
     }
 
-    /** Sends a raw string payload to the given destination. */
+    /** Sends a raw string payload to the given destination (serialized as JSON by the client converter). */
     public void send(String destination, String payload) {
         session.send(destination, payload);
     }
@@ -162,5 +169,40 @@ public class StompTestClient implements Closeable {
                 .filter(s -> s.id.equals(id))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Unknown subscription id: " + id));
+    }
+
+    /**
+     * Minimal JSON message converter: writes String payloads as UTF-8 JSON (so the server
+     * can convert them into @Payload DTOs) and reads incoming frames back into Strings.
+     */
+    private static final class JsonStringConverter extends AbstractMessageConverter {
+
+        private JsonStringConverter() {
+            super(MediaType.APPLICATION_JSON);
+        }
+
+        @Override
+        protected boolean supports(Class<?> clazz) {
+            return String.class.isAssignableFrom(clazz);
+        }
+
+        @Override
+        protected Object convertFromInternal(Message<?> message, Class<?> targetClass,
+                                             @Nullable Object conversionHint) {
+            Object payload = message.getPayload();
+            if (payload instanceof byte[] bytes) {
+                return new String(bytes, StandardCharsets.UTF_8);
+            }
+            if (payload instanceof String s) {
+                return s;
+            }
+            return null;
+        }
+
+        @Override
+        protected Object convertToInternal(Object payload, @Nullable MessageHeaders headers,
+                                           @Nullable Object conversionHint) {
+            return ((String) payload).getBytes(StandardCharsets.UTF_8);
+        }
     }
 }

@@ -52,11 +52,26 @@ class SecurityConfigIntegrationTest extends ApiIntegrationTestBase {
     }
 
     @Test
+    void nonBearerHeader_isIgnored_andLeavesRequestAnonymous() throws Exception {
+        mvc.perform(get("/api/v1/nurses").header("Authorization", "Basic Zm9vOmJhcg=="))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void refreshTokenPresentedAsAccess_isRejectedWith401() throws Exception {
+        mvc.perform(get("/api/v1/nurses").header("Authorization", "Bearer " + tokenWithType("refresh")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void adminEndpoints_requireAdminApiKey() throws Exception {
         mvc.perform(get("/api/v1/admin/nurses"))
                 .andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/admin/nurses")
                         .header(DevOtpAuth.ADMIN_KEY_HEADER, "wrong-key"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/admin/nurses")
+                        .header(DevOtpAuth.ADMIN_KEY_HEADER, "   "))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -70,13 +85,25 @@ class SecurityConfigIntegrationTest extends ApiIntegrationTestBase {
     }
 
     private String expiredAccessToken() {
-        long now = System.currentTimeMillis();
         return Jwts.builder()
                 .setSubject(UUID.randomUUID().toString())
                 .claim("type", "access")
                 .claim("role", "USER")
-                .setIssuedAt(new Date(now - 3_600_000))
-                .setExpiration(new Date(now - 3_000_000))
+                .setIssuedAt(new Date(System.currentTimeMillis() - 3_600_000))
+                .setExpiration(new Date(System.currentTimeMillis() - 3_000_000))
+                .signWith(Keys.hmacShaKeyFor(
+                                "test-jwt-secret-for-tests-1234567890".getBytes(StandardCharsets.UTF_8)),
+                        SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    private String tokenWithType(String type) {
+        return Jwts.builder()
+                .setSubject(UUID.randomUUID().toString())
+                .claim("type", type)
+                .claim("role", "USER")
+                .setIssuedAt(new Date(System.currentTimeMillis() - 60_000))
+                .setExpiration(new Date(System.currentTimeMillis() + 3_600_000))
                 .signWith(Keys.hmacShaKeyFor(
                                 "test-jwt-secret-for-tests-1234567890".getBytes(StandardCharsets.UTF_8)),
                         SignatureAlgorithm.HS256)

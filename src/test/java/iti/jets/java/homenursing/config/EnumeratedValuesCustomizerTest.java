@@ -13,8 +13,10 @@ import io.swagger.v3.oas.models.parameters.Parameter;
 import iti.jets.java.homenursing.annotation.AllowedValues;
 import iti.jets.java.homenursing.annotation.SortableFields;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -577,6 +579,71 @@ class EnumeratedValuesCustomizerTest {
         assertThat(schema.getEnum()).isNull();
     }
 
+    @Test
+    void dtoWithoutAllowedValuesFields_contributesNoDtoValues() throws Exception {
+        when(requestMappingHandlerMapping.getHandlerMethods()).thenReturn(Map.of(
+                mapping("/api/plain", RequestMethod.POST), handler(controller, "plainBody", PlainDto.class)));
+        Components components = new Components()
+                .addSchemas("PlainDto", new Schema<>().addProperty("name", new Schema<>().type("string")));
+        OpenAPI openApi = new OpenAPI().components(components).paths(new Paths().addPathItem("/api/plain",
+                new PathItem().post(jsonBodyOperation(null, schemaWithRef("#/components/schemas/PlainDto")))));
+
+        customizer.customise(openApi);
+
+        assertThat(enumOfProperty(openApi.getComponents(), "PlainDto", "name")).isNull();
+    }
+
+    @Test
+    void interfaceTypedParameter_scansToNullSuperclass() throws Exception {
+        when(requestMappingHandlerMapping.getHandlerMethods()).thenReturn(Map.of(
+                mapping("/api/plain", RequestMethod.POST), handler(controller, "ifaceBody", ValueFilter.class)));
+        OpenAPI openApi = new OpenAPI().paths(new Paths().addPathItem("/api/plain",
+                new PathItem().post(jsonBodyOperation(null, null))));
+
+        customizer.customise(openApi);
+
+        assertThat(openApi.getComponents()).isNull();
+    }
+
+    @Test
+    void legacyConstructorMappingWithoutPatternsAndMethodsIsSkipped() throws Exception {
+        when(requestMappingHandlerMapping.getHandlerMethods()).thenReturn(Map.of(
+                new RequestMappingInfo(
+                        new PatternsRequestCondition(),
+                        new RequestMethodsRequestCondition(),
+                        null, null, null, null, null, null),
+                handler(controller, "noParams")));
+        Schema<String> sortSchema = new Schema<>();
+        OpenAPI openApi = new OpenAPI().paths(new Paths().addPathItem("/api/nomethods",
+                new PathItem().get(jsonBodyOperation(sortParam("Sort", sortSchema), null))));
+
+        customizer.customise(openApi);
+
+        assertThat(sortSchema.getEnum()).isNull();
+    }
+
+    @Test
+    void mappingWithNullPatternsConditionAndNoPatternsIsSkipped() throws Exception {
+        when(requestMappingHandlerMapping.getHandlerMethods()).thenReturn(Map.of(
+                new RequestMappingInfo(
+                        null,
+                        new RequestMethodsRequestCondition(RequestMethod.GET),
+                        null, null, null, null, null, null),
+                handler(controller, "noParams"),
+                new RequestMappingInfo(
+                        null,
+                        new RequestMethodsRequestCondition(),
+                        null, null, null, null, null, null),
+                handler(controller, "noParams")));
+        Schema<String> sortSchema = new Schema<>();
+        OpenAPI openApi = new OpenAPI().paths(new Paths().addPathItem("/api/nomethods",
+                new PathItem().get(jsonBodyOperation(sortParam("Sort", sortSchema), null))));
+
+        customizer.customise(openApi);
+
+        assertThat(sortSchema.getEnum()).isNull();
+    }
+
     static class TestController {
 
         @SortableFields("id,rating")
@@ -597,6 +664,12 @@ class EnumeratedValuesCustomizerTest {
         }
 
         public void nested(NestedDto dto) {
+        }
+
+        public void plainBody(PlainDto dto) {
+        }
+
+        public void ifaceBody(ValueFilter filter) {
         }
 
         public void noParams() {
@@ -625,5 +698,12 @@ class EnumeratedValuesCustomizerTest {
     static class NestedDto {
         @AllowedValues({"NEW", "OLD"})
         public String level;
+    }
+
+    interface ValueFilter {
+    }
+
+    static class PlainDto {
+        public String name;
     }
 }

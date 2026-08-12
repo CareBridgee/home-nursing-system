@@ -22,6 +22,7 @@ import reactor.core.publisher.Flux;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -33,6 +34,7 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -160,6 +162,37 @@ class ChatControllerTest {
     }
 
     @Test
+    void unwrapProviderException_returnsGenAiIOExceptionDirectly() throws Exception {
+        GenAiIOException io = new GenAiIOException("network down");
+        RuntimeException unwrapped = (RuntimeException) invoke("unwrapProviderException",
+                new Class<?>[]{Throwable.class}, io);
+        assertThat(unwrapped, is(io));
+    }
+
+    @Test
+    void unwrapProviderException_returnsClientExceptionDirectly() throws Exception {
+        com.google.genai.errors.ClientException client =
+                new com.google.genai.errors.ClientException(429, "RATE_LIMIT", "too fast");
+        RuntimeException unwrapped = (RuntimeException) invoke("unwrapProviderException",
+                new Class<?>[]{Throwable.class}, client);
+        assertThat(unwrapped, is(client));
+    }
+
+    @Test
+    void unwrapProviderException_selfCauseLoop_terminates() throws Exception {
+        Throwable self = new Throwable("cyclic cause") {
+            @Override
+            public synchronized Throwable getCause() {
+                return this;
+            }
+        };
+        RuntimeException unwrapped = (RuntimeException) invoke("unwrapProviderException",
+                new Class<?>[]{Throwable.class}, self);
+        assertThat(unwrapped.getMessage(), is("cyclic cause"));
+        assertThat(unwrapped.getCause(), is(self));
+    }
+
+    @Test
     void draftInstruction_withDataButNoServiceType_marksItNotSet() throws Exception {
         ReservationDraft draft = new ReservationDraft(null, "Nursing", "Care at home", false);
         String instruction = (String) invoke("draftInstruction",
@@ -177,6 +210,85 @@ class ChatControllerTest {
         when(tokenService.increment("chat:" + PROFILE_ID)).thenReturn(21L);
 
         assertThrows(RateLimitException.class, () -> invoke("checkRateLimit", new Class<?>[]{}));
+    }
+
+    @Test
+    void checkRateLimit_firstRequest_setsWindowExpiry() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(PROFILE_ID, null));
+        Field max = ChatController.class.getDeclaredField("rateLimitMaxRequests");
+        max.setAccessible(true);
+        max.setLong(controller, 20L);
+        when(tokenService.increment("chat:" + PROFILE_ID)).thenReturn(1L);
+
+        invoke("checkRateLimit", new Class<?>[]{});
+
+        verify(tokenService).expire(eq("chat:" + PROFILE_ID), any(Duration.class));
+    }
+
+    @Test
+    void checkRateLimit_withinBudget_doesNotThrow() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(PROFILE_ID, null));
+        Field max = ChatController.class.getDeclaredField("rateLimitMaxRequests");
+        max.setAccessible(true);
+        max.setLong(controller, 20L);
+        when(tokenService.increment("chat:" + PROFILE_ID)).thenReturn(5L);
+
+        invoke("checkRateLimit", new Class<?>[]{});
+    }
+
+    @Test
+    void buildResponse_emptyDraftWithQuestionReply_isInput() throws Exception {
+        when(chatDraftService.getDraft(PROFILE_ID)).thenReturn(new ReservationDraft(null, null, null, false));
+        when(chatDraftService.isUrgent(PROFILE_ID)).thenReturn(false);
+
+        ChatTurnResponse response = (ChatTurnResponse) invoke("buildResponse",
+                new Class<?>[]{UUID.class, String.class}, PROFILE_ID, "should I book?");
+        assertThat(response.messageType().name(), is("INPUT"));
+    }
+
+    @Test
+    void buildResponse_draftWithAnyData_isInput() throws Exception {
+        ReservationDraft draft = draftWithData();
+        when(chatDraftService.getDraft(PROFILE_ID)).thenReturn(draft);
+        when(chatDraftService.isUrgent(PROFILE_ID)).thenReturn(false);
+
+        ChatTurnResponse response = (ChatTurnResponse) invoke("buildResponse",
+                new Class<?>[]{UUID.class, String.class}, PROFILE_ID, "some reply");
+        assertThat(response.messageType().name(), is("INPUT"));
+        assertThat(response.draft(), is(draft));
+    }
+
+    @Test
+    void buildResponse_nullReply_emptyDraft_isPlainText() throws Exception {
+        when(chatDraftService.getDraft(PROFILE_ID)).thenReturn(new ReservationDraft(null, null, null, false));
+        when(chatDraftService.isUrgent(PROFILE_ID)).thenReturn(false);
+
+        ChatTurnResponse response = (ChatTurnResponse) invoke("buildResponse",
+                new Class<?>[]{UUID.class, String.class}, PROFILE_ID, null);
+        assertThat(response.messageType().name(), is("TEXT"));
+    }
+
+    @Test
+    void checkRateLimit_nullCounter_doesNotThrow() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(PROFILE_ID, null));
+        when(tokenService.increment("chat:" + PROFILE_ID)).thenReturn(null);
+
+        invoke("checkRateLimit", new Class<?>[]{});
+
+        verify(tokenService, org.mockito.Mockito.never()).expire(anyString(), any(Duration.class));
+    }
+
+    @Test
+    void buildResponse_emptyDraftWithoutQuestion_isPlainText() throws Exception {
+        when(chatDraftService.getDraft(PROFILE_ID)).thenReturn(new ReservationDraft(null, null, null, false));
+        when(chatDraftService.isUrgent(PROFILE_ID)).thenReturn(false);
+
+        ChatTurnResponse response = (ChatTurnResponse) invoke("buildResponse",
+                new Class<?>[]{UUID.class, String.class}, PROFILE_ID, "ok");
+        assertThat(response.messageType().name(), is("TEXT"));
     }
 
     @Test

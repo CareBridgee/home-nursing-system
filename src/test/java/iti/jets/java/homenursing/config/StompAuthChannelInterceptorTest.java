@@ -71,6 +71,35 @@ class StompAuthChannelInterceptorTest {
     }
 
     @Test
+    void connect_withEmptyAuthorizationHeaderList_isRejected() {
+        StompHeaderAccessor accessor = accessor();
+        when(accessor.getNativeHeader("Authorization")).thenReturn(List.of());
+        assertThrows(IllegalArgumentException.class,
+                () -> invoke(interceptor, "authenticateConnect",
+                        new Class<?>[]{StompHeaderAccessor.class}, accessor));
+    }
+
+    @Test
+    void connect_withNoBearerAnywhere_isRejected() {
+        StompHeaderAccessor accessor = accessor();
+        when(accessor.getNativeHeader("Authorization")).thenReturn(Arrays.asList("Basic xyz", "X-Custom k"));
+        assertThrows(IllegalArgumentException.class,
+                () -> invoke(interceptor, "authenticateConnect",
+                        new Class<?>[]{StompHeaderAccessor.class}, accessor));
+    }
+
+    @Test
+    void connect_withValidRefreshToken_isRejected() {
+        StompHeaderAccessor accessor = accessor();
+        when(accessor.getNativeHeader("Authorization")).thenReturn(List.of("Bearer refresh-tok"));
+        when(tokenService.isTokenValid("refresh-tok")).thenReturn(true);
+        when(tokenService.isAccessToken("refresh-tok")).thenReturn(false);
+        assertThrows(IllegalArgumentException.class,
+                () -> invoke(interceptor, "authenticateConnect",
+                        new Class<?>[]{StompHeaderAccessor.class}, accessor));
+    }
+
+    @Test
     void connect_scansHeaders_picksFirstBearerAndBreaks() throws Exception {
         StompHeaderAccessor accessor = accessor();
         when(accessor.getNativeHeader("Authorization"))
@@ -115,6 +144,15 @@ class StompAuthChannelInterceptorTest {
         StompHeaderAccessor accessor = accessor();
         authenticated(accessor);
         when(accessor.getDestination()).thenReturn("/user/" + USER_ID + "/queue/errors");
+        invoke(interceptor, "authorizeSubscribe",
+                new Class<?>[]{StompHeaderAccessor.class}, accessor);
+    }
+
+    @Test
+    void subscribe_ownUserQueueWithoutSubpath_isAllowed() throws Exception {
+        StompHeaderAccessor accessor = accessor();
+        authenticated(accessor);
+        when(accessor.getDestination()).thenReturn("/user/" + USER_ID);
         invoke(interceptor, "authorizeSubscribe",
                 new Class<?>[]{StompHeaderAccessor.class}, accessor);
     }
@@ -184,6 +222,27 @@ class StompAuthChannelInterceptorTest {
     void presenceSend_byPlainPrincipalUser_isRejected() {
         StompHeaderAccessor accessor = accessor();
         when(accessor.getUser()).thenReturn(() -> USER_ID.toString());
+        when(accessor.getDestination()).thenReturn("/app/heartbeat");
+        assertThrows(SecurityException.class,
+                () -> invoke(interceptor, "authorizeSend",
+                        new Class<?>[]{StompHeaderAccessor.class}, accessor));
+    }
+
+    @Test
+    void presenceSend_withoutAuthenticatedUser_isRejected() {
+        StompHeaderAccessor accessor = accessor();
+        when(accessor.getDestination()).thenReturn("/app/heartbeat");
+        assertThrows(SecurityException.class,
+                () -> invoke(interceptor, "authorizeSend",
+                        new Class<?>[]{StompHeaderAccessor.class}, accessor));
+    }
+
+    @Test
+    void presenceSend_byOtherRole_isRejected() {
+        StompHeaderAccessor accessor = accessor();
+        when(accessor.getUser()).thenReturn(
+                new UsernamePasswordAuthenticationToken(USER_ID.toString(), null,
+                        List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_PATIENT"))));
         when(accessor.getDestination()).thenReturn("/app/heartbeat");
         assertThrows(SecurityException.class,
                 () -> invoke(interceptor, "authorizeSend",

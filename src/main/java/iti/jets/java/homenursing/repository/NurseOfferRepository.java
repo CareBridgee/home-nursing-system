@@ -14,6 +14,12 @@ public interface NurseOfferRepository extends JpaRepository<NurseOffer, UUID> {
 
     List<NurseOffer> findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(UUID serviceRequestId);
 
+    List<NurseOffer> findByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalse(
+            UUID serviceRequestId, UUID userId);
+
+    boolean existsByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalse(
+            UUID serviceRequestId, UUID userId);
+
     Optional<NurseOffer> findByIdAndIsDeletedFalse(UUID id);
 
     boolean existsByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalseAndStatus(

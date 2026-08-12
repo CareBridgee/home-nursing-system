@@ -137,8 +137,9 @@ public class NurseOfferServiceImpl implements NurseOfferService {
     @Override
     @Transactional(readOnly = true)
     public List<NurseOfferResponse> listByServiceRequest(UUID serviceRequestId, UUID userId) {
-        getAuthorizedServiceRequest(serviceRequestId, userId);
-        return nurseOfferRepository.findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(serviceRequestId).stream()
+        ServiceRequest serviceRequest = getAuthorizedServiceRequest(serviceRequestId, userId);
+        return visibleOffers(serviceRequest, userId)
+                .stream()
                 .map(this::toOfferResponseWithDistance)
                 .toList();
     }
@@ -151,13 +152,22 @@ public class NurseOfferServiceImpl implements NurseOfferService {
             throw new BadRequestException("Service request location is unavailable");
         }
 
-        return nurseOfferRepository.findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(serviceRequestId)
+        return visibleOffers(serviceRequest, userId)
                 .stream()
                 .map(offer -> toNearbyResponse(offer, serviceRequest))
                 .flatMap(Optional::stream)
                 .filter(offer -> offer.distanceKm() <= nearbyNursesRadiusKm)
                 .sorted(Comparator.comparingDouble(NearbyNurseOfferResponse::distanceKm))
                 .toList();
+    }
+
+    private List<NurseOffer> visibleOffers(ServiceRequest serviceRequest, UUID userId) {
+        if (serviceRequest.getProfile().getUser().getId().equals(userId)) {
+            return nurseOfferRepository
+                    .findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(serviceRequest.getId());
+        }
+        return nurseOfferRepository
+                .findByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalse(serviceRequest.getId(), userId);
     }
 
     @Override
@@ -339,8 +349,8 @@ NurseOfferResponse response = toOfferResponseWithDistance(nurseOfferRepository.s
                 .orElseThrow(() -> new ResourceNotFoundException("Service request not found: " + serviceRequestId));
         boolean isOwner = serviceRequest.getProfile().getUser().getId().equals(userId);
         boolean isNurse = nurseRepository.existsByUser_Id(userId)
-                && serviceRequest.getNurse() != null
-                && serviceRequest.getNurse().getUser().getId().equals(userId);
+                && nurseOfferRepository.existsByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalse(
+                        serviceRequestId, userId);
         if (!isOwner && !isNurse) {
             throw new ResourceNotFoundException("Service request not found: " + serviceRequestId);
         }

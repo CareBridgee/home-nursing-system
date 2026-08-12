@@ -416,6 +416,61 @@ class NurseOfferServiceImplTest {
     }
 
 @Test
+    void listByServiceRequestForNurseWithOfferReturnsOnlyTheirOwnOffers() {
+        ServiceRequest request = searchingRequest();
+        when(serviceRequestRepository.findById(REQUEST_ID)).thenReturn(Optional.of(request));
+        when(nurseRepository.existsByUser_Id(NURSE_USER_ID)).thenReturn(true);
+        when(nurseOfferRepository.existsByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalse(
+                REQUEST_ID, NURSE_USER_ID)).thenReturn(true);
+        NurseOffer ownOffer = pendingOffer(request, nurse());
+        when(nurseOfferRepository.findByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalse(
+                REQUEST_ID, NURSE_USER_ID)).thenReturn(List.of(ownOffer));
+        when(nurseOfferMapper.toResponse(ownOffer)).thenAnswer(inv -> baseResponse(ownOffer));
+
+        List<NurseOfferResponse> result = offerService.listByServiceRequest(REQUEST_ID, NURSE_USER_ID);
+
+        assertThat(result).singleElement().satisfies(r -> assertThat(r.id()).isEqualTo(OFFER_ID));
+        verify(nurseOfferRepository, never())
+                .findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(any());
+    }
+
+    @Test
+    void listByServiceRequestForNurseWithoutOfferThrows() {
+        ServiceRequest request = searchingRequest();
+        when(serviceRequestRepository.findById(REQUEST_ID)).thenReturn(Optional.of(request));
+        when(nurseRepository.existsByUser_Id(NURSE_USER_ID)).thenReturn(true);
+        when(nurseOfferRepository.existsByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalse(
+                REQUEST_ID, NURSE_USER_ID)).thenReturn(false);
+
+        assertThatThrownBy(() -> offerService.listByServiceRequest(REQUEST_ID, NURSE_USER_ID))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Service request not found");
+    }
+
+    @Test
+    void listNearbyByServiceRequestForNurseWithOfferIncludesDistanceOfOwnOffer() {
+        ServiceRequest request = searchingRequest();
+        request.setLatitude(new BigDecimal("30.00000000"));
+        request.setLongitude(new BigDecimal("31.00000000"));
+        when(serviceRequestRepository.findById(REQUEST_ID)).thenReturn(Optional.of(request));
+        when(nurseRepository.existsByUser_Id(NURSE_USER_ID)).thenReturn(true);
+        when(nurseOfferRepository.existsByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalse(
+                REQUEST_ID, NURSE_USER_ID)).thenReturn(true);
+        NurseOffer ownOffer = pendingOffer(request, nurse());
+        when(nurseOfferRepository.findByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalse(
+                REQUEST_ID, NURSE_USER_ID)).thenReturn(List.of(ownOffer));
+        when(webSocketPresenceService.getAvailableLocation(NURSE_USER_ID.toString()))
+                .thenReturn(Optional.of(new Point(31.00000000, 30.00000000)));
+
+        List<NearbyNurseOfferResponse> result = offerService.listNearbyByServiceRequest(REQUEST_ID, NURSE_USER_ID);
+
+        assertThat(result).singleElement().satisfies(r -> {
+            assertThat(r.id()).isEqualTo(OFFER_ID);
+            assertThat(r.distanceKm()).isZero();
+        });
+    }
+
+@Test
     void listByServiceRequestForUnauthorizedThrows() {
         ServiceRequest request = searchingRequest();
         UUID strangerId = UUID.randomUUID();
@@ -969,7 +1024,7 @@ class NurseOfferServiceImplTest {
 
     // ---------- getAuthorizedServiceRequest via listNearby ----------
 
-    @Test
+@Test
     void getAuthorizedServiceRequestAllowsAssignedNurse() {
         ServiceRequest request = searchingRequest();
         request.setNurse(nurse());
@@ -977,8 +1032,10 @@ class NurseOfferServiceImplTest {
         request.setLongitude(new BigDecimal("31.00000000"));
         when(serviceRequestRepository.findById(REQUEST_ID)).thenReturn(Optional.of(request));
         when(nurseRepository.existsByUser_Id(NURSE_USER_ID)).thenReturn(true);
-        when(nurseOfferRepository.findByServiceRequest_IdAndIsDeletedFalseOrderByCreatedAtDesc(REQUEST_ID))
-                .thenReturn(List.of());
+        when(nurseOfferRepository.existsByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalse(
+                REQUEST_ID, NURSE_USER_ID)).thenReturn(true);
+        when(nurseOfferRepository.findByServiceRequest_IdAndNurse_User_IdAndIsDeletedFalse(
+                REQUEST_ID, NURSE_USER_ID)).thenReturn(List.of());
 
         List<NearbyNurseOfferResponse> result = offerService.listNearbyByServiceRequest(REQUEST_ID, NURSE_USER_ID);
 

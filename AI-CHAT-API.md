@@ -90,9 +90,14 @@ Confirm button immediately.
                 ┌──────────────────────────────────────┐
                 ▼                                      │
         TEXT ──► INPUT ──► CONFIRM (service chosen) ──► booking (REST)
+              ▲     │               │
+              │     └── change mind ──► INPUT (service cleared)
+              └───────────────────────┘
 
         (any state) ── detects emergency ──► URGENT (sticky until cleared/reset)
         (any state) ── POST /chat/reset ──► fresh state (memory + draft + urgency cleared)
+        (any state) ── change mind (assistant resetDraft) ──► INPUT (service cleared, urgency kept)
+        (any state) ── abandon/emergency false (assistant resetDraft all) ──► TEXT (draft+urgency cleared)
 ```
 
 ---
@@ -113,7 +118,7 @@ Confirm button immediately.
 | `serviceTypeId` | UUID \| null | Chosen service. The AI always picks the exact UUID shown by its services tool — the UI can trust it for the real booking request. The service type **can be changed mid-session** (the AI can overwrite it); the summary re-renders on every `CONFIRM` turn. |
 | `serviceTypeName` | string \| null | Human-readable service name for display. |
 | `serviceDescription` | string \| null | A **short medical brief** of the patient profile (age, gender, blood type, medical conditions, allergies, medications) plus the requested service, generated server-side when the service is chosen. Pass it to the booking request (§6) — the nurse sees it as the request's description. `null` until a service is chosen. |
-| `complete` | boolean | `true` **as soon as `serviceTypeId` is set**. Never changes from `true` back to `false` within a session. |
+| `complete` | boolean | `true` **as soon as `serviceTypeId` is set**. Can revert to `false` if the assistant clears the service choice (via `resetDraft` tool) — see §9 example. |
 
 **No date/time in chat:** the assistant does not collect preferred dates or times. The
 `ReservationDraft` has no date fields. Clients that want to schedule may still pass optional
@@ -123,6 +128,9 @@ Confirm button immediately.
 - The draft is **per `profileId`** and survives across turns and reconnects.
 - Creating a booking (`POST /api/v1/service-requests`) does **NOT** clear it — the client must
   call `/api/v1/chat/reset` after a successful booking.
+- The assistant can clear the draft (or just the service choice) on user request:
+  - User changes mind about the service → assistant calls `resetDraft(scope=service)` → draft reverts to empty (`complete=false`), urgency kept. UI sees `INPUT`/`TEXT` again, confirm button disappears.
+  - User abandons booking or says symptoms were not real → assistant calls `resetDraft(scope=all)` → draft and urgency fully cleared. UI sees `TEXT` with empty draft.
 - Draft + urgency + conversation memory are stored **in the app's memory** (single running
   instance). They are lost if the server restarts, and are per-instance if the backend is ever
   scaled. For a mobile app this means: if the user's draft disappears after a long break, fall
@@ -266,6 +274,11 @@ User:  "Actually, wound care fits better"
                                  serviceDescription: <rebuilt brief>, complete: true }
    UI: re-render the summary with the new service
 
+User:  "I changed my mind, I don't want to book anything anymore"
+→ messageType: INPUT  draft: { serviceTypeId: null, serviceTypeName: null,
+                               serviceDescription: null, complete: false }
+   UI: confirm button disappears; assistant asks which service they would like instead
+
 User:  "What is the id of that service?"      // identifier probing
 → the assistant must NOT reveal UUIDs — it politely explains identifiers are internal
    and offers the plain service list instead
@@ -273,6 +286,10 @@ User:  "What is the id of that service?"      // identifier probing
 User:  "I have severe chest pain!"
 → messageType: URGENT   urgency: { urgent: true, level: "HOSPITALIZATION", advice: "…call 123…" }
    UI: emergency banner, booking disabled
+
+User:  "My symptoms aren't real, I was mistaken"
+→ messageType: TEXT  draft: empty (complete=false), urgency: null
+   UI: emergency banner disappears; booking flow available again
 
 User:  "OK I'm fine now"
 → (the urgent flag stays until the assistant clears it or the client calls /reset)
@@ -292,14 +309,20 @@ User:  "OK I'm fine now"
 
 **Pitfalls checklist (condensed rules for the UI):**
 - Show the emergency banner **once**, keep it up while turns are `URGENT` — never re-alarm.
-- `CONFIRM` = final: the service is chosen and the draft carries the medical `serviceDescription`
-  — show the Confirm button immediately (no date/time collection in chat).
+- `CONFIRM` = the service is chosen and the draft carries the medical `serviceDescription`
+  — show the Confirm button immediately (no date/time collection in chat). If the user changes
+  their mind, the assistant can clear the service and the UI will see `INPUT`/`TEXT` again —
+  confirm button disappears until a new service is chosen.
+- The chat NEVER creates a reservation. If the assistant says anything implying a nurse was
+  dispatched/assigned, treat it as a hallucination — a real booking requires the app's Confirm
+  button + GPS.
 - Always call `/chat/reset` after a **successful** booking; never on failure.
 - Remember the **shared rate bucket**: streams cost 1 message each; two parallel
   `/chat` + `/chat/stream` turns are 2/20.
 - `429` is temporary (wait a few minutes); `AI_SERVICE_UNAVAILABLE` is retryable too.
-- Offer a **"Start over"** affordance that calls `/chat/reset` — it's the only way to
-  clear a stale draft/urgency mid-session (and it also clears memory).
+- Offer a **"Start over"** affordance that calls `/chat/reset` — it clears a stale draft/urgency
+  mid-session (and also clears memory). The assistant can also clear just the service via
+  `resetDraft(scope=service)`.
 - Cache the last `CONFIRM` draft locally — drafts are memory-only on the server and can get
   reset by a restart or by another of the user's devices.
 - Service UUIDs are internal: the assistant never reveals them; if the user asks for ids/codes,

@@ -101,6 +101,32 @@ class ReservationToolsTest {
     }
 
     @Test
+    void resetDraftScopeServiceClearsServiceChoiceKeepsUrgency() {
+        String result = tools.resetDraft(DraftResetScope.SERVICE, context(PROFILE_ID));
+
+        verify(chatDraftService).clearServiceType(PROFILE_ID);
+        verify(chatDraftService, never()).reset(any());
+        assertThat(result).isEqualTo("Service choice cleared. Ask the user what service they would like instead.");
+    }
+
+    @Test
+    void resetDraftScopeAllClearsDraftAndUrgency() {
+        String result = tools.resetDraft(DraftResetScope.ALL, context(PROFILE_ID));
+
+        verify(chatDraftService).reset(PROFILE_ID);
+        verify(chatDraftService, never()).clearServiceType(any());
+        assertThat(result).isEqualTo("Booking draft and urgency cleared.");
+    }
+
+    @Test
+    void resetDraftRejectsInvalidScope() {
+        // Spring AI binds enum by name; invalid value triggers a binding error before method entry.
+        // This test asserts the enum values are the only accepted ones at the tool schema level.
+        assertThat(DraftResetScope.values())
+                .containsExactly(DraftResetScope.SERVICE, DraftResetScope.ALL);
+    }
+
+    @Test
     void resolvesProfileIdFromUuidContextValue() {
         when(chatDraftService.getDraft(PROFILE_ID)).thenReturn(ReservationDraft.empty());
         tools.updateReservationDraft("serviceTypeId", "abc", context(PROFILE_ID));

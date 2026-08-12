@@ -102,6 +102,16 @@ public class ChatDraftServiceImpl implements ChatDraftService {
         drafts.remove(profileId);
     }
 
+    @Override
+    public void clearServiceType(UUID profileId) {
+        DraftState state = drafts.get(profileId);
+        if (state != null) {
+            state.serviceTypeId = null;
+            state.serviceTypeName = null;
+            state.serviceDescription = null;
+        }
+    }
+
     private static ReservationDraft toDraft(DraftState state) {
         return new ReservationDraft(
                 state.serviceTypeId,

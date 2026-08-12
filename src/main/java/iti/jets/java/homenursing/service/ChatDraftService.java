@@ -18,4 +18,6 @@ public interface ChatDraftService {
     void setUrgency(UUID profileId, boolean urgent, String level, String reason);
 
     void reset(UUID profileId);
+
+    void clearServiceType(UUID profileId);
 }

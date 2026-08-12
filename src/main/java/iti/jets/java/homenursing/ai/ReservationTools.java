@@ -64,6 +64,23 @@ public class ReservationTools {
         return "Urgency cleared.";
     }
 
+    @Tool(description = "Clears the reservation draft the user no longer wants. "
+            + "scope=service clears only the chosen service (keeps any urgency flag). "
+            + "scope=all clears the entire draft and any urgency flag. "
+            + "Use scope=service when the user changes their mind about the service but may still book. "
+            + "Use scope=all when the user abandons booking entirely or indicates reported symptoms were not real.")
+    public String resetDraft(
+            @ToolParam(description = "service = clear only the chosen service; all = clear the whole draft and urgency") DraftResetScope scope,
+            ToolContext context) {
+        UUID profileId = resolveProfileId(context);
+        if (scope == DraftResetScope.ALL) {
+            chatDraftService.reset(profileId);
+            return "Booking draft and urgency cleared.";
+        }
+        chatDraftService.clearServiceType(profileId);
+        return "Service choice cleared. Ask the user what service they would like instead.";
+    }
+
     private static UUID resolveProfileId(ToolContext context) {
         Object value = context.getContext().get("profileId");
         if (value instanceof UUID uuid) {

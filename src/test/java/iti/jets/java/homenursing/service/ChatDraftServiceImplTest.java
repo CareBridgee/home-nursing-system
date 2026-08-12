@@ -185,4 +185,48 @@ class ChatDraftServiceImplTest {
         assertFalse(service.isUrgent(PROFILE_ID));
         assertNull(service.urgencyLevel(PROFILE_ID));
     }
+
+    @Test
+    void clearServiceType_clearsOnlyServiceFieldsKeepsUrgency() {
+        when(serviceTypeRepository.findById(SERVICE_TYPE_ID)).thenReturn(Optional.of(serviceType()));
+        when(serviceBriefBuilder.build(any(), any())).thenReturn("brief");
+        service.updateField(PROFILE_ID, "serviceTypeId", SERVICE_TYPE_ID.toString());
+        service.setUrgency(PROFILE_ID, true, "HIGH", "Chest pain");
+
+        service.clearServiceType(PROFILE_ID);
+
+        ReservationDraft draft = service.getDraft(PROFILE_ID);
+        assertNull(draft.serviceTypeId());
+        assertNull(draft.serviceTypeName());
+        assertNull(draft.serviceDescription());
+        assertFalse(draft.complete());
+        assertFalse(draft.hasAnyData());
+        assertTrue(service.isUrgent(PROFILE_ID));
+        assertEquals("HIGH", service.urgencyLevel(PROFILE_ID));
+    }
+
+    @Test
+    void clearServiceType_noState_isNoOp() {
+        service.clearServiceType(PROFILE_ID);
+
+        ReservationDraft draft = service.getDraft(PROFILE_ID);
+        assertNull(draft.serviceTypeId());
+        assertFalse(draft.complete());
+        assertFalse(service.isUrgent(PROFILE_ID));
+        assertNull(service.urgencyLevel(PROFILE_ID));
+    }
+
+    @Test
+    void clearServiceType_afterReset_isNoOp() {
+        when(serviceTypeRepository.findById(SERVICE_TYPE_ID)).thenReturn(Optional.of(serviceType()));
+        when(serviceBriefBuilder.build(any(), any())).thenReturn("brief");
+        service.updateField(PROFILE_ID, "serviceTypeId", SERVICE_TYPE_ID.toString());
+        service.reset(PROFILE_ID);
+
+        service.clearServiceType(PROFILE_ID);
+
+        ReservationDraft draft = service.getDraft(PROFILE_ID);
+        assertNull(draft.serviceTypeId());
+        assertFalse(draft.complete());
+    }
 }

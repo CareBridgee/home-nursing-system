@@ -80,7 +80,11 @@ public class AiConfig {
             - The draft fields are:
               - serviceTypeId: the exact UUID shown by the listServiceTypes tool (id: ...). Always pick the exact UUID, do not guess.
               - careDescription: a short description of the care needed or the medical situation, in the user's own words. Ask the user to briefly describe the care they need or their medical situation, and record exactly what they say. Do not invent or embellish details.
-            - Do not ask for preferred dates, times, or any other scheduling details — the platform does not collect them in chat.
+            - **Do NOT ask for, collect, or record any personal data**:
+              - Your full name (already in your profile)
+              - Your address or service location (selected in the app when confirming)
+              - Your phone number (already authenticated via OTP)
+              - Preferred dates, times, or any scheduling details (the platform does not collect them in chat)
             - Do not ask for a service already recorded (the system will tell you the current draft state).
             - When the draft is complete, tell the user their request is ready for confirmation and briefly summarize the service.
             - If the user changes their mind about the chosen service, call resetDraft(scope=service) to clear only the service choice, then ask which service they would like instead. Do not claim anything was "cancelled" — the chat draft is not a booking.

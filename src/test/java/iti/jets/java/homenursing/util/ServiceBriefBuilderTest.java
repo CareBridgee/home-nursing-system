@@ -191,6 +191,36 @@ class ServiceBriefBuilderTest {
     }
 
     @Test
+    void buildAppendsChatCareDetailsBetweenListsAndService() {
+        Profile profile = stubProfile();
+        summaryFor(profile, new PatientMedicalSummary(
+                profileId, "Mona", "Hassan", null, null, Gender.FEMALE, "B+",
+                null, null, null, null, null, null,
+                List.of("Penicillin"), List.of(), List.of(), List.of(), List.of()));
+
+        String brief = builder.build(profileId, "Wound Care", "  wound on right leg needs daily dressing  ");
+
+        assertThat(brief).isEqualTo("Patient: female, blood type B+."
+                + " Allergies: Penicillin."
+                + " User description: wound on right leg needs daily dressing."
+                + " Requested service: Wound Care.");
+    }
+
+    @Test
+    void buildOmitsChatCareDetailsWhenBlank() {
+        Profile profile = stubProfile();
+        summaryFor(profile, new PatientMedicalSummary(
+                profileId, "Mona", "Hassan", null, null, Gender.FEMALE, "B+",
+                null, null, null, null, null, null,
+                List.of(), List.of(), List.of(), List.of(), List.of()));
+
+        String brief = builder.build(profileId, "Wound Care", "   ");
+
+        assertThat(brief).isEqualTo("Patient: female, blood type B+."
+                + " Requested service: Wound Care.");
+    }
+
+    @Test
     void buildOmitsServiceWhenRequestedServiceNameIsBlank() {
         Profile profile = stubProfile();
         summaryFor(profile, new PatientMedicalSummary(

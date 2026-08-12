@@ -97,7 +97,7 @@ class ChatControllerTest {
     }
 
     private ReservationDraft draftWithData() {
-        return new ReservationDraft(UUID.randomUUID(), "Nursing", "Care at home", false);
+        return new ReservationDraft(UUID.randomUUID(), "Nursing", "Care at home", "elderly care", false);
     }
 
     @Test
@@ -194,7 +194,7 @@ class ChatControllerTest {
 
     @Test
     void draftInstruction_withDataButNoServiceType_marksItNotSet() throws Exception {
-        ReservationDraft draft = new ReservationDraft(null, "Nursing", "Care at home", false);
+        ReservationDraft draft = new ReservationDraft(null, "Nursing", "Care at home", null, false);
         String instruction = (String) invoke("draftInstruction",
                 new Class<?>[]{ReservationDraft.class}, draft);
         assertThat(instruction, containsString("serviceTypeId=not set"));
@@ -240,7 +240,7 @@ class ChatControllerTest {
 
     @Test
     void buildResponse_emptyDraftWithQuestionReply_isInput() throws Exception {
-        when(chatDraftService.getDraft(PROFILE_ID)).thenReturn(new ReservationDraft(null, null, null, false));
+        when(chatDraftService.getDraft(PROFILE_ID)).thenReturn(new ReservationDraft(null, null, null, null, false));
         when(chatDraftService.isUrgent(PROFILE_ID)).thenReturn(false);
 
         ChatTurnResponse response = (ChatTurnResponse) invoke("buildResponse",
@@ -262,7 +262,7 @@ class ChatControllerTest {
 
     @Test
     void buildResponse_nullReply_emptyDraft_isPlainText() throws Exception {
-        when(chatDraftService.getDraft(PROFILE_ID)).thenReturn(new ReservationDraft(null, null, null, false));
+        when(chatDraftService.getDraft(PROFILE_ID)).thenReturn(new ReservationDraft(null, null, null, null, false));
         when(chatDraftService.isUrgent(PROFILE_ID)).thenReturn(false);
 
         ChatTurnResponse response = (ChatTurnResponse) invoke("buildResponse",
@@ -283,7 +283,7 @@ class ChatControllerTest {
 
     @Test
     void buildResponse_emptyDraftWithoutQuestion_isPlainText() throws Exception {
-        when(chatDraftService.getDraft(PROFILE_ID)).thenReturn(new ReservationDraft(null, null, null, false));
+        when(chatDraftService.getDraft(PROFILE_ID)).thenReturn(new ReservationDraft(null, null, null, null, false));
         when(chatDraftService.isUrgent(PROFILE_ID)).thenReturn(false);
 
         ChatTurnResponse response = (ChatTurnResponse) invoke("buildResponse",

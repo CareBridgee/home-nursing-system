@@ -101,6 +101,50 @@ class ChatDraftServiceImplTest {
     }
 
     @Test
+    void updateField_careDescription_recordsItAndRebuildsDescription() {
+        when(serviceTypeRepository.findById(SERVICE_TYPE_ID)).thenReturn(Optional.of(serviceType()));
+        when(serviceBriefBuilder.build(eq(PROFILE_ID), eq("Home Nursing"))).thenReturn("brief without details");
+        when(serviceBriefBuilder.build(eq(PROFILE_ID), eq("Home Nursing"), eq("needs help after surgery")))
+                .thenReturn("brief with details");
+
+        service.updateField(PROFILE_ID, "serviceTypeId", SERVICE_TYPE_ID.toString());
+        service.updateField(PROFILE_ID, "careDescription", "  needs help after surgery  ");
+
+        ReservationDraft draft = service.getDraft(PROFILE_ID);
+        assertEquals("needs help after surgery", draft.careDescription());
+        assertEquals("brief with details", draft.serviceDescription());
+        assertTrue(draft.complete());
+    }
+
+    @Test
+    void updateField_careDescriptionBeforeServiceType_rebuildsWhenServiceIsChosen() {
+        when(serviceTypeRepository.findById(SERVICE_TYPE_ID)).thenReturn(Optional.of(serviceType()));
+        when(serviceBriefBuilder.build(eq(PROFILE_ID), eq("Home Nursing"), eq("stroke recovery")))
+                .thenReturn("brief with details");
+
+        service.updateField(PROFILE_ID, "careDescription", "stroke recovery");
+        service.updateField(PROFILE_ID, "serviceTypeId", SERVICE_TYPE_ID.toString());
+
+        ReservationDraft draft = service.getDraft(PROFILE_ID);
+        assertEquals("stroke recovery", draft.careDescription());
+        assertEquals("brief with details", draft.serviceDescription());
+        assertTrue(draft.complete());
+        verify(serviceBriefBuilder).build(eq(PROFILE_ID), eq("Home Nursing"), eq("stroke recovery"));
+    }
+
+    @Test
+    void updateField_careDescriptionOnly_isNotCompleteButHasData() {
+        service.updateField(PROFILE_ID, "careDescription", "elderly parent needs supervision");
+
+        ReservationDraft draft = service.getDraft(PROFILE_ID);
+        assertEquals("elderly parent needs supervision", draft.careDescription());
+        assertNull(draft.serviceTypeId());
+        assertNull(draft.serviceDescription());
+        assertFalse(draft.complete());
+        assertTrue(draft.hasAnyData());
+    }
+
+    @Test
     void updateField_invalidUuid_throwsIllegalArgumentException() {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.updateField(PROFILE_ID, "serviceTypeId", "not-a-uuid"));

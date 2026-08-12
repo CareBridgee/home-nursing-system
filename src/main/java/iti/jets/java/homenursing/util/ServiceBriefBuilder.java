@@ -29,6 +29,10 @@ public class ServiceBriefBuilder {
     }
 
     public String build(UUID profileId, String requestedServiceName) {
+        return build(profileId, requestedServiceName, null);
+    }
+
+    public String build(UUID profileId, String requestedServiceName, String chatCareDetails) {
         PatientMedicalSummary summary =
                 patientMedicalSummaryAssembler.build(profileService.getProfile(profileId), false);
 
@@ -61,6 +65,9 @@ public class ServiceBriefBuilder {
         appendList(sb, "Conditions", summary.medicalConditions());
         appendList(sb, "Allergies", summary.allergies());
         appendList(sb, "Medications", summary.medications());
+        if (chatCareDetails != null && !chatCareDetails.isBlank()) {
+            sb.append(" User description: ").append(chatCareDetails.trim()).append('.');
+        }
         if (requestedServiceName != null && !requestedServiceName.isBlank()) {
             sb.append(" Requested service: ").append(requestedServiceName).append('.');
         }

@@ -37,7 +37,7 @@ class ReservationToolsTest {
     void updateReservationDraftRecordsFieldAndSummarizesCompleteDraft() {
         UUID serviceTypeId = UUID.randomUUID();
         when(chatDraftService.getDraft(PROFILE_ID))
-                .thenReturn(new ReservationDraft(serviceTypeId, "General Nursing", "night care", true));
+                .thenReturn(new ReservationDraft(serviceTypeId, "General Nursing", "night care", "elderly", true));
 
         String result = tools.updateReservationDraft("serviceTypeId", serviceTypeId.toString(),
                 context(PROFILE_ID));
@@ -47,6 +47,7 @@ class ReservationToolsTest {
                 .startsWith("Draft updated: serviceTypeId = " + serviceTypeId + ".")
                 .contains("Current draft serviceTypeId=" + serviceTypeId)
                 .contains("serviceTypeName=General Nursing")
+                .contains("careDescription=elderly")
                 .contains("complete=true");
     }
 
@@ -59,6 +60,7 @@ class ReservationToolsTest {
         assertThat(result)
                 .contains("serviceTypeId=not set")
                 .contains("serviceTypeName=not set")
+                .contains("careDescription=not set")
                 .contains("complete=false");
     }
 

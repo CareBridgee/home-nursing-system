@@ -21,6 +21,7 @@ public class ChatDraftServiceImpl implements ChatDraftService {
     private static final class DraftState {
         UUID serviceTypeId;
         String serviceTypeName;
+        String careDescription;
         String serviceDescription;
         boolean urgent;
         String urgencyLevel;
@@ -56,11 +57,25 @@ public class ChatDraftServiceImpl implements ChatDraftService {
         switch (field) {
             case "serviceTypeId" -> {
                 validateServiceType(state, value.trim());
-                state.serviceDescription = serviceBriefBuilder.build(profileId, state.serviceTypeName);
+                rebuildDescription(profileId, state);
+            }
+            case "careDescription" -> {
+                state.careDescription = value.trim();
+                rebuildDescription(profileId, state);
             }
             default -> throw new IllegalArgumentException("Unknown draft field: " + field);
         }
         log.debug("Draft updated for profile {} field {}: {}", profileId, field, value);
+    }
+
+    private void rebuildDescription(UUID profileId, DraftState state) {
+        if (state.serviceTypeName == null) {
+            state.serviceDescription = null;
+            return;
+        }
+        state.serviceDescription = state.careDescription == null || state.careDescription.isBlank()
+                ? serviceBriefBuilder.build(profileId, state.serviceTypeName)
+                : serviceBriefBuilder.build(profileId, state.serviceTypeName, state.careDescription);
     }
 
     private void validateServiceType(DraftState state, String raw) {
@@ -117,6 +132,7 @@ public class ChatDraftServiceImpl implements ChatDraftService {
                 state.serviceTypeId,
                 state.serviceTypeName,
                 state.serviceDescription,
+                state.careDescription,
                 isComplete(state));
     }
 

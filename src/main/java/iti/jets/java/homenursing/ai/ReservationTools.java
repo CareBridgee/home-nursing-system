@@ -24,11 +24,13 @@ public class ReservationTools {
 
     @Tool(description = """
             Records the service the user chooses for their reservation.
-            Allowed field: serviceTypeId (the exact UUID from listServiceTypes).
-            Use this whenever the user picks a service.
+            Allowed fields: serviceTypeId (the exact UUID from listServiceTypes)
+            and careDescription (a short description of the care needed or the medical
+            situation, in the user's own words).
+            Use this whenever the user picks a service or describes their care needs.
             """)
     public String updateReservationDraft(
-            @ToolParam(description = "Only: serviceTypeId") String field,
+            @ToolParam(description = "One of: serviceTypeId, careDescription") String field,
             @ToolParam(description = "The value for the given field") String value,
             ToolContext context) {
         UUID profileId = resolveProfileId(context);
@@ -95,6 +97,7 @@ public class ReservationTools {
     private static String summarize(ReservationDraft draft, String heading) {
         return heading + " serviceTypeId=" + nullSafe(draft.serviceTypeId())
                 + ", serviceTypeName=" + nullSafe(draft.serviceTypeName())
+                + ", careDescription=" + nullSafe(draft.careDescription())
                 + ", complete=" + draft.complete();
     }
 

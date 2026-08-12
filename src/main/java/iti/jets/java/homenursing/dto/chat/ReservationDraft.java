@@ -10,14 +10,16 @@ public record ReservationDraft(
         UUID serviceTypeId,
         String serviceTypeName,
         String serviceDescription,
+        String careDescription,
         boolean complete
 ) {
     public static ReservationDraft empty() {
-        return new ReservationDraft(null, null, null, false);
+        return new ReservationDraft(null, null, null, null, false);
     }
 
     public boolean hasAnyData() {
         return serviceTypeId != null
+                || (careDescription != null && !careDescription.isBlank())
                 || (serviceDescription != null && !serviceDescription.isBlank());
     }
 }

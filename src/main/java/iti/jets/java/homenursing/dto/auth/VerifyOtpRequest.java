@@ -14,4 +14,7 @@ public class VerifyOtpRequest {
 
     @Pattern(regexp = "^\\d{6}$", message = "OTP must be 6 digits")
     private String otp;
+
+    @jakarta.validation.constraints.Size(max = 500, message = "Invalid pending token")
+    private String pendingToken;
 }

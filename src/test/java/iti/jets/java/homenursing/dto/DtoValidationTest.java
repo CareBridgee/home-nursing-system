@@ -71,19 +71,22 @@ class DtoValidationTest {
 
     @Test
     void verifyOtpRequestValidPhoneAndOtpPass() {
-        var req = new VerifyOtpRequest("+201234567890", "123456");
+        var req = VerifyOtpRequest.builder()
+                .phoneNumber("+201234567890").otp("123456").build();
         assertThat(validate(req)).isEmpty();
     }
 
     @Test
     void verifyOtpRequestRejectsMalformedPhone() {
-        var req = new VerifyOtpRequest("not-a-phone", "123456");
+        var req = VerifyOtpRequest.builder()
+                .phoneNumber("not-a-phone").otp("123456").build();
         assertThat(validateField(req, "phoneNumber")).isNotEmpty();
     }
 
     @Test
     void verifyOtpRequestRejectsNonSixDigitOtp() {
-        var req = new VerifyOtpRequest("+201234567890", "12");
+        var req = VerifyOtpRequest.builder()
+                .phoneNumber("+201234567890").otp("12").build();
         assertThat(validateField(req, "otp")).isNotEmpty();
     }
 

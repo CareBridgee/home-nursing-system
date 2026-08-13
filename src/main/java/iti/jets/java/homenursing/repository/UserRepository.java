@@ -20,6 +20,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("select u from User u left join fetch u.profiles where u.id = :id")
     Optional<User> findByIdWithProfiles(@Param("id") UUID id);
 
+    @Query("select u from User u left join fetch u.profiles where u.googleSub = :googleSub")
+    Optional<User> findByGoogleSubWithProfiles(@Param("googleSub") String googleSub);
+
+    @Query("select u from User u left join fetch u.profiles where lower(u.email) = lower(:email)")
+    Optional<User> findByEmailWithProfiles(@Param("email") String email);
+
     boolean existsByPhoneNumber(String phoneNumber);
 }
 

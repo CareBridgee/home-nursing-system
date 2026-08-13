@@ -34,7 +34,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "users", uniqueConstraints = {
         @UniqueConstraint(columnNames = "phone_number"),
-        @UniqueConstraint(columnNames = "email")
+        @UniqueConstraint(columnNames = "email"),
+        @UniqueConstraint(columnNames = "google_sub")
 })
 public class User {
 
@@ -63,6 +64,9 @@ public class User {
 
     @Column(name = "profile_image_url", columnDefinition = "TEXT")
     private String profileImageUrl;
+
+    @Column(name = "google_sub", length = 255)
+    private String googleSub;
 
     @Builder.Default
     @Column(name = "is_deleted", nullable = false)

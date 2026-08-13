@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import iti.jets.java.homenursing.dto.auth.PendingAuth;
 import iti.jets.java.homenursing.exception.UnauthorizedException;
 import iti.jets.java.homenursing.service.impl.TokenServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +49,7 @@ class TokenServiceImplTest {
         ReflectionTestUtils.setField(tokenService, "jwtSecret", JWT_SECRET);
         ReflectionTestUtils.setField(tokenService, "accessTokenTtlMinutes", ACCESS_TTL_MINUTES);
         ReflectionTestUtils.setField(tokenService, "refreshTokenTtlDays", REFRESH_TTL_DAYS);
+        ReflectionTestUtils.setField(tokenService, "pendingTokenTtlSeconds", 600L);
     }
 
     private static SecretKey signingKey() {
@@ -130,6 +132,53 @@ class TokenServiceImplTest {
     @Test
     void isAccessTokenFalseForGarbageToken() {
         assertThat(tokenService.isAccessToken("garbage")).isFalse();
+    }
+
+    @Test
+    void generatePendingTokenCarriesGoogleIdentityAndTenMinuteExpiry() {
+        PendingAuth pending = new PendingAuth("google-sub", "a@b.com", "Jane", "Doe", "pic", "USER");
+
+        String token = tokenService.generatePendingToken(pending);
+
+        Claims claims = parse(token);
+        assertThat(claims.getSubject()).isEqualTo("google-sub");
+        assertThat(claims.get("type", String.class)).isEqualTo("pending");
+        assertThat(claims.get("role", String.class)).isEqualTo("USER");
+        assertThat(claims.get("email", String.class)).isEqualTo("a@b.com");
+        assertThat(claims.get("firstName", String.class)).isEqualTo("Jane");
+        assertThat(claims.get("lastName", String.class)).isEqualTo("Doe");
+        assertThat(claims.get("picture", String.class)).isEqualTo("pic");
+        long lifetimeMillis = claims.getExpiration().getTime() - claims.getIssuedAt().getTime();
+        assertThat(lifetimeMillis).isEqualTo(600_000);
+    }
+
+    @Test
+    void parsePendingTokenRoundTripsIdentity() {
+        PendingAuth pending = new PendingAuth("sub-1", "n@b.com", "John", "Smith", null, "NURSE");
+
+        assertThat(tokenService.parsePendingToken(tokenService.generatePendingToken(pending)))
+                .isEqualTo(pending);
+    }
+
+    @Test
+    void parsePendingTokenRejectsAccessToken() {
+        assertThatThrownBy(() -> tokenService.parsePendingToken(tokenService.generateAccessToken("user-1", "USER")))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessageContaining("Invalid pending token");
+    }
+
+    @Test
+    void parsePendingTokenRejectsGarbageToken() {
+        assertThatThrownBy(() -> tokenService.parsePendingToken("garbage"))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessageContaining("Invalid pending token");
+    }
+
+    @Test
+    void pendingTokenIsNotAnAccessToken() {
+        PendingAuth pending = new PendingAuth("sub-1", "n@b.com", null, null, null, "USER");
+
+        assertThat(tokenService.isAccessToken(tokenService.generatePendingToken(pending))).isFalse();
     }
 
     @Test

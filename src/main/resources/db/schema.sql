@@ -10,6 +10,7 @@ id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
 phone_number VARCHAR(20) UNIQUE,
 email VARCHAR(255) UNIQUE,
+google_sub VARCHAR(255) UNIQUE,
 
 first_name VARCHAR(100) NOT NULL,
 last_name VARCHAR(100) NOT NULL,

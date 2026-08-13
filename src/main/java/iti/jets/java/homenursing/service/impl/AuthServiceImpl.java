@@ -2,7 +2,9 @@ package iti.jets.java.homenursing.service.impl;
 
 
 import iti.jets.java.homenursing.dto.auth.DevOtpResponse;
+import iti.jets.java.homenursing.dto.auth.GoogleAuthResponse;
 import iti.jets.java.homenursing.dto.auth.NurseTokenPair;
+import iti.jets.java.homenursing.dto.auth.PendingAuth;
 import iti.jets.java.homenursing.dto.nurse.NurseUserResponse;
 import iti.jets.java.homenursing.dto.auth.TokenPair;
 import iti.jets.java.homenursing.dto.user.UserResponse;
@@ -18,6 +20,8 @@ import iti.jets.java.homenursing.mapper.UserMapper;
 import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
 import iti.jets.java.homenursing.service.AuthService;
+import iti.jets.java.homenursing.service.GoogleTokenVerifier;
+import iti.jets.java.homenursing.service.GoogleTokenVerifier.GoogleUserInfo;
 import iti.jets.java.homenursing.service.ProfileService;
 import iti.jets.java.homenursing.service.TokenService;
 import iti.jets.java.homenursing.service.TwilioSmsService;
@@ -42,6 +46,7 @@ public class AuthServiceImpl implements AuthService {
     private final TokenService tokenService;
     private final PasswordEncoder passwordEncoder;
     private final ProfileService profileService;
+    private final GoogleTokenVerifier googleTokenVerifier;
 
     @Override
     public void requestOtp(String rawPhone) {
@@ -103,6 +108,143 @@ public class AuthServiceImpl implements AuthService {
             user = createNurseUser(phone);
         }
 
+        return loginNurseUser(user);
+    }
+
+    @Override
+    public GoogleAuthResponse handleGoogleLogin(String idToken, boolean nurseIntent) {
+        GoogleUserInfo info = googleTokenVerifier.verify(idToken);
+
+        User user = userRepository.findByGoogleSubWithProfiles(info.googleSub()).orElse(null);
+        if (user == null && info.email() != null) {
+            user = userRepository.findByEmailWithProfiles(info.email()).orElse(null);
+            if (user != null) {
+                enforceGoogleRole(user, nurseIntent);
+                user.setGoogleSub(info.googleSub());
+                userRepository.save(user);
+            }
+        }
+        if (user == null) {
+            user = createGoogleUser(info, nurseIntent);
+        } else {
+            enforceGoogleRole(user, nurseIntent);
+        }
+
+        if (user.getPhoneNumber() == null || user.getPhoneNumber().isBlank()) {
+            PendingAuth pending = new PendingAuth(
+                    info.googleSub(),
+                    user.getEmail(),
+                    user.getFirstName(),
+                    user.getLastName(),
+                    user.getProfileImageUrl(),
+                    nurseIntent ? "NURSE" : "USER");
+            return GoogleAuthResponse.phoneRequired(
+                    tokenService.generatePendingToken(pending),
+                    user.getEmail(),
+                    user.getFirstName(),
+                    user.getLastName(),
+                    user.getProfileImageUrl());
+        }
+
+        return authenticatedPair(user);
+    }
+
+    @Override
+    public GoogleAuthResponse completeGoogleLinking(String rawPhone, String otp, String pendingToken) {
+        String phone = normalizePhoneNumber(rawPhone);
+        verifyOtp(phone, otp);
+
+        PendingAuth pending = tokenService.parsePendingToken(pendingToken);
+        boolean nurseIntent = "NURSE".equals(pending.role());
+
+        User byPhone = userRepository.findByPhoneNumberWithProfiles(phone).orElse(null);
+        if (byPhone != null && !pending.googleSub().equals(byPhone.getGoogleSub())) {
+            throw new ConflictException("This phone is already registered to another account.");
+        }
+
+        User user = userRepository.findByGoogleSubWithProfiles(pending.googleSub()).orElse(null);
+        if (user == null) {
+            user = findOrCreateUser(phone, nurseIntent);
+        }
+
+        applyPendingIdentity(user, pending);
+        user.setPhoneNumber(phone);
+        userRepository.save(user);
+
+        return authenticatedPair(user);
+    }
+
+    private GoogleAuthResponse authenticatedPair(User user) {
+        boolean hasNurseRecord = nurseRepository.existsByUser_Id(user.getId());
+        if (hasNurseRecord) {
+            return GoogleAuthResponse.authenticated(loginNurseUser(user));
+        }
+        return GoogleAuthResponse.authenticated(loginUser(user));
+    }
+
+    private User createGoogleUser(GoogleUserInfo info, boolean nurseIntent) {
+        String fallbackName = nurseIntent ? "Nurse" : "User";
+        User user = User.builder()
+                .email(info.email())
+                .firstName(displayName(info.givenName(), fallbackName))
+                .lastName(info.familyName() == null ? "" : info.familyName())
+                .profileImageUrl(info.picture())
+                .googleSub(info.googleSub())
+                .isDeleted(false)
+                .build();
+        user = userRepository.save(user);
+
+        if (nurseIntent) {
+            Nurse nurse = Nurse.builder()
+                    .user(user)
+                    .verificationStatus(VerificationStatus.UNDER_REVIEW)
+                    .build();
+            nurseRepository.save(nurse);
+        } else {
+            profileService.createDefaultProfile(user);
+        }
+        return user;
+    }
+
+    private void enforceGoogleRole(User user, boolean nurseIntent) {
+        if (Boolean.TRUE.equals(user.getIsDeleted())) {
+            throw new ResourceNotFoundException("User not found");
+        }
+        boolean hasNurseRecord = nurseRepository.existsByUser_Id(user.getId());
+        if (hasNurseRecord && !nurseIntent) {
+            throw new ConflictException("This account is already registered as a nurse. Please use the nurse login.");
+        }
+        if (!hasNurseRecord && nurseIntent) {
+            throw new ConflictException("This account is already registered as a regular user. Please use the user login.");
+        }
+    }
+
+    private void applyPendingIdentity(User user, PendingAuth pending) {
+        user.setGoogleSub(pending.googleSub());
+        if (pending.email() != null && (user.getEmail() == null || user.getEmail().isBlank())) {
+            user.setEmail(pending.email());
+        }
+        if (isDefaultName(user.getFirstName())) {
+            user.setFirstName(displayName(pending.firstName(), "User"));
+        }
+        if (isDefaultName(user.getLastName())) {
+            user.setLastName(pending.lastName() == null ? "" : pending.lastName());
+        }
+        if (pending.profileImageUrl() != null
+                && (user.getProfileImageUrl() == null || user.getProfileImageUrl().isBlank())) {
+            user.setProfileImageUrl(pending.profileImageUrl());
+        }
+    }
+
+    private static boolean isDefaultName(String name) {
+        return name == null || name.isBlank() || "User".equals(name) || "Nurse".equals(name);
+    }
+
+    private static String displayName(String name, String fallback) {
+        return name == null || name.isBlank() ? fallback : name;
+    }
+
+    private NurseTokenPair loginNurseUser(User user) {
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 

@@ -1,6 +1,7 @@
 package iti.jets.java.homenursing.service;
 
 import iti.jets.java.homenursing.dto.auth.DevOtpResponse;
+import iti.jets.java.homenursing.dto.auth.GoogleAuthResponse;
 import iti.jets.java.homenursing.dto.auth.NurseTokenPair;
 import iti.jets.java.homenursing.dto.auth.TokenPair;
 import iti.jets.java.homenursing.dto.user.UserResponse;
@@ -14,6 +15,10 @@ public interface AuthService {
     TokenPair verifyOtpAndLogin(String phoneNumber, String otp);
 
     NurseTokenPair verifyNurseOtpAndLogin(String phoneNumber, String otp);
+
+    GoogleAuthResponse handleGoogleLogin(String idToken, boolean nurseIntent);
+
+    GoogleAuthResponse completeGoogleLinking(String phoneNumber, String otp, String pendingToken);
 
     TokenPair refreshToken(String refreshToken);
 

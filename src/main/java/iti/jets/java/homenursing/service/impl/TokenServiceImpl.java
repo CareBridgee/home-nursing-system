@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import iti.jets.java.homenursing.dto.auth.PendingAuth;
 import iti.jets.java.homenursing.exception.UnauthorizedException;
 import iti.jets.java.homenursing.service.TokenService;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +28,9 @@ public class TokenServiceImpl implements TokenService {
 
     @Value("${JWT_REFRESH_TOKEN_TTL_DAYS:30}")
     private long refreshTokenTtlDays;
+
+    @Value("${PENDING_TOKEN_TTL_SECONDS:600}")
+    private long pendingTokenTtlSeconds;
 
     private final StringRedisTemplate redisTemplate;
 
@@ -113,6 +117,57 @@ public class TokenServiceImpl implements TokenService {
             return "access".equals(claims.get("type"));
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    @Override
+    public String generatePendingToken(PendingAuth pendingAuth) {
+        long now = System.currentTimeMillis();
+        long expiration = now + (pendingTokenTtlSeconds * 1000);
+
+        return Jwts.builder()
+                .setSubject(pendingAuth.googleSub())
+                .claim("type", "pending")
+                .claim("role", pendingAuth.role())
+                .claim("email", pendingAuth.email())
+                .claim("firstName", pendingAuth.firstName())
+                .claim("lastName", pendingAuth.lastName())
+                .claim("picture", pendingAuth.profileImageUrl())
+                .setIssuedAt(new Date(now))
+                .setExpiration(new Date(expiration))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    @Override
+    public PendingAuth parsePendingToken(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            if (!"pending".equals(claims.get("type"))) {
+                throw new UnauthorizedException("Invalid pending token");
+            }
+            String googleSub = claims.getSubject();
+            String role = claims.get("role", String.class);
+            if (googleSub == null || role == null) {
+                throw new UnauthorizedException("Invalid pending token");
+            }
+
+            return new PendingAuth(
+                    googleSub,
+                    claims.get("email", String.class),
+                    claims.get("firstName", String.class),
+                    claims.get("lastName", String.class),
+                    claims.get("picture", String.class),
+                    role);
+        } catch (UnauthorizedException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new UnauthorizedException("Invalid pending token");
         }
     }
 

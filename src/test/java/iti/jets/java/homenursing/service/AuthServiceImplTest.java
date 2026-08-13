@@ -1,7 +1,9 @@
 package iti.jets.java.homenursing.service;
 
 import iti.jets.java.homenursing.dto.auth.DevOtpResponse;
+import iti.jets.java.homenursing.dto.auth.GoogleAuthResponse;
 import iti.jets.java.homenursing.dto.auth.NurseTokenPair;
+import iti.jets.java.homenursing.dto.auth.PendingAuth;
 import iti.jets.java.homenursing.dto.auth.TokenPair;
 import iti.jets.java.homenursing.dto.nurse.NurseAuthResponse;
 import iti.jets.java.homenursing.dto.user.UserResponse;
@@ -12,6 +14,7 @@ import iti.jets.java.homenursing.exception.ConflictException;
 import iti.jets.java.homenursing.exception.InvalidOtpException;
 import iti.jets.java.homenursing.exception.RateLimitException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
+import iti.jets.java.homenursing.exception.UnauthorizedException;
 import iti.jets.java.homenursing.mapper.UserMapper;
 import iti.jets.java.homenursing.repository.NurseRepository;
 import iti.jets.java.homenursing.repository.UserRepository;
@@ -37,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -59,11 +63,17 @@ class AuthServiceImplTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private ProfileService profileService;
+    @Mock
+    private GoogleTokenVerifier googleTokenVerifier;
 
     @InjectMocks
     private AuthServiceImpl authService;
 
     private static final String PHONE = "+201234567890";
+    private static final String GOOGLE_SUB = "google-sub-123";
+    private static final String GOOGLE_EMAIL = "jane@example.com";
+    private static final GoogleTokenVerifier.GoogleUserInfo GOOGLE_INFO =
+            new GoogleTokenVerifier.GoogleUserInfo(GOOGLE_SUB, GOOGLE_EMAIL, "Jane", "Doe", "https://pic");
 
     private static User user(UUID id, boolean deleted) {
         return User.builder()
@@ -514,6 +524,299 @@ class AuthServiceImplTest {
         assertThatThrownBy(() -> authService.getUserProfile(PHONE))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("User not found");
+    }
+
+    @Test
+    void handleGoogleLoginNewUserWithoutPhoneReturnsPhoneRequired() {
+        when(googleTokenVerifier.verify("google-token")).thenReturn(GOOGLE_INFO);
+        when(userRepository.findByGoogleSubWithProfiles(GOOGLE_SUB)).thenReturn(Optional.empty());
+        when(userRepository.findByEmailWithProfiles(GOOGLE_EMAIL)).thenReturn(Optional.empty());
+        User created = User.builder()
+                .id(UUID.randomUUID())
+                .email(GOOGLE_EMAIL)
+                .firstName("Jane")
+                .lastName("Doe")
+                .profileImageUrl("https://pic")
+                .googleSub(GOOGLE_SUB)
+                .isDeleted(false)
+                .build();
+        when(userRepository.save(any(User.class))).thenReturn(created);
+        when(tokenService.generatePendingToken(any(PendingAuth.class))).thenReturn("pending-t");
+
+        GoogleAuthResponse response = authService.handleGoogleLogin("google-token", false);
+
+        assertThat(response.getStatus()).isEqualTo(GoogleAuthResponse.STATUS_PHONE_REQUIRED);
+        assertThat(response.getPendingToken()).isEqualTo("pending-t");
+        assertThat(response.getEmail()).isEqualTo(GOOGLE_EMAIL);
+        assertThat(response.getFirstName()).isEqualTo("Jane");
+        verify(profileService).createDefaultProfile(created);
+        verify(tokenService).generatePendingToken(new PendingAuth(
+                GOOGLE_SUB, GOOGLE_EMAIL, "Jane", "Doe", "https://pic", "USER"));
+    }
+
+    @Test
+    void handleGoogleLoginExistingUserBySubWithPhoneAuthenticates() {
+        UUID userId = UUID.randomUUID();
+        User existing = user(userId, false);
+        existing.setGoogleSub(GOOGLE_SUB);
+        existing.setEmail(GOOGLE_EMAIL);
+        when(googleTokenVerifier.verify("google-token")).thenReturn(GOOGLE_INFO);
+        when(userRepository.findByGoogleSubWithProfiles(GOOGLE_SUB)).thenReturn(Optional.of(existing));
+        when(nurseRepository.existsByUser_Id(userId)).thenReturn(false);
+        when(tokenService.generateAccessToken(userId.toString(), "USER")).thenReturn("access-t");
+        when(tokenService.generateRefreshToken(userId.toString())).thenReturn("refresh-t");
+        when(tokenService.getAccessTokenTtlSeconds()).thenReturn(900L);
+        when(userMapper.toResponse(existing)).thenReturn(userResponse(userId));
+
+        GoogleAuthResponse response = authService.handleGoogleLogin("google-token", false);
+
+        assertThat(response.getStatus()).isEqualTo(GoogleAuthResponse.STATUS_AUTHENTICATED);
+        assertThat(response.getAccessToken()).isEqualTo("access-t");
+        assertThat(response.getUser().getId()).isEqualTo(userId);
+    }
+
+    @Test
+    void handleGoogleLoginExistingUserByEmailLinksGoogleSub() {
+        UUID userId = UUID.randomUUID();
+        User existing = user(userId, false);
+        existing.setEmail(GOOGLE_EMAIL);
+        when(googleTokenVerifier.verify("google-token")).thenReturn(GOOGLE_INFO);
+        when(userRepository.findByGoogleSubWithProfiles(GOOGLE_SUB)).thenReturn(Optional.empty());
+        when(userRepository.findByEmailWithProfiles(GOOGLE_EMAIL)).thenReturn(Optional.of(existing));
+        when(nurseRepository.existsByUser_Id(userId)).thenReturn(false);
+        when(tokenService.generateAccessToken(userId.toString(), "USER")).thenReturn("access-t");
+        when(tokenService.generateRefreshToken(userId.toString())).thenReturn("refresh-t");
+        when(tokenService.getAccessTokenTtlSeconds()).thenReturn(900L);
+        when(userMapper.toResponse(existing)).thenReturn(userResponse(userId));
+
+        GoogleAuthResponse response = authService.handleGoogleLogin("google-token", false);
+
+        assertThat(response.getStatus()).isEqualTo(GoogleAuthResponse.STATUS_AUTHENTICATED);
+        assertThat(existing.getGoogleSub()).isEqualTo(GOOGLE_SUB);
+        verify(userRepository, atLeastOnce()).save(existing);
+    }
+
+    @Test
+    void handleGoogleLoginExistingUserByEmailWithoutPhoneReturnsPhoneRequired() {
+        UUID userId = UUID.randomUUID();
+        User existing = user(userId, false);
+        existing.setPhoneNumber(null);
+        existing.setEmail(GOOGLE_EMAIL);
+        when(googleTokenVerifier.verify("google-token")).thenReturn(GOOGLE_INFO);
+        when(userRepository.findByGoogleSubWithProfiles(GOOGLE_SUB)).thenReturn(Optional.empty());
+        when(userRepository.findByEmailWithProfiles(GOOGLE_EMAIL)).thenReturn(Optional.of(existing));
+        when(tokenService.generatePendingToken(any(PendingAuth.class))).thenReturn("pending-t");
+
+        GoogleAuthResponse response = authService.handleGoogleLogin("google-token", false);
+
+        assertThat(response.getStatus()).isEqualTo(GoogleAuthResponse.STATUS_PHONE_REQUIRED);
+        assertThat(response.getPendingToken()).isEqualTo("pending-t");
+        assertThat(existing.getGoogleSub()).isEqualTo(GOOGLE_SUB);
+    }
+
+    @Test
+    void handleGoogleLoginDeletedUserThrows() {
+        UUID userId = UUID.randomUUID();
+        User deleted = user(userId, true);
+        deleted.setGoogleSub(GOOGLE_SUB);
+        when(googleTokenVerifier.verify("google-token")).thenReturn(GOOGLE_INFO);
+        when(userRepository.findByGoogleSubWithProfiles(GOOGLE_SUB)).thenReturn(Optional.of(deleted));
+
+        assertThatThrownBy(() -> authService.handleGoogleLogin("google-token", false))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("User not found");
+    }
+
+    @Test
+    void handleGoogleLoginNurseIntentOnRegularUserThrowsConflict() {
+        UUID userId = UUID.randomUUID();
+        User existing = user(userId, false);
+        existing.setGoogleSub(GOOGLE_SUB);
+        when(googleTokenVerifier.verify("google-token")).thenReturn(GOOGLE_INFO);
+        when(userRepository.findByGoogleSubWithProfiles(GOOGLE_SUB)).thenReturn(Optional.of(existing));
+        when(nurseRepository.existsByUser_Id(userId)).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.handleGoogleLogin("google-token", true))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("regular user");
+    }
+
+    @Test
+    void handleGoogleLoginUserIntentOnNurseThrowsConflict() {
+        UUID userId = UUID.randomUUID();
+        User existing = user(userId, false);
+        existing.setGoogleSub(GOOGLE_SUB);
+        when(googleTokenVerifier.verify("google-token")).thenReturn(GOOGLE_INFO);
+        when(userRepository.findByGoogleSubWithProfiles(GOOGLE_SUB)).thenReturn(Optional.of(existing));
+        when(nurseRepository.existsByUser_Id(userId)).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.handleGoogleLogin("google-token", false))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("nurse");
+    }
+
+    @Test
+    void handleGoogleLoginNurseIntentNewUserCreatesNurseRecordAndReturnsPhoneRequired() {
+        when(googleTokenVerifier.verify("google-token")).thenReturn(GOOGLE_INFO);
+        when(userRepository.findByGoogleSubWithProfiles(GOOGLE_SUB)).thenReturn(Optional.empty());
+        when(userRepository.findByEmailWithProfiles(GOOGLE_EMAIL)).thenReturn(Optional.empty());
+        User created = User.builder()
+                .id(UUID.randomUUID())
+                .email(GOOGLE_EMAIL)
+                .firstName("Jane")
+                .lastName("Doe")
+                .googleSub(GOOGLE_SUB)
+                .isDeleted(false)
+                .build();
+        when(userRepository.save(any(User.class))).thenReturn(created);
+        when(tokenService.generatePendingToken(any(PendingAuth.class))).thenReturn("pending-t");
+
+        GoogleAuthResponse response = authService.handleGoogleLogin("google-token", true);
+
+        ArgumentCaptor<Nurse> nurseCaptor = ArgumentCaptor.forClass(Nurse.class);
+        verify(nurseRepository).save(nurseCaptor.capture());
+        assertThat(nurseCaptor.getValue().getUser()).isSameAs(created);
+        assertThat(nurseCaptor.getValue().getVerificationStatus()).isEqualTo(VerificationStatus.UNDER_REVIEW);
+        assertThat(response.getStatus()).isEqualTo(GoogleAuthResponse.STATUS_PHONE_REQUIRED);
+        verify(profileService, never()).createDefaultProfile(any(User.class));
+    }
+
+    @Test
+    void handleGoogleLoginWithInvalidTokenThrows() {
+        when(googleTokenVerifier.verify("bad-token")).thenThrow(
+                new UnauthorizedException("Invalid Google ID token"));
+
+        assertThatThrownBy(() -> authService.handleGoogleLogin("bad-token", false))
+                .isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    void completeGoogleLinkingLinksPhoneToGoogleUserAndAuthenticates() {
+        UUID userId = UUID.randomUUID();
+        User created = user(userId, false);
+        created.setPhoneNumber(null);
+        created.setEmail(GOOGLE_EMAIL);
+        created.setGoogleSub(GOOGLE_SUB);
+        created.setFirstName("User");
+        created.setLastName("");
+        when(passwordEncoder.matches(anyString(), eq("hash"))).thenReturn(true);
+        when(tokenService.get("otp:" + PHONE)).thenReturn("hash");
+        when(tokenService.parsePendingToken("pending-t"))
+                .thenReturn(new PendingAuth(GOOGLE_SUB, GOOGLE_EMAIL, "Jane", "Doe", "https://pic", "USER"));
+        when(userRepository.findByPhoneNumberWithProfiles(PHONE)).thenReturn(Optional.empty());
+        when(userRepository.findByGoogleSubWithProfiles(GOOGLE_SUB)).thenReturn(Optional.of(created));
+        when(nurseRepository.existsByUser_Id(userId)).thenReturn(false);
+        when(tokenService.generateAccessToken(userId.toString(), "USER")).thenReturn("access-t");
+        when(tokenService.generateRefreshToken(userId.toString())).thenReturn("refresh-t");
+        when(tokenService.getAccessTokenTtlSeconds()).thenReturn(900L);
+        when(userMapper.toResponse(created)).thenReturn(userResponse(userId));
+
+        GoogleAuthResponse response = authService.completeGoogleLinking(PHONE, "123456", "pending-t");
+
+        assertThat(response.getStatus()).isEqualTo(GoogleAuthResponse.STATUS_AUTHENTICATED);
+        assertThat(response.getAccessToken()).isEqualTo("access-t");
+        assertThat(created.getPhoneNumber()).isEqualTo(PHONE);
+        assertThat(created.getGoogleSub()).isEqualTo(GOOGLE_SUB);
+        assertThat(created.getFirstName()).isEqualTo("Jane");
+        assertThat(created.getLastName()).isEqualTo("Doe");
+        verify(tokenService).delete("otp:" + PHONE);
+    }
+
+    @Test
+    void completeGoogleLinkingCreatesPhoneUserWhenPendingSubUnknown() {
+        UUID userId = UUID.randomUUID();
+        User created = user(userId, false);
+        created.setFirstName("User");
+        created.setLastName("");
+        when(passwordEncoder.matches(anyString(), eq("hash"))).thenReturn(true);
+        when(tokenService.get("otp:" + PHONE)).thenReturn("hash");
+        when(tokenService.parsePendingToken("pending-t"))
+                .thenReturn(new PendingAuth(GOOGLE_SUB, GOOGLE_EMAIL, "Jane", "Doe", null, "USER"));
+        when(userRepository.findByPhoneNumberWithProfiles(PHONE)).thenReturn(Optional.empty());
+        when(userRepository.findByGoogleSubWithProfiles(GOOGLE_SUB)).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenReturn(created);
+        when(nurseRepository.existsByUser_Id(userId)).thenReturn(false);
+        when(tokenService.generateAccessToken(userId.toString(), "USER")).thenReturn("access-t");
+        when(tokenService.generateRefreshToken(userId.toString())).thenReturn("refresh-t");
+        when(tokenService.getAccessTokenTtlSeconds()).thenReturn(900L);
+        when(userMapper.toResponse(created)).thenReturn(userResponse(userId));
+
+        GoogleAuthResponse response = authService.completeGoogleLinking(PHONE, "123456", "pending-t");
+
+        assertThat(response.getStatus()).isEqualTo(GoogleAuthResponse.STATUS_AUTHENTICATED);
+        assertThat(created.getGoogleSub()).isEqualTo(GOOGLE_SUB);
+        assertThat(created.getEmail()).isEqualTo(GOOGLE_EMAIL);
+        assertThat(created.getFirstName()).isEqualTo("Jane");
+    }
+
+    @Test
+    void completeGoogleLinkingWithPhoneTakenByAnotherAccountThrowsConflict() {
+        UUID userId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+        User other = user(otherUserId, false);
+        other.setGoogleSub("different-google-sub");
+        when(passwordEncoder.matches(anyString(), eq("hash"))).thenReturn(true);
+        when(tokenService.get("otp:" + PHONE)).thenReturn("hash");
+        when(tokenService.parsePendingToken("pending-t"))
+                .thenReturn(new PendingAuth(GOOGLE_SUB, GOOGLE_EMAIL, "Jane", "Doe", null, "USER"));
+        when(userRepository.findByPhoneNumberWithProfiles(PHONE)).thenReturn(Optional.of(other));
+
+        assertThatThrownBy(() -> authService.completeGoogleLinking(PHONE, "123456", "pending-t"))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("already registered to another account");
+    }
+
+    @Test
+    void completeGoogleLinkingNursePendingReturnsNurseUser() {
+        UUID userId = UUID.randomUUID();
+        User created = user(userId, false);
+        created.setPhoneNumber(null);
+        created.setGoogleSub(GOOGLE_SUB);
+        created.setFirstName("Jane");
+        created.setLastName("Doe");
+        Nurse nurse = nurse(userId, "NURSE-G");
+        when(passwordEncoder.matches(anyString(), eq("hash"))).thenReturn(true);
+        when(tokenService.get("otp:" + PHONE)).thenReturn("hash");
+        when(tokenService.parsePendingToken("pending-t"))
+                .thenReturn(new PendingAuth(GOOGLE_SUB, GOOGLE_EMAIL, "Jane", "Doe", null, "NURSE"));
+        when(userRepository.findByPhoneNumberWithProfiles(PHONE)).thenReturn(Optional.empty());
+        when(userRepository.findByGoogleSubWithProfiles(GOOGLE_SUB)).thenReturn(Optional.of(created));
+        when(nurseRepository.existsByUser_Id(userId)).thenReturn(true);
+        when(nurseRepository.findByUser_Id(userId)).thenReturn(Optional.of(nurse));
+        when(tokenService.generateAccessToken(userId.toString(), "NURSE")).thenReturn("access-t");
+        when(tokenService.generateRefreshToken(userId.toString())).thenReturn("refresh-t");
+        when(tokenService.getAccessTokenTtlSeconds()).thenReturn(900L);
+        when(userMapper.toResponse(created)).thenReturn(userResponse(userId));
+
+        GoogleAuthResponse response = authService.completeGoogleLinking(PHONE, "123456", "pending-t");
+
+        assertThat(response.getStatus()).isEqualTo(GoogleAuthResponse.STATUS_AUTHENTICATED);
+        assertThat(response.getNurseUser()).isNotNull();
+        assertThat(response.getNurseUser().getNurse().getNationalId()).isEqualTo("NURSE-G");
+        assertThat(response.getAccessToken()).isEqualTo("access-t");
+    }
+
+    @Test
+    void completeGoogleLinkingWithWrongOtpThrows() {
+        when(tokenService.get("otp:" + PHONE)).thenReturn("hash");
+        when(passwordEncoder.matches(anyString(), eq("hash"))).thenReturn(false);
+        when(tokenService.increment("otp_attempts:" + PHONE)).thenReturn(1L);
+
+        assertThatThrownBy(() -> authService.completeGoogleLinking(PHONE, "999999", "pending-t"))
+                .isInstanceOf(InvalidOtpException.class)
+                .hasMessageContaining("Invalid OTP");
+    }
+
+    @Test
+    void completeGoogleLinkingWithInvalidPendingTokenThrows() {
+        when(passwordEncoder.matches(anyString(), eq("hash"))).thenReturn(true);
+        when(tokenService.get("otp:" + PHONE)).thenReturn("hash");
+        when(tokenService.parsePendingToken("bad-token"))
+                .thenThrow(new UnauthorizedException("Invalid pending token"));
+
+        assertThatThrownBy(() -> authService.completeGoogleLinking(PHONE, "123456", "bad-token"))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessageContaining("Invalid pending token");
     }
 
     private static Nurse nurse(UUID userId, String nationalId) {

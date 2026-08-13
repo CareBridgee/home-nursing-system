@@ -1,6 +1,8 @@
 package iti.jets.java.homenursing.controller;
 
 import iti.jets.java.homenursing.dto.auth.DevOtpResponse;
+import iti.jets.java.homenursing.dto.auth.GoogleAuthResponse;
+import iti.jets.java.homenursing.dto.auth.GoogleLoginRequest;
 import iti.jets.java.homenursing.dto.auth.LoginRequest;
 import iti.jets.java.homenursing.dto.auth.RefreshRequest;
 import iti.jets.java.homenursing.dto.auth.NurseTokenPair;
@@ -34,11 +36,26 @@ public class AuthController {
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<TokenPair> verifyOtp(
+    public ResponseEntity<?> verifyOtp(
             @Valid @RequestBody VerifyOtpRequest request) {
+        if (request.getPendingToken() != null && !request.getPendingToken().isBlank()) {
+            GoogleAuthResponse response = authService.completeGoogleLinking(
+                    request.getPhoneNumber(), request.getOtp(), request.getPendingToken());
+            return ResponseEntity.ok(response);
+        }
         TokenPair tokens = authService.verifyOtpAndLogin(
                 request.getPhoneNumber(), request.getOtp());
         return ResponseEntity.ok(tokens);
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<GoogleAuthResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        return ResponseEntity.ok(authService.handleGoogleLogin(request.getIdToken(), false));
+    }
+
+    @PostMapping("/nurse/google")
+    public ResponseEntity<GoogleAuthResponse> nurseGoogleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        return ResponseEntity.ok(authService.handleGoogleLogin(request.getIdToken(), true));
     }
 
     @PostMapping("/nurse/login")

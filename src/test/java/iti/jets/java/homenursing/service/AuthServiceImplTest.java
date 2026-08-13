@@ -755,6 +755,7 @@ class AuthServiceImplTest {
         UUID otherUserId = UUID.randomUUID();
         User other = user(otherUserId, false);
         other.setGoogleSub("different-google-sub");
+        other.setFirstName("Mona");
         when(passwordEncoder.matches(anyString(), eq("hash"))).thenReturn(true);
         when(tokenService.get("otp:" + PHONE)).thenReturn("hash");
         when(tokenService.parsePendingToken("pending-t"))
@@ -763,7 +764,27 @@ class AuthServiceImplTest {
 
         assertThatThrownBy(() -> authService.completeGoogleLinking(PHONE, "123456", "pending-t"))
                 .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("already registered to another account");
+                .hasMessageContaining("already registered to another account")
+                .satisfies(ex -> assertThat(((ConflictException) ex).getDetails())
+                        .containsEntry("existingAccountName", "M***"));
+    }
+
+    @Test
+    void completeGoogleLinkingWithPhoneTakenByDefaultNamedAccountOmitsMaskedName() {
+        UUID otherUserId = UUID.randomUUID();
+        User other = user(otherUserId, false);
+        other.setGoogleSub("different-google-sub");
+        other.setFirstName("User");
+        when(passwordEncoder.matches(anyString(), eq("hash"))).thenReturn(true);
+        when(tokenService.get("otp:" + PHONE)).thenReturn("hash");
+        when(tokenService.parsePendingToken("pending-t"))
+                .thenReturn(new PendingAuth(GOOGLE_SUB, GOOGLE_EMAIL, "Jane", "Doe", null, "USER"));
+        when(userRepository.findByPhoneNumberWithProfiles(PHONE)).thenReturn(Optional.of(other));
+
+        assertThatThrownBy(() -> authService.completeGoogleLinking(PHONE, "123456", "pending-t"))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("already registered to another account")
+                .satisfies(ex -> assertThat(((ConflictException) ex).getDetails()).isNull());
     }
 
     @Test

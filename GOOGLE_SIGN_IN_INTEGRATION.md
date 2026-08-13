@@ -140,7 +140,7 @@ Response `200` — same `AUTHENTICATED` shape as above.
 | `404` | `User not found` | Account was deleted |
 | `409` | `This account is already registered as a nurse. Please use the nurse login.` | Google account is a nurse, app called the patient endpoint |
 | `409` | `This account is already registered as a regular user. Please use the user login.` | Google account is a patient, app called the nurse endpoint |
-| `409` | `This phone is already registered to another account.` | Phone entered during linking belongs to a different account |
+| `409` | `This phone is already registered to another account.` | Phone entered during linking belongs to a different account. The phone owner's identity is protected — it is never reassigned. `details.existingAccountName` contains a masked hint of the owner's first name (e.g. `"J***"`) when available, so the app can offer "sign in to the existing account instead". |
 | `401` | `Invalid OTP` / `OTP has expired or is invalid` | Wrong/expired OTP during linking |
 
 Error body (`ApiError`):
@@ -154,6 +154,20 @@ Error body (`ApiError`):
   "details": null
 }
 ```
+
+Phone-taken conflict (`details` carries the masked owner name):
+```json
+{
+  "status": 409,
+  "code": "CONFLICT",
+  "message": "This phone is already registered to another account.",
+  "details": {
+    "existingAccountName": "J***"
+  }
+}
+```
+
+> **"Sign in to the existing account instead"** — the phone number is *never* transferred to a different account, even when the caller proves possession of the number via OTP. If the phone belongs to another account, the legitimate resolution is for the user to sign in to **that** account directly with the OTP they just received (normal phone OTP login), or to retry Google linking with a different phone number. The only account *merge* path is by matching Google email with an existing phone account (`handleGoogleLogin` links it automatically).
 
 ### 4.4 Using the tokens
 
@@ -249,7 +263,7 @@ suspend fun linkPhone(phone: String, otp: String, pendingToken: String) {
 
 - `401` `aud` error → double-check `requestIdToken(WEB_CLIENT_ID)`.
 - `409` role conflict → route the user to the other app's login (nurse login for providers) or show the message.
-- `409` phone taken → prompt for a different phone number.
+- `409` phone taken (`details.existingAccountName` present) → offer **"Sign in to the existing account instead"**: the user already holds a valid OTP for that number, so a normal OTP login (e.g. `M***` hint to confirm) succeeds as the existing account. Otherwise prompt for a different phone number.
 
 ## 6. iOS integration (Carely-Patient & Enaya-Provider)
 
@@ -401,5 +415,5 @@ Notes:
 - [ ] Existing phone-account user signs in with the same Google email → linked instantly, no OTP (account already has a phone).
 - [ ] Google nurse account hitting the patient endpoint → `409` with the "use the nurse login" message.
 - [ ] Wrong audience (e.g. iOS without `serverClientID`) → `401` aud message, no crash.
-- [ ] Phone already registered to another account during linking → `409`, user can retry with another phone.
+- [ ] Phone already registered to another account during linking → `409` with `details.existingAccountName` (masked hint); app offers "sign in to the existing account instead" (OTP login as that account) or a retry with a different phone.
 - [ ] Token refresh and logout work with the new tokens.

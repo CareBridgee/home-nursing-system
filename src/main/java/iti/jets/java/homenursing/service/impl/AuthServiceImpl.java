@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -159,7 +160,9 @@ public class AuthServiceImpl implements AuthService {
 
         User byPhone = userRepository.findByPhoneNumberWithProfiles(phone).orElse(null);
         if (byPhone != null && !pending.googleSub().equals(byPhone.getGoogleSub())) {
-            throw new ConflictException("This phone is already registered to another account.");
+            throw new ConflictException(
+                    "This phone is already registered to another account.",
+                    maskedAccountNameDetails(byPhone.getFirstName()));
         }
 
         User user = userRepository.findByGoogleSubWithProfiles(pending.googleSub()).orElse(null);
@@ -238,6 +241,13 @@ public class AuthServiceImpl implements AuthService {
 
     private static boolean isDefaultName(String name) {
         return name == null || name.isBlank() || "User".equals(name) || "Nurse".equals(name);
+    }
+
+    private static Map<String, Object> maskedAccountNameDetails(String firstName) {
+        if (isDefaultName(firstName)) {
+            return null;
+        }
+        return Map.of("existingAccountName", firstName.substring(0, 1).toUpperCase() + "***");
     }
 
     private static String displayName(String name, String fallback) {

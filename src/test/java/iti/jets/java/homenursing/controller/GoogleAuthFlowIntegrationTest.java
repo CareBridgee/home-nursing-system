@@ -131,6 +131,36 @@ class GoogleAuthFlowIntegrationTest extends ApiIntegrationTestBase {
     }
 
     @Test
+    void googleLinkingWithPhoneTakenByAnotherAccount_conflictsWithMaskedName() throws Exception {
+        stubValidGoogleToken("google-sub-d", "d@example.com");
+        String phone = "+201111100104";
+        String ownerPendingToken = Json.read(requestGoogleLogin("/api/v1/auth/google"),
+                com.fasterxml.jackson.databind.JsonNode.class).get("pendingToken").asText();
+        completePhoneStep(phone, ownerPendingToken);
+
+        stubValidGoogleToken("google-sub-e", "e@example.com");
+        String intruderPendingToken = Json.read(requestGoogleLogin("/api/v1/auth/google"),
+                com.fasterxml.jackson.databind.JsonNode.class).get("pendingToken").asText();
+
+        String otp = Json.read(mvc.perform(post("/api/v1/auth/dev/request-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("phoneNumber", phone))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(),
+                iti.jets.java.homenursing.dto.auth.DevOtpResponse.class).otp();
+
+        mvc.perform(post("/api/v1/auth/verify-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of(
+                                "phoneNumber", phone,
+                                "otp", otp,
+                                "pendingToken", intruderPendingToken))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.details.existingAccountName",
+                        org.hamcrest.Matchers.is("J***")));
+    }
+
+    @Test
     void invalidGoogleToken_isUnauthorized() throws Exception {
         when(googleTokenVerifier.verify(anyString()))
                 .thenThrow(new UnauthorizedException("Invalid Google ID token"));

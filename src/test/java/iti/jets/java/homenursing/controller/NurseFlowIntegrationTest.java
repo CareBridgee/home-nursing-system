@@ -539,6 +539,17 @@ class NurseFlowIntegrationTest extends ApiIntegrationTestBase {
         mvc.perform(get("/api/v1/service-requests/{id}/profile", requestId)
                         .header("Authorization", bearer(nurseTokens)))
                 .andExpect(status().isOk());
+
+        mvc.perform(get("/api/v1/service-requests/nurse/history")
+                        .header("Authorization", bearer(patient)))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/service-requests/nurse/history")
+                        .header("Authorization", bearer(nurseTokens)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].serviceRequestId", is(requestId.toString())))
+                .andExpect(jsonPath("$[0].status", is("ACCEPTED")))
+                .andExpect(jsonPath("$[0].patientFirstName", notNullValue()));
     }
 
     @Test

@@ -9,6 +9,7 @@ import iti.jets.java.homenursing.dto.reservation.ReservationEvent;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyNurseServiceRequestResponse;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestRequest;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestResponse;
+import iti.jets.java.homenursing.dto.servicerequest.NurseRequestHistoryResponse;
 import iti.jets.java.homenursing.dto.servicerequest.PatientMedicalSummary;
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestDetailsResponse;
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestHistoryResponse;
@@ -1739,6 +1740,130 @@ class ServiceRequestServiceImplTest {
 
         assertEquals(1, result.size());
         assertNull(result.get(0).distanceKm());
+    }
+
+    // ------------------------------------------------------------------
+    // listNurseHistory / toNurseHistoryResponse
+    // ------------------------------------------------------------------
+
+    @Test
+    void listNurseHistory_notANurse_throwsResourceNotFound() {
+        when(nurseRepository.findByUser_Id(NURSE_USER_ID)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.listNurseHistory(NURSE_USER_ID));
+        verifyNoInteractions(serviceRequestRepository);
+    }
+
+    @Test
+    void listNurseHistory_empty_returnsEmpty() {
+        when(nurseRepository.findByUser_Id(NURSE_USER_ID)).thenReturn(Optional.of(assignedNurse()));
+        when(serviceRequestRepository.findByNurse_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(
+                NURSE_ID, List.of(ServiceRequestStatus.ACCEPTED, ServiceRequestStatus.IN_PROGRESS,
+                        ServiceRequestStatus.COMPLETED)))
+                .thenReturn(List.of());
+
+        List<NurseRequestHistoryResponse> result = service.listNurseHistory(NURSE_USER_ID);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void listNurseHistory_happy_returnsFullHistoryWithPatientAndPrice() {
+        ServiceRequest r1 = ServiceRequest.builder()
+                .id(REQ_ID).profile(patientProfile()).serviceType(serviceType())
+                .nurse(assignedNurse())
+                .serviceDescription("desc").status(ServiceRequestStatus.COMPLETED)
+                .latitude(LAT).longitude(LNG).isDeleted(false)
+                .createdAt(NOW).updatedAt(NOW_2).build();
+        when(nurseRepository.findByUser_Id(NURSE_USER_ID)).thenReturn(Optional.of(assignedNurse()));
+        when(serviceRequestRepository.findByNurse_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(
+                eq(NURSE_ID), anyCollection())).thenReturn(List.of(r1));
+        when(webSocketPresenceService.getAvailableLocation(NURSE_USER_ID_STR))
+                .thenReturn(Optional.of(new Point(31.0010, 30.0010)));
+
+        List<NurseRequestHistoryResponse> result = service.listNurseHistory(NURSE_USER_ID);
+
+        assertEquals(1, result.size());
+        NurseRequestHistoryResponse response = result.get(0);
+        assertEquals(REQ_ID, response.serviceRequestId());
+        assertEquals(ST_ID, response.serviceTypeId());
+        assertEquals("Home Nursing", response.serviceName());
+        assertEquals(120, response.estimatedDurationMinutes());
+        assertEquals(PROFILE_ID, response.patientProfileId());
+        assertEquals("Mona", response.patientFirstName());
+        assertEquals("Ali", response.patientLastName());
+        assertEquals("01012345678", response.patientPhoneNumber());
+        assertEquals("patient-img", response.patientProfileImageUrl());
+        assertEquals("desc", response.serviceDescription());
+        assertEquals(ServiceRequestStatus.COMPLETED, response.status());
+        assertNotNull(response.estimatedPrice());
+        assertEquals(NOW, response.createdAt());
+        assertEquals(NOW_2, response.updatedAt());
+    }
+
+    @Test
+    void listNurseHistory_nurseWithoutLiveLocation_priceNull() {
+        ServiceRequest r1 = ServiceRequest.builder()
+                .id(REQ_ID).profile(patientProfile()).serviceType(serviceType())
+                .nurse(assignedNurse())
+                .serviceDescription("desc").status(ServiceRequestStatus.ACCEPTED)
+                .latitude(LAT).longitude(LNG).isDeleted(false)
+                .createdAt(NOW).updatedAt(NOW_2).build();
+        when(nurseRepository.findByUser_Id(NURSE_USER_ID)).thenReturn(Optional.of(assignedNurse()));
+        when(serviceRequestRepository.findByNurse_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(
+                eq(NURSE_ID), anyCollection())).thenReturn(List.of(r1));
+        when(webSocketPresenceService.getAvailableLocation(NURSE_USER_ID_STR)).thenReturn(Optional.empty());
+
+        List<NurseRequestHistoryResponse> result = service.listNurseHistory(NURSE_USER_ID);
+
+        assertEquals(1, result.size());
+        assertNull(result.get(0).estimatedPrice());
+    }
+
+    @Test
+    void listNurseHistory_edgeCases_coverNullPaths() {
+        ServiceRequest rNoTypeNoProfile = ServiceRequest.builder()
+                .id(REQ_ID).profile(null).serviceType(null).nurse(assignedNurse())
+                .serviceDescription("d").status(ServiceRequestStatus.COMPLETED)
+                .latitude(null).longitude(null).isDeleted(false)
+                .createdAt(NOW).updatedAt(NOW_2).build();
+        ServiceRequest rPartialUser = ServiceRequest.builder()
+                .id(REQ_ID_2)
+                .profile(Profile.builder().id(PROFILE_ID)
+                        .user(User.builder().id(PATIENT_USER_ID).firstName(null).lastName(null)
+                                .phoneNumber(null).build())
+                        .profileImageUrl(" ").build())
+                .serviceType(serviceType())
+                .nurse(assignedNurse())
+                .serviceDescription("d").status(ServiceRequestStatus.IN_PROGRESS)
+                .latitude(LAT).longitude(LNG).isDeleted(false)
+                .createdAt(NOW).updatedAt(NOW_2).build();
+        when(nurseRepository.findByUser_Id(NURSE_USER_ID)).thenReturn(Optional.of(assignedNurse()));
+        when(serviceRequestRepository.findByNurse_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(
+                eq(NURSE_ID), anyCollection())).thenReturn(List.of(rNoTypeNoProfile, rPartialUser));
+        when(webSocketPresenceService.getAvailableLocation(NURSE_USER_ID_STR))
+                .thenReturn(Optional.of(new Point(31.0010, 30.0010)));
+
+        List<NurseRequestHistoryResponse> result = service.listNurseHistory(NURSE_USER_ID);
+
+        assertEquals(2, result.size());
+        NurseRequestHistoryResponse first = result.get(0);
+        assertNull(first.serviceTypeId());
+        assertNull(first.serviceName());
+        assertNull(first.estimatedDurationMinutes());
+        assertNull(first.patientProfileId());
+        assertNull(first.patientFirstName());
+        assertNull(first.patientLastName());
+        assertNull(first.patientPhoneNumber());
+        assertNull(first.patientProfileImageUrl());
+        assertNull(first.estimatedPrice());
+        NurseRequestHistoryResponse second = result.get(1);
+        assertEquals(PROFILE_ID, second.patientProfileId());
+        assertNull(second.patientFirstName());
+        assertNull(second.patientLastName());
+        assertNull(second.patientPhoneNumber());
+        assertNull(second.patientProfileImageUrl());
+        assertNotNull(second.estimatedPrice());
     }
 
     // ------------------------------------------------------------------

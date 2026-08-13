@@ -5,6 +5,7 @@ import iti.jets.java.homenursing.dto.servicerequest.CompleteServiceRequestReques
 import iti.jets.java.homenursing.dto.servicerequest.NearbyNurseServiceRequestResponse;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestRequest;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestResponse;
+import iti.jets.java.homenursing.dto.servicerequest.NurseRequestHistoryResponse;
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestDetailsResponse;
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestHistoryResponse;
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestNursePreviewResponse;
@@ -156,5 +157,10 @@ ServiceRequest request = serviceRequestRepository.findWithDetailsById(response.s
     @GetMapping("/confirmed")
     public ResponseEntity<List<ServiceRequestHistoryResponse>> listConfirmedHistory() {
         return ResponseEntity.ok(serviceRequestService.listConfirmedHistory(SecurityUtils.currentUserId()));
+    }
+
+    @GetMapping("/nurse/history")
+    public ResponseEntity<List<NurseRequestHistoryResponse>> listNurseHistory() {
+        return ResponseEntity.ok(serviceRequestService.listNurseHistory(SecurityUtils.currentUserId()));
     }
 }

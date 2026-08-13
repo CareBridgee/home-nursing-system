@@ -8,6 +8,7 @@ import iti.jets.java.homenursing.dto.reservation.ReservationEvent;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyNurseServiceRequestResponse;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestRequest;
 import iti.jets.java.homenursing.dto.servicerequest.NearbyServiceRequestResponse;
+import iti.jets.java.homenursing.dto.servicerequest.NurseRequestHistoryResponse;
 import iti.jets.java.homenursing.dto.servicerequest.PatientMedicalSummary;
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestDetailsResponse;
 import iti.jets.java.homenursing.dto.servicerequest.ServiceRequestHistoryResponse;
@@ -659,6 +660,61 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 nurse != null && nurse.getUser() != null ? nurse.getUser().getProfileImageUrl() : null,
                 distanceKm,
                 serviceType == null ? null : serviceType.getEstimatedDurationMinutes(),
+                s.getCreatedAt(),
+                s.getUpdatedAt());
+    }
+
+    @Override
+    public List<NurseRequestHistoryResponse> listNurseHistory(UUID userId) {
+        Nurse nurse = nurseRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Nurse profile not found"));
+
+        List<ServiceRequestStatus> historyStatuses = List.of(
+                ServiceRequestStatus.ACCEPTED,
+                ServiceRequestStatus.IN_PROGRESS,
+                ServiceRequestStatus.COMPLETED);
+
+        return serviceRequestRepository
+                .findByNurse_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(nurse.getId(), historyStatuses)
+                .stream()
+                .map(this::toNurseHistoryResponse)
+                .toList();
+    }
+
+    private NurseRequestHistoryResponse toNurseHistoryResponse(ServiceRequest s) {
+        ServiceType serviceType = s.getServiceType();
+        Profile profile = s.getProfile();
+        User patientUser = profile != null ? profile.getUser() : null;
+
+        String firstName = null;
+        String lastName = null;
+        String phoneNumber = null;
+        if (patientUser != null) {
+            firstName = patientUser.getFirstName();
+            lastName = patientUser.getLastName();
+            phoneNumber = patientUser.getPhoneNumber();
+        }
+
+        Double distanceKm = s.getNurse() != null ? computeDistanceKm(s, s.getNurse()) : null;
+        BigDecimal estimatedPrice = serviceType != null && distanceKm != null
+                ? priceEstimator.estimate(serviceType.getBasePrice(), distanceKm)
+                : null;
+
+        return new NurseRequestHistoryResponse(
+                s.getId(),
+                serviceType == null ? null : serviceType.getId(),
+                serviceType == null ? null : serviceType.getName(),
+                serviceType == null ? null : serviceType.getEstimatedDurationMinutes(),
+                profile == null ? null : profile.getId(),
+                firstName,
+                lastName,
+                phoneNumber,
+                ProfileImageUtil.resolveProfileImageUrl(profile),
+                s.getServiceDescription(),
+                s.getPreferredDate(),
+                s.getPreferredTime(),
+                s.getStatus(),
+                estimatedPrice,
                 s.getCreatedAt(),
                 s.getUpdatedAt());
     }

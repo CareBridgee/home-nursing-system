@@ -14,6 +14,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.metadata.ChatResponseMetadata;
+import org.springframework.ai.chat.metadata.DefaultUsage;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -91,7 +96,10 @@ class ChatControllerTest {
         when(spec.system(anyString())).thenReturn(spec);
         when(spec.user(anyString())).thenReturn(spec);
         when(spec.call()).thenReturn(call);
-        when(call.content()).thenReturn("reply ok");
+        ChatResponse response = new ChatResponse(
+                java.util.List.of(new Generation(new AssistantMessage("reply ok"))),
+                ChatResponseMetadata.builder().usage(new DefaultUsage(12, 7)).build());
+        when(call.chatResponse()).thenReturn(response);
         when(spec.stream()).thenReturn(stream);
         when(stream.content()).thenReturn(Flux.just("token-a", "token-b"));
     }

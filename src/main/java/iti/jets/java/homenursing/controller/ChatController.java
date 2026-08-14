@@ -20,6 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.metadata.Usage;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -157,7 +159,14 @@ public class ChatController {
             prompt.system(draftInfo);
         }
         try {
-            return prompt.user(message).call().content();
+            ChatResponse response = prompt.user(message).call().chatResponse();
+            Usage usage = response.getMetadata().getUsage();
+            if (usage != null) {
+                log.info("chat-usage profileId={} promptTokens={} completionTokens={} totalTokens={}",
+                        conversationId,
+                        usage.getPromptTokens(), usage.getCompletionTokens(), usage.getTotalTokens());
+            }
+            return response.getResult().getOutput().getText();
         } catch (RuntimeException ex) {
             throw unwrapProviderException(ex);
         }

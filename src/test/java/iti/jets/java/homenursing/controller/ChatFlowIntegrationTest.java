@@ -10,6 +10,11 @@ import iti.jets.java.homenursing.testutil.Json;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.metadata.ChatResponseMetadata;
+import org.springframework.ai.chat.metadata.DefaultUsage;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -68,7 +73,7 @@ class ChatFlowIntegrationTest extends ApiIntegrationTestBase {
         when(chatSpec.system(anyString())).thenReturn(chatSpec);
         when(chatSpec.user(anyString())).thenReturn(chatSpec);
         when(chatSpec.call()).thenReturn(callSpec);
-        when(callSpec.content()).thenReturn("Sure, I can help with that.");
+        when(callSpec.chatResponse()).thenReturn(replyResponse("Sure, I can help with that."));
         when(chatSpec.stream()).thenReturn(streamSpec);
         when(streamSpec.content()).thenReturn(Flux.just("Hello from AI"));
     }
@@ -171,7 +176,13 @@ class ChatFlowIntegrationTest extends ApiIntegrationTestBase {
     }
 
     private void stubReply(String reply) {
-        when(callSpec.content()).thenReturn(reply);
+        when(callSpec.chatResponse()).thenReturn(replyResponse(reply));
+    }
+
+    private ChatResponse replyResponse(String text) {
+        return new ChatResponse(
+                List.of(new Generation(new AssistantMessage(text))),
+                ChatResponseMetadata.builder().usage(new DefaultUsage(12, 7)).build());
     }
 
     @Test
@@ -272,7 +283,7 @@ class ChatFlowIntegrationTest extends ApiIntegrationTestBase {
         String chatBody = Json.write(Map.of("profileId", profileId.toString(), "message", "hi"));
 
         ClientException quotaExceeded = new ClientException(429, "RESOURCE_EXHAUSTED", "quota exceeded");
-        doThrow(quotaExceeded).when(callSpec).content();
+        doThrow(quotaExceeded).when(callSpec).chatResponse();
         mvc.perform(post("/api/v1/chat")
                         .header("Authorization", bearer(patient))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -281,14 +292,14 @@ class ChatFlowIntegrationTest extends ApiIntegrationTestBase {
                 .andExpect(jsonPath("$.error", is("AI_SERVICE_UNAVAILABLE")));
 
         ClientException toolRejected = new ClientException(400, "INVALID_ARGUMENT", "bad tool call");
-        doThrow(toolRejected).when(callSpec).content();
+        doThrow(toolRejected).when(callSpec).chatResponse();
         mvc.perform(post("/api/v1/chat")
                         .header("Authorization", bearer(patient))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(chatBody))
                 .andExpect(status().isBadRequest());
 
-        doThrow(new IllegalStateException("provider down")).when(callSpec).content();
+        doThrow(new IllegalStateException("provider down")).when(callSpec).chatResponse();
         mvc.perform(post("/api/v1/chat")
                         .header("Authorization", bearer(patient))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -297,8 +308,8 @@ class ChatFlowIntegrationTest extends ApiIntegrationTestBase {
                 .andExpect(jsonPath("$.error", is("AI_SERVICE_UNAVAILABLE")));
 
         doThrow(new IllegalStateException("transient"))
-                .doReturn("Recovered answer")
-                .when(callSpec).content();
+                .doReturn(replyResponse("Recovered answer"))
+                .when(callSpec).chatResponse();
         mvc.perform(post("/api/v1/chat")
                         .header("Authorization", bearer(patient))
                         .contentType(MediaType.APPLICATION_JSON)

@@ -35,7 +35,7 @@ class FaqSearchToolTest {
     @BeforeEach
     void setUp() {
         tool = new FaqSearchTool(vectorStore);
-        ReflectionTestUtils.setField(tool, "topK", 6);
+        ReflectionTestUtils.setField(tool, "topK", 4);
         ReflectionTestUtils.setField(tool, "similarityThreshold", 0.35);
     }
 
@@ -54,7 +54,7 @@ class FaqSearchToolTest {
         ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
         verify(vectorStore).similaritySearch(captor.capture());
         assertEquals("What is the refund policy?", captor.getValue().getQuery());
-        assertEquals(6, captor.getValue().getTopK());
+        assertEquals(4, captor.getValue().getTopK());
         assertEquals(0.35, captor.getValue().getSimilarityThreshold());
     }
 

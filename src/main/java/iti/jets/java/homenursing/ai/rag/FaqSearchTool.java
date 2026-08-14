@@ -20,7 +20,7 @@ public class FaqSearchTool {
 
     private final VectorStore vectorStore;
 
-    @Value("${faq.search.top-k:6}")
+    @Value("${faq.search.top-k:4}")
     private int topK;
 
     @Value("${faq.search.similarity-threshold:0.35}")

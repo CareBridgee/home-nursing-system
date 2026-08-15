@@ -1,5 +1,7 @@
 package iti.jets.java.homenursing.service;
 
+import iti.jets.java.homenursing.dto.user.CreditUpdateRequest;
+import iti.jets.java.homenursing.dto.user.CreditUpdateResponse;
 import iti.jets.java.homenursing.dto.user.UserResponse;
 import iti.jets.java.homenursing.dto.user.UserUpdateRequest;
 import org.springframework.data.domain.Page;
@@ -18,4 +20,9 @@ public interface UserService {
     void deleteCurrentUser(UUID userId);
 
     Page<UserResponse> listUsers(Pageable pageable);
+
+    CreditUpdateResponse updateCredit(
+            UUID userId,
+            CreditUpdateRequest request
+    );
 }

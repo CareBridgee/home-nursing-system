@@ -1,6 +1,8 @@
 package iti.jets.java.homenursing.controller;
 
 import iti.jets.java.homenursing.annotation.SortableFields;
+import iti.jets.java.homenursing.dto.user.CreditUpdateRequest;
+import iti.jets.java.homenursing.dto.user.CreditUpdateResponse;
 import iti.jets.java.homenursing.dto.user.UserResponse;
 import iti.jets.java.homenursing.dto.user.UserUpdateRequest;
 import iti.jets.java.homenursing.security.SecurityUtils;
@@ -11,14 +13,8 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
@@ -57,5 +53,15 @@ public class UserController {
     @SortableFields(SortSanitizer.USER_SORTABLE)
     public ResponseEntity<Page<UserResponse>> listUsers(@ParameterObject Pageable pageable) {
         return ResponseEntity.ok(userService.listUsers(pageable));
+    }
+
+    @PatchMapping("/{userId}/credit")
+    public ResponseEntity<CreditUpdateResponse> updateCredit(
+            @PathVariable UUID userId,
+            @Valid @RequestBody CreditUpdateRequest request) {
+
+        return ResponseEntity.ok(
+                userService.updateCredit(userId, request)
+        );
     }
 }

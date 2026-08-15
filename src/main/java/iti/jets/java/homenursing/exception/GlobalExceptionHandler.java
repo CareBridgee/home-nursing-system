@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.method.ParameterValidationResult;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -172,5 +173,18 @@ public class GlobalExceptionHandler {
                 "An unexpected error occurred", null
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+    @ExceptionHandler(InsufficientCreditException.class)
+    public ResponseEntity<ApiError> handleInsufficientCredit(
+            InsufficientCreditException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiError.from(
+                        HttpStatus.BAD_REQUEST,
+                        "INSUFFICIENT_CREDIT",
+                        ex.getMessage(),
+                        null
+                ));
     }
 }

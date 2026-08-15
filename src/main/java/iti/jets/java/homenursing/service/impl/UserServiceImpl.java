@@ -1,8 +1,12 @@
 package iti.jets.java.homenursing.service.impl;
 
+import iti.jets.java.homenursing.dto.user.CreditUpdateRequest;
+import iti.jets.java.homenursing.dto.user.CreditUpdateResponse;
 import iti.jets.java.homenursing.dto.user.UserResponse;
 import iti.jets.java.homenursing.dto.user.UserUpdateRequest;
 import iti.jets.java.homenursing.entity.User;
+import iti.jets.java.homenursing.entity.enums.CreditOperation;
+import iti.jets.java.homenursing.exception.InsufficientCreditException;
 import iti.jets.java.homenursing.exception.ResourceNotFoundException;
 import iti.jets.java.homenursing.mapper.UserMapper;
 import iti.jets.java.homenursing.repository.AddressRepository;
@@ -22,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Service
@@ -128,5 +133,40 @@ public class UserServiceImpl implements UserService {
                     primary.setProfileImageUrl(user.getProfileImageUrl());
                     profileRepository.save(primary);
                 });
+    }
+    @Override
+    @Transactional
+    public CreditUpdateResponse updateCredit(
+            UUID userId,
+            CreditUpdateRequest request) {
+
+        User user = getActiveUser(userId);
+
+        BigDecimal currentCredit = user.getCredit();
+
+        if (request.getOperation() == CreditOperation.ADD) {
+
+            user.setCredit(
+                    currentCredit.add(request.getAmount())
+            );
+
+        } else if (request.getOperation() == CreditOperation.DEDUCT) {
+
+            if (currentCredit.compareTo(request.getAmount()) < 0) {
+                throw new InsufficientCreditException(
+                        "Insufficient credit"
+                );
+            }
+
+            user.setCredit(
+                    currentCredit.subtract(request.getAmount())
+            );
+        }
+
+        User saved = userRepository.save(user);
+
+        return CreditUpdateResponse.builder()
+                .credit(saved.getCredit())
+                .build();
     }
 }

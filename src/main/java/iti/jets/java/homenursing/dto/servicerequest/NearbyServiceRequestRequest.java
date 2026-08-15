@@ -1,5 +1,6 @@
 package iti.jets.java.homenursing.dto.servicerequest;
 
+import iti.jets.java.homenursing.entity.enums.PaymentType;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -16,6 +17,7 @@ public record NearbyServiceRequestRequest(
         @NotNull @DecimalMin("-180.0") @DecimalMax("180.0") BigDecimal longitude,
         LocalDate preferredDate,
         LocalTime preferredTime,
-        String serviceDescription
+        String serviceDescription,
+        PaymentType paymentType
 ) {
 }

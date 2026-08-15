@@ -1,5 +1,6 @@
 package iti.jets.java.homenursing.entity;
 
+import iti.jets.java.homenursing.entity.enums.PaymentType;
 import iti.jets.java.homenursing.entity.enums.ServiceRequestStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -85,4 +86,9 @@ public class ServiceRequest {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_type", length = 20)
+    private PaymentType paymentType = PaymentType.CASH;
 }

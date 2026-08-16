@@ -1,9 +1,6 @@
 package iti.jets.java.homenursing.service.impl;
 
-import iti.jets.java.homenursing.dto.user.CreditUpdateRequest;
-import iti.jets.java.homenursing.dto.user.CreditUpdateResponse;
-import iti.jets.java.homenursing.dto.user.UserResponse;
-import iti.jets.java.homenursing.dto.user.UserUpdateRequest;
+import iti.jets.java.homenursing.dto.user.*;
 import iti.jets.java.homenursing.entity.User;
 import iti.jets.java.homenursing.entity.enums.CreditOperation;
 import iti.jets.java.homenursing.exception.InsufficientCreditException;
@@ -167,6 +164,16 @@ public class UserServiceImpl implements UserService {
 
         return CreditUpdateResponse.builder()
                 .credit(saved.getCredit())
+                .build();
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public CreditResponse getCredit(UUID userId) {
+
+        User user = getActiveUser(userId);
+
+        return CreditResponse.builder()
+                .credit(user.getCredit())
                 .build();
     }
 }

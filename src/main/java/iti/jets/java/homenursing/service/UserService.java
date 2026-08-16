@@ -1,9 +1,6 @@
 package iti.jets.java.homenursing.service;
 
-import iti.jets.java.homenursing.dto.user.CreditUpdateRequest;
-import iti.jets.java.homenursing.dto.user.CreditUpdateResponse;
-import iti.jets.java.homenursing.dto.user.UserResponse;
-import iti.jets.java.homenursing.dto.user.UserUpdateRequest;
+import iti.jets.java.homenursing.dto.user.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -25,4 +22,5 @@ public interface UserService {
             UUID userId,
             CreditUpdateRequest request
     );
+    CreditResponse getCredit(UUID userId);
 }

@@ -1,10 +1,7 @@
 package iti.jets.java.homenursing.controller;
 
 import iti.jets.java.homenursing.annotation.SortableFields;
-import iti.jets.java.homenursing.dto.user.CreditUpdateRequest;
-import iti.jets.java.homenursing.dto.user.CreditUpdateResponse;
-import iti.jets.java.homenursing.dto.user.UserResponse;
-import iti.jets.java.homenursing.dto.user.UserUpdateRequest;
+import iti.jets.java.homenursing.dto.user.*;
 import iti.jets.java.homenursing.security.SecurityUtils;
 import iti.jets.java.homenursing.service.UserService;
 import iti.jets.java.homenursing.util.SortSanitizer;
@@ -62,6 +59,14 @@ public class UserController {
 
         return ResponseEntity.ok(
                 userService.updateCredit(userId, request)
+        );
+    }
+    @GetMapping("/{userId}/credit")
+    public ResponseEntity<CreditResponse> getCredit(
+            @PathVariable UUID userId) {
+
+        return ResponseEntity.ok(
+                userService.getCredit(userId)
         );
     }
 }

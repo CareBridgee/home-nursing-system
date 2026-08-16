@@ -325,13 +325,13 @@ class DtoValidationTest {
     void nearbyServiceRequestRequestValidPasses() {
         var req = new NearbyServiceRequestRequest(
                 UUID.randomUUID(), UUID.randomUUID(),
-                new BigDecimal("30.0"), new BigDecimal("31.0"), null, null, null);
+                new BigDecimal("30.0"), new BigDecimal("31.0"), null, null, null, null);
         assertThat(validate(req)).isEmpty();
     }
 
     @Test
     void nearbyServiceRequestRequestRejectsMissingFields() {
-        var req = new NearbyServiceRequestRequest(null, null, null, null, null, null, null);
+        var req = new NearbyServiceRequestRequest(null, null, null, null, null, null, null, null);
         assertThat(validate(req)).hasSize(4);
     }
 
@@ -339,7 +339,7 @@ class DtoValidationTest {
     void nearbyServiceRequestRequestRejectsOutOfRangeCoordinates() {
         var req = new NearbyServiceRequestRequest(
                 UUID.randomUUID(), UUID.randomUUID(),
-                new BigDecimal("95.0"), new BigDecimal("200.0"), null, null, null);
+                new BigDecimal("95.0"), new BigDecimal("200.0"), null, null, null, null);
         Set<jakarta.validation.ConstraintViolation<NearbyServiceRequestRequest>> violations = validate(req);
         assertThat(violations).extracting(v -> v.getPropertyPath().toString())
                 .contains("latitude", "longitude");

@@ -385,7 +385,7 @@ class ServiceRequestServiceImplTest {
 
         NearbyServiceRequestResponse response = service.createRequest(new NearbyServiceRequestRequest(
                 PROFILE_ID, ST_ID, LAT, LNG, LocalDate.now().plusDays(1), LocalTime.of(10, 0),
-                "Specialized home care"));
+                "Specialized home care", null));
 
         assertEquals(REQ_ID, response.serviceRequestId());
         assertEquals(PROFILE_ID, response.profileId());
@@ -416,7 +416,7 @@ class ServiceRequestServiceImplTest {
 
         BadRequestException ex = assertThrows(BadRequestException.class, () ->
                 service.createRequest(new NearbyServiceRequestRequest(
-                        PROFILE_ID, ST_ID, LAT, LNG, LocalDate.now().minusDays(1), null, null)));
+                        PROFILE_ID, ST_ID, LAT, LNG, LocalDate.now().minusDays(1), null, null, null)));
 
         assertEquals("Preferred date must not be in the past", ex.getMessage());
     }
@@ -437,7 +437,7 @@ class ServiceRequestServiceImplTest {
 
         BadRequestException ex = assertThrows(BadRequestException.class, () ->
                 service.createRequest(new NearbyServiceRequestRequest(
-                        PROFILE_ID, ST_ID, LAT, LNG, null, past, null)));
+                        PROFILE_ID, ST_ID, LAT, LNG, null, past, null, null)));
 
         assertEquals("Preferred time must not be in the past", ex.getMessage());
     }
@@ -452,7 +452,7 @@ class ServiceRequestServiceImplTest {
         stubSaveAndFlush();
 
         NearbyServiceRequestResponse response = service.createRequest(new NearbyServiceRequestRequest(
-                PROFILE_ID, ST_ID, LAT, LNG, null, LocalTime.now().plusMinutes(30), "desc"));
+                PROFILE_ID, ST_ID, LAT, LNG, null, LocalTime.now().plusMinutes(30), "desc", null));
 
         assertEquals(REQ_ID, response.serviceRequestId());
     }
@@ -467,7 +467,7 @@ class ServiceRequestServiceImplTest {
         stubSaveAndFlush();
 
         NearbyServiceRequestResponse response = service.createRequest(new NearbyServiceRequestRequest(
-                PROFILE_ID, ST_ID, LAT, LNG, LocalDate.now().plusDays(1), null, "desc"));
+                PROFILE_ID, ST_ID, LAT, LNG, LocalDate.now().plusDays(1), null, "desc", null));
 
         assertEquals(REQ_ID, response.serviceRequestId());
     }
@@ -481,7 +481,7 @@ class ServiceRequestServiceImplTest {
 
         BadRequestException ex = assertThrows(BadRequestException.class, () ->
                 service.createRequest(new NearbyServiceRequestRequest(
-                        PROFILE_ID, ST_ID, LAT, LNG, LocalDate.now().plusDays(1), null, "desc")));
+                        PROFILE_ID, ST_ID, LAT, LNG, LocalDate.now().plusDays(1), null, "desc", null)));
 
         assertEquals("This profile already has an active service request", ex.getMessage());
     }
@@ -496,7 +496,7 @@ class ServiceRequestServiceImplTest {
         stubSaveAndFlush();
 
         service.createRequest(new NearbyServiceRequestRequest(
-                PROFILE_ID, ST_ID, LAT, LNG, LocalDate.now().plusDays(1), null, null));
+                PROFILE_ID, ST_ID, LAT, LNG, LocalDate.now().plusDays(1), null, null, null));
 
         ArgumentCaptor<ServiceRequest> captor = ArgumentCaptor.forClass(ServiceRequest.class);
         verify(serviceRequestRepository).saveAndFlush(captor.capture());
@@ -520,7 +520,7 @@ class ServiceRequestServiceImplTest {
         stubSaveAndFlush();
 
         service.createRequest(new NearbyServiceRequestRequest(
-                PROFILE_ID, ST_ID, LAT, LNG, LocalDate.now().plusDays(1), null, "   "));
+                PROFILE_ID, ST_ID, LAT, LNG, LocalDate.now().plusDays(1), null, "   ", null));
 
         ArgumentCaptor<ServiceRequest> captor = ArgumentCaptor.forClass(ServiceRequest.class);
         verify(serviceRequestRepository).saveAndFlush(captor.capture());
@@ -539,7 +539,7 @@ class ServiceRequestServiceImplTest {
         stubSaveAndFlush();
 
         NearbyServiceRequestResponse response = service.createRequest(new NearbyServiceRequestRequest(
-                PROFILE_ID, ST_ID, LAT, LNG, LocalDate.now().plusDays(1), null, "desc"));
+                PROFILE_ID, ST_ID, LAT, LNG, LocalDate.now().plusDays(1), null, "desc", null));
 
         assertTrue(response.nearbyNurses().isEmpty());
     }
@@ -551,7 +551,7 @@ class ServiceRequestServiceImplTest {
 
         ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class, () ->
                 service.createRequest(new NearbyServiceRequestRequest(
-                        PROFILE_ID, ST_ID, LAT, LNG, null, null, null)));
+                        PROFILE_ID, ST_ID, LAT, LNG, null, null, null, null)));
 
         assertTrue(ex.getMessage().contains("Service type not found"));
     }

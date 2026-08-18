@@ -603,6 +603,11 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                         request.getLongitude()))
                 .orElse(0.0);
 
+        BigDecimal price = nurseOfferRepository
+                .findByServiceRequest_IdAndStatusAndIsDeletedFalse(request.getId(), NurseOfferStatus.ACCEPTED)
+                .map(NurseOffer::getProposedPrice)
+                .orElseGet(() -> priceEstimator.estimate(serviceType.getBasePrice(), distanceKm));
+
         return new ServiceRequestNurseProfileResponse(
                 request.getId(),
                 serviceType.getId(),
@@ -611,7 +616,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 request.getPreferredDate(),
                 request.getPreferredTime(),
                 request.getStatus(),
-                priceEstimator.estimate(serviceType.getBasePrice(), distanceKm),
+                price,
                 request.getCreatedAt(),
                 summary,
                 patientPhoneNumber,
@@ -674,14 +679,25 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 ServiceRequestStatus.IN_PROGRESS,
                 ServiceRequestStatus.COMPLETED);
 
-        return serviceRequestRepository
-                .findByNurse_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(nurse.getId(), historyStatuses)
+        List<ServiceRequest> requests = serviceRequestRepository
+                .findByNurse_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(nurse.getId(), historyStatuses);
+
+        Map<UUID, BigDecimal> agreedPrices = nurseOfferRepository
+                .findByServiceRequest_IdInAndStatusAndIsDeletedFalse(
+                        requests.stream().map(ServiceRequest::getId).toList(),
+                        NurseOfferStatus.ACCEPTED)
                 .stream()
-                .map(this::toNurseHistoryResponse)
+                .collect(Collectors.toMap(
+                        offer -> offer.getServiceRequest().getId(),
+                        NurseOffer::getProposedPrice,
+                        (first, second) -> first));
+
+        return requests.stream()
+                .map(request -> toNurseHistoryResponse(request, agreedPrices))
                 .toList();
     }
 
-    private NurseRequestHistoryResponse toNurseHistoryResponse(ServiceRequest s) {
+    private NurseRequestHistoryResponse toNurseHistoryResponse(ServiceRequest s, Map<UUID, BigDecimal> agreedPrices) {
         ServiceType serviceType = s.getServiceType();
         Profile profile = s.getProfile();
         User patientUser = profile != null ? profile.getUser() : null;
@@ -696,9 +712,12 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         }
 
         Double distanceKm = s.getNurse() != null ? computeDistanceKm(s, s.getNurse()) : null;
-        BigDecimal estimatedPrice = serviceType != null && distanceKm != null
-                ? priceEstimator.estimate(serviceType.getBasePrice(), distanceKm)
-                : null;
+        BigDecimal price = agreedPrices.get(s.getId());
+        if (price == null) {
+            price = serviceType != null && distanceKm != null
+                    ? priceEstimator.estimate(serviceType.getBasePrice(), distanceKm)
+                    : null;
+        }
 
         return new NurseRequestHistoryResponse(
                 s.getId(),
@@ -714,7 +733,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
                 s.getPreferredDate(),
                 s.getPreferredTime(),
                 s.getStatus(),
-                estimatedPrice,
+                price,
                 s.getCreatedAt(),
                 s.getUpdatedAt());
     }

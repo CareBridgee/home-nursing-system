@@ -255,6 +255,16 @@ class ServiceRequestServiceImplTest {
                 .build();
     }
 
+    private NurseOffer acceptedOffer(ServiceRequest serviceRequest, BigDecimal price) {
+        return NurseOffer.builder()
+                .id(UUID.randomUUID())
+                .serviceRequest(serviceRequest)
+                .nurse(assignedNurse())
+                .proposedPrice(price)
+                .status(NurseOfferStatus.ACCEPTED)
+                .build();
+    }
+
     private NurseService nurseService(Nurse nurse, ServiceType serviceType) {
         return NurseService.builder()
                 .id(UUID.randomUUID())
@@ -1557,13 +1567,15 @@ class ServiceRequestServiceImplTest {
         when(addressRepository.findByProfileId(PROFILE_ID)).thenReturn(Optional.of(address()));
         when(webSocketPresenceService.getAvailableLocation(NURSE_USER_ID_STR))
                 .thenReturn(Optional.of(new Point(31.0000, 30.0000)));
+        when(nurseOfferRepository.findByServiceRequest_IdAndStatusAndIsDeletedFalse(REQ_ID, NurseOfferStatus.ACCEPTED))
+                .thenReturn(Optional.of(acceptedOffer(sr, new BigDecimal("650.00"))));
 
         ServiceRequestNurseProfileResponse response = service.getAssignedNurseProfile(REQ_ID, NURSE_USER_ID);
 
         assertEquals(REQ_ID, response.serviceRequestId());
         assertEquals(ST_ID, response.serviceTypeId());
         assertEquals("Home Nursing", response.serviceName());
-        assertEquals(new BigDecimal("500.00"), response.estimatedPrice());
+        assertEquals(new BigDecimal("650.00"), response.estimatedPrice());
         assertEquals(SUMMARY, response.patient());
         assertEquals("01012345678", response.patientPhoneNumber());
         assertEquals("Egypt", response.address().country());
@@ -1768,7 +1780,7 @@ class ServiceRequestServiceImplTest {
     }
 
     @Test
-    void listNurseHistory_happy_returnsFullHistoryWithPatientAndPrice() {
+    void listNurseHistory_happy_returnsFullHistoryWithPatientAndAgreedPrice() {
         ServiceRequest r1 = ServiceRequest.builder()
                 .id(REQ_ID).profile(patientProfile()).serviceType(serviceType())
                 .nurse(assignedNurse())
@@ -1778,6 +1790,9 @@ class ServiceRequestServiceImplTest {
         when(nurseRepository.findByUser_Id(NURSE_USER_ID)).thenReturn(Optional.of(assignedNurse()));
         when(serviceRequestRepository.findByNurse_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(
                 eq(NURSE_ID), anyCollection())).thenReturn(List.of(r1));
+        when(nurseOfferRepository.findByServiceRequest_IdInAndStatusAndIsDeletedFalse(
+                anyCollection(), eq(NurseOfferStatus.ACCEPTED)))
+                .thenReturn(List.of(acceptedOffer(r1, new BigDecimal("650.00"))));
         when(webSocketPresenceService.getAvailableLocation(NURSE_USER_ID_STR))
                 .thenReturn(Optional.of(new Point(31.0010, 30.0010)));
 
@@ -1796,13 +1811,35 @@ class ServiceRequestServiceImplTest {
         assertEquals("patient-img", response.patientProfileImageUrl());
         assertEquals("desc", response.serviceDescription());
         assertEquals(ServiceRequestStatus.COMPLETED, response.status());
-        assertNotNull(response.estimatedPrice());
+        assertEquals(new BigDecimal("650.00"), response.estimatedPrice());
         assertEquals(NOW, response.createdAt());
         assertEquals(NOW_2, response.updatedAt());
     }
 
     @Test
-    void listNurseHistory_nurseWithoutLiveLocation_priceNull() {
+    void listNurseHistory_acceptedOfferOverridesEstimateEvenWithoutLiveLocation() {
+        ServiceRequest r1 = ServiceRequest.builder()
+                .id(REQ_ID).profile(patientProfile()).serviceType(serviceType())
+                .nurse(assignedNurse())
+                .serviceDescription("desc").status(ServiceRequestStatus.ACCEPTED)
+                .latitude(LAT).longitude(LNG).isDeleted(false)
+                .createdAt(NOW).updatedAt(NOW_2).build();
+        when(nurseRepository.findByUser_Id(NURSE_USER_ID)).thenReturn(Optional.of(assignedNurse()));
+        when(serviceRequestRepository.findByNurse_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(
+                eq(NURSE_ID), anyCollection())).thenReturn(List.of(r1));
+        when(nurseOfferRepository.findByServiceRequest_IdInAndStatusAndIsDeletedFalse(
+                anyCollection(), eq(NurseOfferStatus.ACCEPTED)))
+                .thenReturn(List.of(acceptedOffer(r1, new BigDecimal("650.00"))));
+        when(webSocketPresenceService.getAvailableLocation(NURSE_USER_ID_STR)).thenReturn(Optional.empty());
+
+        List<NurseRequestHistoryResponse> result = service.listNurseHistory(NURSE_USER_ID);
+
+        assertEquals(1, result.size());
+        assertEquals(new BigDecimal("650.00"), result.get(0).estimatedPrice());
+    }
+
+    @Test
+    void listNurseHistory_noAcceptedOffer_noLiveLocation_priceNull() {
         ServiceRequest r1 = ServiceRequest.builder()
                 .id(REQ_ID).profile(patientProfile()).serviceType(serviceType())
                 .nurse(assignedNurse())
@@ -1841,6 +1878,9 @@ class ServiceRequestServiceImplTest {
         when(nurseRepository.findByUser_Id(NURSE_USER_ID)).thenReturn(Optional.of(assignedNurse()));
         when(serviceRequestRepository.findByNurse_IdAndIsDeletedFalseAndStatusInOrderByCreatedAtDesc(
                 eq(NURSE_ID), anyCollection())).thenReturn(List.of(rNoTypeNoProfile, rPartialUser));
+        when(nurseOfferRepository.findByServiceRequest_IdInAndStatusAndIsDeletedFalse(
+                anyCollection(), eq(NurseOfferStatus.ACCEPTED)))
+                .thenReturn(List.of(acceptedOffer(rPartialUser, new BigDecimal("650.00"))));
         when(webSocketPresenceService.getAvailableLocation(NURSE_USER_ID_STR))
                 .thenReturn(Optional.of(new Point(31.0010, 30.0010)));
 
@@ -1863,7 +1903,7 @@ class ServiceRequestServiceImplTest {
         assertNull(second.patientLastName());
         assertNull(second.patientPhoneNumber());
         assertNull(second.patientProfileImageUrl());
-        assertNotNull(second.estimatedPrice());
+        assertEquals(new BigDecimal("650.00"), second.estimatedPrice());
     }
 
     // ------------------------------------------------------------------
